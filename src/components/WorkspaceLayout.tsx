@@ -13,7 +13,8 @@ import {
   LogOut,
   Compass,
   Download,
-  FileUp
+  FileUp,
+  Globe
 } from 'lucide-react';
 
 interface WorkspaceLayoutProps {
@@ -45,6 +46,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     { view: 'manuscript' as ActiveView, icon: BookOpen, label: 'Manuscrito' },
     { view: 'universe' as ActiveView, icon: Compass, label: 'Universo' },
     { view: 'timeline' as ActiveView, icon: Calendar, label: 'Línea Temporal' },
+    { view: 'calendars' as ActiveView, icon: Globe, label: 'Calendarios' },
     { view: 'versioning' as ActiveView, icon: Download, label: 'Actualizar' },
     { view: 'import' as ActiveView, icon: FileUp, label: 'Importar' },
     { view: 'settings' as ActiveView, icon: Settings, label: 'Configuración' },

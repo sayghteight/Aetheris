@@ -38,7 +38,9 @@ pub fn run() {
             commands::update_timeline_event,
             commands::delete_timeline_event,
             commands::get_calendars,
-            commands::create_calendar
+            commands::create_calendar,
+            commands::update_calendar,
+            commands::delete_calendar
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
