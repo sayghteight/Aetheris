@@ -2,8 +2,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../../store/settingsStore';
 import { marked } from 'marked';
-import { useSpellCheck } from '../../hooks/useSpellCheck';
-import { SpellCheckOverlay } from '../../components/SpellCheckOverlay';
 import {
   Bold,
   Italic,
@@ -20,7 +18,6 @@ import {
   Eye,
   EyeOff,
   SpellCheck,
-  Loader2,
 } from 'lucide-react';
 
 interface LexicalEditorProps {
@@ -58,25 +55,13 @@ const WRITER_BUTTONS = [
 const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate }) => {
   const { settings } = useSettingsStore();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const saveTimeout = useRef<number | null>(null as any);
-  const spellCheckTimeout = useRef<number | null>(null as any);
   const lastStats = useRef({ words: 0, readTime: 0 });
   const [text, setText] = useState('');
   const [preview, setPreview] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [showSpellCheck, setShowSpellCheck] = useState(false);
-  const [spellCheckErrors, setSpellCheckErrors] = useState<Set<string>>(new Set());
-
-  // Spell check hook
-  const {
-    misspelledWords,
-    checkTextSync,
-    getSuggestions,
-    isLoading: spellCheckLoading,
-    isReady: spellCheckReady,
-  } = useSpellCheck();
 
   useEffect(() => {
     let mounted = true;
@@ -91,48 +76,6 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate })
     })();
     return () => { mounted = false; };
   }, [sceneId]);
-
-  // Spell check effect - run when text changes and spell check is enabled
-  useEffect(() => {
-    if (!settings.spellCheck || !showSpellCheck) {
-      setSpellCheckErrors(new Set());
-      return;
-    }
-
-    if (spellCheckTimeout.current) {
-      window.clearTimeout(spellCheckTimeout.current);
-    }
-
-    spellCheckTimeout.current = window.setTimeout(async () => {
-      // Sync check for quick error detection
-      const errors = checkTextSync(text);
-      setSpellCheckErrors(new Set(errors.map(e => e.toLowerCase())));
-
-      // Async check for full misspelled words with suggestions and positions
-      await checkText(text);
-    }, 500);
-
-    return () => {
-      if (spellCheckTimeout.current) {
-        window.clearTimeout(spellCheckTimeout.current);
-      }
-    };
-  }, [text, settings.spellCheck, showSpellCheck, spellCheckReady]);
-
-  // Handle correction events from overlay
-  useEffect(() => {
-    const handleApplyCorrection = (e: CustomEvent<{ original: string; correction: string }>) => {
-      const { original, correction } = e.detail;
-      const newText = text.replace(new RegExp(`\\b${original}\\b`, 'g'), correction);
-      setText(newText);
-      scheduleSave(newText);
-    };
-
-    window.addEventListener('apply-correction', handleApplyCorrection as EventListener);
-    return () => {
-      window.removeEventListener('apply-correction', handleApplyCorrection as EventListener);
-    };
-  }, [text]);
 
   const computeStats = (value: string) => {
     const words = value.trim() === '' ? 0 : value.trim().split(/\s+/).length;
@@ -251,14 +194,6 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate })
         ? 'Error al guardar'
         : 'Sin cambios';
 
-  const spellCheckLabel = spellCheckLoading
-    ? 'Cargando diccionarios...'
-    : showSpellCheck && spellCheckErrors.size > 0
-      ? `${spellCheckErrors.size} error${spellCheckErrors.size > 1 ? 'es' : ''} ortográfico${spellCheckErrors.size > 1 ? 's' : ''}`
-      : showSpellCheck
-        ? 'Sin errores'
-        : 'Revisión ortográfica';
-
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950/40 border border-slate-900 rounded-3xl overflow-hidden shadow-xl shadow-slate-950/20">
       <div className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex flex-col gap-3">
@@ -313,14 +248,10 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate })
                   ? 'border-emerald-600 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/40'
                   : 'border-slate-800 bg-slate-950/80 text-slate-400 hover:bg-slate-900 hover:text-slate-200'
               }`}
-              title="Revisión ortográfica"
+              title={showSpellCheck ? 'Desactivar revisión' : 'Activar revisión ortográfica'}
             >
-              {spellCheckLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <SpellCheck className="w-4 h-4" />
-              )}
-              <span>{spellCheckLabel}</span>
+              <SpellCheck className="w-4 h-4" />
+              <span>{showSpellCheck ? 'Corrector activo' : 'Revisión ortográfica'}</span>
             </button>
           )}
 
@@ -337,7 +268,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate })
         <div className="text-xs text-slate-500">{saveLabel}</div>
       </div>
 
-      <div className="flex-1 p-4 min-h-0" ref={containerRef}>
+      <div className="flex-1 p-4 min-h-0">
         {!preview ? (
           <div className="relative w-full h-full">
             <textarea
@@ -347,18 +278,9 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate })
               className="w-full h-full resize-none bg-slate-950/0 text-slate-100 placeholder-slate-500 outline-none p-4 rounded-3xl border border-slate-900 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
               style={{ fontFamily, fontSize: 18, lineHeight: 1.75 }}
               placeholder="Comienza a escribir tu escena aquí..."
-              spellCheck={false}
+              spellCheck={settings.spellCheck}
+              lang={settings.spell_check_languages?.[0] || 'es'}
             />
-            {showSpellCheck && settings.spellCheck && spellCheckReady && (
-              <SpellCheckOverlay
-                text={text}
-                misspelledWords={misspelledWords}
-                getSuggestions={getSuggestions}
-                fontSize={18}
-                lineHeight={1.75}
-                fontFamily={fontFamily}
-              />
-            )}
           </div>
         ) : (
           <div className="w-full h-full overflow-auto prose prose-invert max-w-none rounded-3xl border border-slate-900 bg-slate-950/60 p-6" dangerouslySetInnerHTML={renderPreview()} />
