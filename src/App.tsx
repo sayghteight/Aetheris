@@ -168,6 +168,7 @@ const App: React.FC = () => {
         >
           {renderMainView()}
         </WorkspaceLayout>
+        <UpdateDialog />
       </div>
     </div>
   );

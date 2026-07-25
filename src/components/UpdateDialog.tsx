@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { check } from '@tauri-apps/plugin-updater';
-import { relaunch } from '@tauri-apps/plugin-updater';
-import { Dialog } from '@tauri-apps/plugin-dialog';
-import { useI18n } from '../i18n';
-import { Download, X, RefreshCw } from 'lucide-react';
+import { relaunch } from '@tauri-apps/plugin-process';
+import { Download, RefreshCw } from 'lucide-react';
 
 interface UpdateInfo {
   version: string;
@@ -11,7 +9,6 @@ interface UpdateInfo {
 }
 
 export const UpdateDialog: React.FC = () => {
-  const { t } = useI18n();
   const [updateAvailable, setUpdateAvailable] = useState<UpdateInfo | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
@@ -42,12 +39,19 @@ export const UpdateDialog: React.FC = () => {
 
     try {
       const update = await check();
-      if (update?.downloadAndInstall) {
+      if (update) {
+        let totalBytes: number | undefined;
+        let downloadedBytes = 0;
+
         update.downloadAndInstall((event) => {
-          if (event.event === 'Progress') {
-            const total = event.data.contentLength || 1;
-            const downloaded = event.data.chunkLength || 0;
-            setDownloadProgress(Math.round((downloaded / total) * 100));
+          if (event.event === 'Started') {
+            totalBytes = event.data.contentLength;
+            downloadedBytes = 0;
+          } else if (event.event === 'Progress') {
+            downloadedBytes += event.data.chunkLength;
+            if (totalBytes) {
+              setDownloadProgress(Math.round((downloadedBytes / totalBytes) * 100));
+            }
           }
         });
       }
