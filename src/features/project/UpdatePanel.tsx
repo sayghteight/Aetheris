@@ -2,38 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ArrowDownToLine, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
-interface GitHubRelease {
-  tag_name?: string;
-  name?: string;
-  html_url?: string;
-  body?: string;
-  published_at?: string;
-}
-
-const CURRENT_VERSION = '0.1.0';
-const DEFAULT_REPOSITORY = 'sayghteight/culto-guieditor';
-const REPOSITORY = import.meta.env.VITE_GITHUB_REPO || DEFAULT_REPOSITORY;
-
-function normalizeVersion(version: string): string {
-  return version.replace(/^v/i, '').trim();
-}
-
-function compareVersions(left: string, right: string): number {
-  const leftParts = normalizeVersion(left).split(/[.-]/)[0].split('.').map((part) => Number(part) || 0);
-  const rightParts = normalizeVersion(right).split(/[.-]/)[0].split('.').map((part) => Number(part) || 0);
-
-  const maxLength = Math.max(leftParts.length, rightParts.length);
-
-  for (let index = 0; index < maxLength; index += 1) {
-    const leftValue = leftParts[index] ?? 0;
-    const rightValue = rightParts[index] ?? 0;
-
-    if (leftValue > rightValue) return 1;
-    if (leftValue < rightValue) return -1;
-  }
-
-  return 0;
-}
+const VERSION = '0.1.1';
 
 export const UpdatePanel: React.FC = () => {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
