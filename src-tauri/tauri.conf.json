@@ -27,6 +27,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -37,7 +38,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzc2l2bmVxMHUxMmV5NTJlc2owMHJ5cjE1bzJ3NWc=",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY1RUZGMEU3ODhGQTVBN0QKUldSOVd2cUk1L0R2OWZrNEkxaTlLRldmeSt6Sm5OZm1Kemo2MUo1UC9HMzVQVzZFYWM3b0VFbW4K",
       "endpoints": [
         "https://github.com/sayghteight/culto-guieditor/releases/latest/download/latest.json"
       ]
