@@ -41,6 +41,7 @@ interface CalendarFormData {
   months: Month[];
   starting_day: number;
   base_year: number;
+  continuous_weeks: boolean;
 }
 
 // Spanish day names
@@ -88,6 +89,7 @@ export const CalendarsPanel: React.FC = () => {
     months: DEFAULT_MONTHS,
     starting_day: 0,
     base_year: new Date().getFullYear(),
+    continuous_weeks: false,
   });
 
   useEffect(() => {
@@ -110,7 +112,7 @@ export const CalendarsPanel: React.FC = () => {
     try {
       return JSON.parse(calendar.months_json);
     } catch {
-      return { day_names: DEFAULT_DAY_NAMES, months: DEFAULT_MONTHS, starting_day: 0, base_year: new Date().getFullYear() };
+      return { day_names: DEFAULT_DAY_NAMES, months: DEFAULT_MONTHS, starting_day: 0, base_year: new Date().getFullYear(), continuous_weeks: false };
     }
   };
 
@@ -122,6 +124,7 @@ export const CalendarsPanel: React.FC = () => {
         months: formData.months,
         starting_day: formData.starting_day,
         base_year: formData.base_year,
+        continuous_weeks: formData.continuous_weeks,
       });
 
       if (editingCalendar) {
@@ -167,6 +170,7 @@ export const CalendarsPanel: React.FC = () => {
       months: data.months || DEFAULT_MONTHS,
       starting_day: data.starting_day || 0,
       base_year: data.base_year || new Date().getFullYear(),
+      continuous_weeks: data.continuous_weeks ?? false,
     });
     setShowForm(true);
   };
@@ -184,7 +188,8 @@ export const CalendarsPanel: React.FC = () => {
       months: DEFAULT_MONTHS,
       starting_day: 0,
       base_year: new Date().getFullYear(),
-    });
+    continuous_weeks: false,
+  });
   };
 
   const totalDays = (months: Month[]) => {
@@ -336,17 +341,35 @@ export const CalendarsPanel: React.FC = () => {
                 </div>
               </div>
 
-              {/* Base year */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                  {t('calendars.baseYear') || 'Año base'}
-                </label>
-                <input
-                  type="number"
-                  value={formData.base_year}
-                  onChange={(e) => setFormData({ ...formData, base_year: parseInt(e.target.value) || new Date().getFullYear() })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500"
-                />
+              {/* Base year & continuous weeks */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                    {t('calendars.baseYear') || 'Año base'}
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.base_year}
+                    onChange={(e) => setFormData({ ...formData, base_year: parseInt(e.target.value) || new Date().getFullYear() })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                    Semanas continuas
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, continuous_weeks: !formData.continuous_weeks })}
+                    className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      formData.continuous_weeks
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {formData.continuous_weeks ? 'Sí' : 'No'}
+                  </button>
+                </div>
               </div>
 
               {/* Day Names (collapsible) */}

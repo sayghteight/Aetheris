@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useI18n } from '../../i18n';
 import {
@@ -51,17 +51,45 @@ interface CalendarData {
   months?: Month[];
   starting_day?: number;
   base_year?: number;
+  continuous_weeks?: boolean;
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({ calendars, onRefresh }) => {
   const { t } = useI18n();
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [selectedCalendar, setSelectedCalendar] = useState<CustomCalendar | null>(null);
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-  const [currentMonthIndex, setCurrentMonthIndex] = useState(new Date().getMonth());
+  const [currentYear, setCurrentYear] = useState<number>(0);
+  const [currentMonthIndex, setCurrentMonthIndex] = useState<number>(0);
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
   const [selectedDate, setSelectedDate] = useState<{ year: number; month: number; day: number } | null>(null);
+
+  // Cumulative offset for continuous weeks
+  const cumulativeOffsetRef = useRef<number>(0);
+
+  // Initialize year and month when calendar changes
+  useEffect(() => {
+    if (calendars.length > 0 && !selectedCalendar) {
+      const cal = calendars[0];
+      const data = parseCalendarData(cal);
+      setSelectedCalendar(cal);
+      const baseYear = data.base_year || new Date().getFullYear();
+      setCurrentYear(baseYear);
+      setCurrentMonthIndex(0);
+      cumulativeOffsetRef.current = data.starting_day || 0;
+    }
+  }, [calendars]);
+
+  // When selected calendar changes, reset to base year
+  useEffect(() => {
+    if (selectedCalendar) {
+      const data = parseCalendarData(selectedCalendar);
+      const baseYear = data.base_year || new Date().getFullYear();
+      setCurrentYear(baseYear);
+      setCurrentMonthIndex(0);
+      cumulativeOffsetRef.current = data.starting_day || 0;
+    }
+  }, [selectedCalendar]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [eventForm, setEventForm] = useState({
@@ -140,6 +168,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ calendars, onRefresh
   };
 
   const goToPrevMonth = () => {
+    if (calendarData.continuous_weeks && selectedCalendar) {
+      const daysInCurrentMonth = months[currentMonthIndex]?.days || 0;
+      const daysPerWeek = selectedCalendar.days_per_week;
+      cumulativeOffsetRef.current = ((cumulativeOffsetRef.current - daysInCurrentMonth) % daysPerWeek + daysPerWeek) % daysPerWeek;
+    }
     if (currentMonthIndex === 0) {
       setCurrentMonthIndex(months.length - 1);
       setCurrentYear(y => y - 1);
@@ -149,6 +182,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ calendars, onRefresh
   };
 
   const goToNextMonth = () => {
+    if (calendarData.continuous_weeks && selectedCalendar) {
+      const daysInCurrentMonth = months[currentMonthIndex]?.days || 0;
+      cumulativeOffsetRef.current = (cumulativeOffsetRef.current + daysInCurrentMonth) % selectedCalendar.days_per_week;
+    }
     if (currentMonthIndex === months.length - 1) {
       setCurrentMonthIndex(0);
       setCurrentYear(y => y + 1);
@@ -158,8 +195,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ calendars, onRefresh
   };
 
   const goToToday = () => {
-    setCurrentYear(new Date().getFullYear());
-    setCurrentMonthIndex(new Date().getMonth());
+    if (selectedCalendar) {
+      const data = parseCalendarData(selectedCalendar);
+      setCurrentYear(data.base_year || new Date().getFullYear());
+      cumulativeOffsetRef.current = data.starting_day || 0;
+    }
+    setCurrentMonthIndex(0);
   };
 
   const handleDayClick = (day: number) => {
@@ -222,12 +263,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ calendars, onRefresh
     setEditingEvent(null);
   };
 
-  const buildMonthGrid = (month: Month, daysPerWeek: number): (number | null)[][] => {
+  const buildMonthGrid = (month: Month, daysPerWeek: number, startOffset: number): (number | null)[][] => {
     const grid: (number | null)[][] = [];
     let currentRow: (number | null)[] = [];
-    const startPadding = calendarData.starting_day || 0;
 
-    for (let i = 0; i < startPadding; i++) currentRow.push(null);
+    // Add padding at the start based on starting offset
+    for (let i = 0; i < startOffset; i++) currentRow.push(null);
 
     for (let day = 1; day <= month.days; day++) {
       currentRow.push(day);
@@ -254,7 +295,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ calendars, onRefresh
     </div>
   );
 
-  const grid = buildMonthGrid(currentMonth, selectedCalendar.days_per_week);
+  // Calculate offset for current month - use cumulative ref for continuous, or base offset for non-continuous
+  const currentOffset = calendarData.continuous_weeks
+    ? cumulativeOffsetRef.current
+    : (calendarData.starting_day || 0);
+  const grid = buildMonthGrid(currentMonth, selectedCalendar.days_per_week, currentOffset);
   const daysPerWeek = selectedCalendar.days_per_week;
   const eventsThisMonth = events.filter(e => e.year === currentYear && e.month === currentMonthIndex + 1);
 
@@ -305,14 +350,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ calendars, onRefresh
       </div>
 
       {/* Calendar grid */}
-      <div className="flex-1 p-2 overflow-auto">
-        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${daysPerWeek}, 1fr)`, gridTemplateRows: `repeat(${grid.length}, minmax(60px, 1fr))` }}>
+      <div className="flex-1 p-2 overflow-hidden">
+        <div className="grid gap-1 h-full" style={{ gridTemplateColumns: `repeat(${daysPerWeek}, 1fr)`, gridTemplateRows: `repeat(${grid.length}, 1fr)` }}>
           {grid.flatMap((row, rowIndex) =>
             row.map((day, dayIndex) => {
               if (day === null) return <div key={`${rowIndex}-${dayIndex}`} className="bg-slate-900/30 rounded" />;
 
               const dayEvents = getEventsForDate(currentYear, currentMonthIndex + 1, day);
-              const isToday = new Date().getFullYear() === currentYear && new Date().getMonth() === currentMonthIndex && new Date().getDate() === day;
+              // Highlight first day of first month if viewing base year/month
+              const calendarBaseYear = calendarData.base_year || currentYear;
+              const isToday = calendarBaseYear === currentYear && currentMonthIndex === 0 && day === 1;
 
               return (
                 <button
@@ -326,14 +373,19 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ calendars, onRefresh
                 >
                   <span className="text-sm font-medium">{day}</span>
                   {dayEvents.length > 0 && (
-                    <div className="w-full mt-0.5 overflow-hidden">
+                    <div className="w-full mt-0.5 space-y-0.5">
                       {dayEvents.slice(0, 2).map((ev, i) => (
-                        <div key={i} className={`text-[9px] truncate leading-tight ${isToday ? 'text-white/95' : 'text-slate-300'}`}>
+                        <div
+                          key={i}
+                          className={`px-1 py-0.5 rounded text-[9px] truncate leading-tight font-medium ${
+                            isToday ? 'bg-white/20 text-white' : 'bg-violet-900/50 text-violet-200'
+                          }`}
+                        >
                           {ev.title}
                         </div>
                       ))}
                       {dayEvents.length > 2 && (
-                        <div className={`text-[9px] font-medium ${isToday ? 'text-white/80' : 'text-slate-400'}`}>
+                        <div className={`text-[9px] font-medium text-center ${isToday ? 'text-white/80' : 'text-slate-400'}`}>
                           +{dayEvents.length - 2}
                         </div>
                       )}
