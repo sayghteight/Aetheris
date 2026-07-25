@@ -14,6 +14,7 @@ import { UniversePanel } from './features/project/UniversePanel';
 import { WordImportPanel } from './features/import/WordImportPanel';
 import { TimelinePanel } from './features/project/TimelinePanel';
 import { CalendarsPanel } from './features/project/CalendarsPanel';
+import { UpdateDialog } from './components/UpdateDialog';
 
 const App: React.FC = () => {
   const { isOpen } = useProjectStore();

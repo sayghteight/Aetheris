@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tauri-app",
+  "productName": "Aetheria",
   "version": "0.1.0",
-  "identifier": "com.aer.editor",
+  "identifier": "com.aetheria.editor",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -10,11 +10,14 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
-        "title": "tauri-app",
-        "width": 800,
-        "height": 600
+        "title": "Aetheria",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600
       }
     ],
     "security": {
@@ -31,5 +34,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzc2l2bmVxMHUxMmV5NTJlc2owMHJ5cjE1bzJ3NWc=",
+      "endpoints": [
+        "https://github.com/sayghteight/culto-guieditor/releases/latest/download/latest.json"
+      ]
+    }
   }
 }
