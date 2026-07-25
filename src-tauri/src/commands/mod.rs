@@ -871,3 +871,42 @@ pub fn create_calendar(
     })
 }
 
+#[tauri::command]
+pub fn update_calendar(
+    state: State<'_, AppState>,
+    id: String,
+    name: String,
+    months_json: String,
+    days_per_week: i32,
+    era_name: Option<String>,
+) -> Result<CustomCalendar, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    conn.execute(
+        "UPDATE custom_calendars SET name = ?1, months_json = ?2, days_per_week = ?3, era_name = ?4 WHERE id = ?5;",
+        (&name, &months_json, &days_per_week, &era_name, &id),
+    )
+    .map_err(|e| format!("Error actualizando calendario: {}", e))?;
+
+    Ok(CustomCalendar {
+        id,
+        name,
+        months_json,
+        days_per_week,
+        era_name,
+    })
+}
+
+#[tauri::command]
+pub fn delete_calendar(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    // Eliminar el calendario
+    conn.execute("DELETE FROM custom_calendars WHERE id = ?1;", [&id])
+        .map_err(|e| format!("Error eliminando calendario: {}", e))?;
+
+    Ok(())
+}
+

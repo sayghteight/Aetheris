@@ -11,7 +11,7 @@ interface GitHubRelease {
 }
 
 const CURRENT_VERSION = '0.1.0';
-const DEFAULT_REPOSITORY = 'carmencampos/culto-guieditor';
+const DEFAULT_REPOSITORY = 'sayghteight/culto-guieditor';
 const REPOSITORY = import.meta.env.VITE_GITHUB_REPO || DEFAULT_REPOSITORY;
 
 function normalizeVersion(version: string): string {

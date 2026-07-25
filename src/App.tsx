@@ -13,6 +13,7 @@ import { UpdatePanel } from './features/project/UpdatePanel';
 import { UniversePanel } from './features/project/UniversePanel';
 import { WordImportPanel } from './features/import/WordImportPanel';
 import { TimelinePanel } from './features/project/TimelinePanel';
+import { CalendarsPanel } from './features/project/CalendarsPanel';
 
 const App: React.FC = () => {
   const { isOpen } = useProjectStore();
@@ -141,6 +142,8 @@ const App: React.FC = () => {
         return <UpdatePanel />;
       case 'timeline':
         return <TimelinePanel />;
+      case 'calendars':
+        return <CalendarsPanel />;
       case 'import':
         return <WordImportPanel />;
       default:
