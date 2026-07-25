@@ -407,7 +407,7 @@ pub fn create_manuscript_node(
     if node_type == "scene" {
         conn.execute(
             "INSERT INTO scene_contents (node_id, content, plain_text) VALUES (?1, ?2, ?3);",
-            (&id, &"{}", &""),
+            (&id, &"", &""),
         )
         .map_err(|e| format!("Error inicializando escena: {}", e))?;
     }
