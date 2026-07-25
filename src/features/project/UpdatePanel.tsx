@@ -1,146 +1,83 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ArrowDownToLine, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
+import React from 'react';
+import { Sparkles, GitBranch, Heart } from 'lucide-react';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
 const VERSION = '0.1.1';
 
 export const UpdatePanel: React.FC = () => {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [release, setRelease] = useState<GitHubRelease | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const checkForUpdates = async () => {
-    setStatus('loading');
-    setError(null);
-
+  const openGitHub = async () => {
     try {
-      const response = await fetch(`https://api.github.com/repos/${REPOSITORY}/releases/latest`, {
-        headers: {
-          Accept: 'application/vnd.github+json',
-          'User-Agent': 'culto-guieditor',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('No se pudo obtener la información de releases desde GitHub.');
-      }
-
-      const data: GitHubRelease = await response.json();
-      setRelease(data);
-      setStatus('success');
-    } catch (updateError) {
-      const message = updateError instanceof Error ? updateError.message : 'Ha ocurrido un error inesperado.';
-      setError(message);
-      setStatus('error');
-    }
-  };
-
-  useEffect(() => {
-    void checkForUpdates();
-  }, []);
-
-  const hasNewVersion = useMemo(() => {
-    if (!release?.tag_name) return false;
-    return compareVersions(release.tag_name, CURRENT_VERSION) > 0;
-  }, [release]);
-
-  const openRelease = async () => {
-    if (!release?.html_url) return;
-
-    try {
-      await openUrl(release.html_url);
+      await openUrl('https://github.com/sayghteight/culto-guieditor');
     } catch {
-      window.open(release.html_url, '_blank', 'noopener,noreferrer');
+      window.open('https://github.com/sayghteight/culto-guieditor', '_blank', 'noopener,noreferrer');
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <p className="text-xs uppercase tracking-[0.3em] text-violet-400">Actualizaciones</p>
-        <h2 className="text-2xl font-extrabold tracking-tight mt-2">Gestión de versiones</h2>
+        <p className="text-xs uppercase tracking-[0.3em] text-violet-400">Información</p>
+        <h2 className="text-2xl font-extrabold tracking-tight mt-2">Acerca de Aetheria</h2>
         <p className="text-sm text-slate-400 mt-2">
-          Comprobamos el repositorio de GitHub y te mostramos si hay una nueva release disponible para instalar.
+          Editor de mundos y narrativas interactivas para escritores y creadores de universos ficticios.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 shadow-xl">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-slate-200">Versión instalada</p>
-            <p className="text-xs text-slate-500">{CURRENT_VERSION}</p>
+      {/* Logo y versión */}
+      <div className="flex flex-col items-center text-center mb-10">
+        <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 flex items-center justify-center mb-4 shadow-2xl shadow-violet-900/40">
+          <Sparkles className="w-10 h-10 text-white" />
+        </div>
+        <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+          Aetheria
+        </h1>
+        <p className="text-slate-500 mt-1">Versión {VERSION}</p>
+        <p className="text-xs text-slate-600 mt-1">Editor de mundos narrativos</p>
+      </div>
+
+      {/* Descripción */}
+      <div className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 shadow-xl mb-4">
+        <h3 className="font-semibold text-slate-200 mb-3">¿Qué es Aetheria?</h3>
+        <p className="text-sm text-slate-400 leading-relaxed">
+          Aetheria es un editor pensado para escritores que trabajan con mundos complejos: múltiples líneas temporales, calendarios personalizados, escenas interconectadas y un universo narrativo en constante expansión. Permite organizar, escribir y visualizar tu mundo ficticio desde un único espacio centralizado.
+        </p>
+      </div>
+
+      {/* Características */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        {[
+          { label: 'Manuscrito digital', desc: 'Edita y organiza escenas con un editor rico en formato.' },
+          { label: 'Universo narrativo', desc: 'Gestiona personajes, locaciones, tramas y eventos.' },
+          { label: 'Línea temporal', desc: 'Visualiza eventos en una cronología interactiva.' },
+          { label: 'Calendarios personalizados', desc: 'Crea calendarios ficticios con meses, semanas y estaciones.' },
+        ].map((item) => (
+          <div key={item.label} className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-4">
+            <p className="font-semibold text-slate-200 text-sm">{item.label}</p>
+            <p className="text-xs text-slate-500 mt-1">{item.desc}</p>
           </div>
-          <button
-            onClick={() => void checkForUpdates()}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-300 transition hover:border-violet-500 hover:text-white"
-          >
-            {status === 'loading' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Comprobar ahora
-          </button>
-        </div>
+        ))}
+      </div>
 
-        <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-          {status === 'loading' && (
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Revisando releases en GitHub...
-            </div>
-          )}
+      {/* Créditos y enlaces */}
+      <div className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 shadow-xl mb-4">
+        <h3 className="font-semibold text-slate-200 mb-3">Créditos</h3>
+        <p className="text-sm text-slate-400 leading-relaxed">
+          Aetheria está desarrollado y mantenido por{' '}
+          <span className="text-slate-200 font-medium">sayghteight</span>. Construido con Tauri, React, Lexical y mucho café.
+        </p>
+        <button
+          onClick={() => void openGitHub()}
+          className="inline-flex items-center gap-2 mt-4 rounded-lg bg-slate-950 border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:border-violet-500 hover:text-white"
+        >
+          <GitBranch className="w-4 h-4" />
+          Ver en GitHub
+        </button>
+      </div>
 
-          {status === 'error' && (
-            <div className="flex items-start gap-2 text-sm text-amber-400">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <div>
-                <p className="font-semibold">No se pudo comprobar la actualización.</p>
-                <p className="text-slate-400 mt-1">{error}</p>
-              </div>
-            </div>
-          )}
-
-          {status === 'success' && !release && (
-            <div className="text-sm text-slate-400">No hay información de releases disponible para este repositorio.</div>
-          )}
-
-          {status === 'success' && release && (
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 rounded-lg border border-slate-800/70 bg-slate-900/70 p-4">
-                {hasNewVersion ? (
-                  <ArrowDownToLine className="mt-0.5 h-5 w-5 text-emerald-400" />
-                ) : (
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-400" />
-                )}
-                <div>
-                  <p className="font-semibold text-slate-200">
-                    {hasNewVersion ? `Nueva versión disponible: ${release.tag_name}` : 'Tu instalación está al día.'}
-                  </p>
-                  <p className="text-sm text-slate-400 mt-1">
-                    {release.name || release.tag_name || 'Release publicada recientemente'}
-                  </p>
-                  {release.body && (
-                    <p className="mt-3 whitespace-pre-wrap text-xs leading-6 text-slate-500">{release.body}</p>
-                  )}
-                </div>
-              </div>
-
-              {hasNewVersion ? (
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    onClick={() => void openRelease()}
-                    className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-violet-500"
-                  >
-                    <ArrowDownToLine className="h-4 w-4" />
-                    Abrir release para actualizar
-                  </button>
-                  <span className="text-xs text-slate-500">
-                    Se abrirá la página de la release en tu navegador para completar la instalación.
-                  </span>
-                </div>
-              ) : (
-                <p className="text-sm text-slate-500">La versión actual ya está instalada. Revisa de nuevo más adelante si publican nuevas releases.</p>
-              )}
-            </div>
-          )}
-        </div>
+      {/* Footer */}
+      <div className="flex items-center justify-center gap-1.5 text-xs text-slate-600 pt-2">
+        <Heart className="w-3 h-3 text-fuchsia-500" />
+        <span>Hecho con propósito narrativo</span>
       </div>
     </div>
   );
