@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useProjectStore } from '../../store/projectStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useManuscriptStore } from '../../store/manuscriptStore';
+import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useI18n } from '../../i18n';
 import {
   BookOpen,

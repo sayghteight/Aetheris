@@ -76,6 +76,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   closeProject: async () => {
     set({ isLoading: true, error: null });
     try {
+      // Save workspace state before closing
+      await import('./workspaceStore').then(m => m.useWorkspaceStore.getState().saveWorkspaceState());
       await invoke('close_project');
       set({ currentProject: null, activePath: null, isOpen: false, isLoading: false });
     } catch (e: any) {

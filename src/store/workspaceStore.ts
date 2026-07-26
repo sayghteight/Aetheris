@@ -79,12 +79,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   setActiveView: (view) => {
     set({ activeView: view });
     useNavigationStore.getState().setActiveView(view);
-    scheduleWorkspaceSave();
+    // Persist immediately for view changes (no debounce)
+    get().saveWorkspaceState();
   },
   setActiveSceneId: (id) => {
     set({ activeSceneId: id });
     useNavigationStore.getState().setActiveSceneId(id);
-    scheduleWorkspaceSave();
+    // Persist immediately for scene selection (no debounce)
+    get().saveWorkspaceState();
   },
   setExpandedNodeIds: (ids) => {
     set({ expandedNodeIds: ids });
