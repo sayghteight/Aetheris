@@ -108,6 +108,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         editorScrollPosition: state.editor_scroll_position,
         isLoaded: true,
       });
+      // Sync navigation store with loaded state
+      useNavigationStore.getState().setActiveView(state.active_view as ActiveView);
+      if (state.active_scene_id) {
+        useNavigationStore.getState().setActiveSceneId(state.active_scene_id);
+      }
     } catch (e) {
       console.error('Error loading workspace state:', e);
       set({ isLoaded: true });

@@ -33,15 +33,13 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   readTime = 0
 }) => {
   const { currentProject, closeProject } = useProjectStore();
-  const {
-    activeView,
-    setActiveView,
-  } = useNavigationStore();
+  const { activeView } = useNavigationStore();
   const {
     sidebarExpanded,
     rightPanelExpanded,
     setSidebarExpanded,
     setRightPanelExpanded,
+    setActiveView,
   } = useWorkspaceStore();
 
   const navItems = [

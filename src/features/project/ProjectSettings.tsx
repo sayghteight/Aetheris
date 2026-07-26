@@ -3,7 +3,6 @@ import { invoke } from '@tauri-apps/api/core';
 import { useProjectStore } from '../../store/projectStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useManuscriptStore } from '../../store/manuscriptStore';
-import { useNavigationStore } from '../../store/navigationStore';
 import { useI18n } from '../../i18n';
 import {
   BookOpen,
@@ -39,7 +38,7 @@ export const ProjectSettings: React.FC = () => {
   const { currentProject: project } = useProjectStore();
   const { settings, loadSettings, saveSettings } = useSettingsStore();
   const { fetchNodes } = useManuscriptStore();
-  const { setActiveView } = useNavigationStore();
+  const { setActiveView } = useWorkspaceStore();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
