@@ -1,6 +1,7 @@
 import React from 'react';
 import { useProjectStore } from '../store/projectStore';
 import { useNavigationStore, ActiveView } from '../store/navigationStore';
+import { useWorkspaceStore } from '../store/workspaceStore';
 import {
   BookOpen,
   Sparkles,
@@ -32,14 +33,14 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   readTime = 0
 }) => {
   const { currentProject, closeProject } = useProjectStore();
-  const { 
-    activeView, 
-    setActiveView, 
-    sidebarExpanded, 
-    toggleSidebar, 
-    rightPanelExpanded, 
-    toggleRightPanel 
-  } = useNavigationStore();
+  const { activeView } = useNavigationStore();
+  const {
+    sidebarExpanded,
+    rightPanelExpanded,
+    setSidebarExpanded,
+    setRightPanelExpanded,
+    setActiveView,
+  } = useWorkspaceStore();
 
   const navItems = [
     { view: 'manuscript' as ActiveView, icon: BookOpen, label: 'Manuscrito' },
@@ -130,7 +131,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             <>
               <div className="absolute top-3 left-3 z-10 flex gap-2">
                 <button
-                  onClick={toggleSidebar}
+                  onClick={() => setSidebarExpanded(!sidebarExpanded)}
                   className="p-1.5 bg-slate-900/60 hover:bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800/80 rounded-md transition-colors"
                   title={sidebarExpanded ? "Esconder Panel Izquierdo" : "Mostrar Panel Izquierdo"}
                 >
@@ -140,7 +141,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
               <div className="absolute top-3 right-3 z-10">
                 <button
-                  onClick={toggleRightPanel}
+                  onClick={() => setRightPanelExpanded(!rightPanelExpanded)}
                   className="p-1.5 bg-slate-900/60 hover:bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800/80 rounded-md transition-colors"
                   title={rightPanelExpanded ? "Esconder Panel Derecho" : "Mostrar Panel Derecho"}
                 >

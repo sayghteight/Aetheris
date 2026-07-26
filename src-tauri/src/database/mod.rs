@@ -216,6 +216,15 @@ pub fn initialize_database(conn: &Connection) -> Result<()> {
         [],
     )?;
 
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS workspace_state (
+            id TEXT PRIMARY KEY DEFAULT 'default',
+            data TEXT NOT NULL,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+        [],
+    )?;
+
     conn.execute("PRAGMA user_version = 1;", [])?;
 
     Ok(())

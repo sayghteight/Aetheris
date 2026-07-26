@@ -910,3 +910,60 @@ pub fn delete_calendar(state: State<'_, AppState>, id: String) -> Result<(), Str
     Ok(())
 }
 
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct WorkspaceState {
+    pub sidebar_expanded: bool,
+    pub right_panel_expanded: bool,
+    pub sidebar_width: i32,
+    pub right_panel_width: i32,
+    pub active_view: String,
+    pub active_scene_id: Option<String>,
+    pub expanded_node_ids: Vec<String>,
+    pub tree_scroll_position: i32,
+    pub editor_scroll_position: i32,
+}
+
+#[tauri::command]
+pub fn get_workspace_state(state: State<'_, AppState>) -> Result<WorkspaceState, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let mut stmt = conn
+        .prepare("SELECT data FROM workspace_state WHERE id = 'default' LIMIT 1;")
+        .map_err(|e| e.to_string())?;
+
+    let payload = stmt
+        .query_row([], |row| row.get::<_, String>(0))
+        .unwrap_or_else(|_| "{}".to_string());
+
+    Ok(serde_json::from_str(&payload).unwrap_or_else(|_| WorkspaceState {
+        sidebar_expanded: true,
+        right_panel_expanded: true,
+        sidebar_width: 256,
+        right_panel_width: 320,
+        active_view: "manuscript".to_string(),
+        active_scene_id: None,
+        expanded_node_ids: vec![],
+        tree_scroll_position: 0,
+        editor_scroll_position: 0,
+    }))
+}
+
+#[tauri::command]
+pub fn save_workspace_state(state: State<'_, AppState>, data: WorkspaceState) -> Result<(), String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let payload = serde_json::to_string(&data).map_err(|e| format!("Error serializando: {}", e))?;
+
+    conn.execute(
+        "INSERT INTO workspace_state (id, data, updated_at)
+         VALUES ('default', ?1, CURRENT_TIMESTAMP)
+         ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = CURRENT_TIMESTAMP;",
+        [&payload],
+    )
+    .map_err(|e| format!("Error guardando estado: {}", e))?;
+
+    Ok(())
+}
+

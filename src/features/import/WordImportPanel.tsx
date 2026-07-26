@@ -1,14 +1,13 @@
 import React, { useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Upload, FileText, Folder, Layers3, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
-import { useNavigationStore } from '../../store/navigationStore';
 import { useManuscriptStore } from '../../store/manuscriptStore';
 import { useI18n } from '../../i18n';
 import { parseDocx, PartImport } from '../../utils/docxParser';
 
 export const WordImportPanel: React.FC = () => {
   const { t } = useI18n();
-  const { setActiveView } = useNavigationStore();
+  const { setActiveView } = useWorkspaceStore();
   const { createNode } = useManuscriptStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useProjectStore } from './store/projectStore';
 import { useNavigationStore } from './store/navigationStore';
 import { useSettingsStore } from './store/settingsStore';
+import { useWorkspaceStore } from './store/workspaceStore';
 import { useI18n } from './i18n';
 import { ProjectSetup } from './features/project/ProjectSetup';
 import { WorkspaceLayout } from './components/WorkspaceLayout';
@@ -35,6 +36,14 @@ const App: React.FC = () => {
       loadSettings();
     }
   }, [isOpen, isLoaded, loadSettings]);
+
+  // Load workspace state when project opens
+  const { loadWorkspaceState } = useWorkspaceStore();
+  useEffect(() => {
+    if (isOpen) {
+      loadWorkspaceState();
+    }
+  }, [isOpen, loadWorkspaceState]);
 
   if (!isOpen) {
     return <ProjectSetup />;
