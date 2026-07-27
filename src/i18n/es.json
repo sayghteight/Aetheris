@@ -99,7 +99,11 @@
     "quickNotesPlaceholder": "Escribe notas sobre esta escena aquí...",
     "metrics": "Métricas",
     "lines": "Líneas",
-    "words": "Palabras"
+    "words": "Palabras",
+    "synopsis": "Sinopsis",
+    "writingGoals": "Objetivos de escritura",
+    "authorNotes": "Notas del autor",
+    "chapterMetadata": "Metadatos del capítulo"
   },
   "import": {
     "title": "Importar desde Word",

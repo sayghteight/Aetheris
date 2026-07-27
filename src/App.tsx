@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useProjectStore } from './store/projectStore';
 import { useNavigationStore } from './store/navigationStore';
+import { useManuscriptStore } from './store/manuscriptStore';
 import { useSettingsStore } from './store/settingsStore';
 import { useWorkspaceStore } from './store/workspaceStore';
 import { useI18n } from './i18n';
@@ -8,7 +9,7 @@ import { ProjectSetup } from './features/project/ProjectSetup';
 import { WorkspaceLayout } from './components/WorkspaceLayout';
 import { ManuscriptTree } from './features/manuscript/ManuscriptTree';
 import { SceneEditor } from './features/project/UniversePanel';
-import { FileText, Edit, BarChart } from 'lucide-react';
+import { FileText, Edit, BarChart, BookOpen } from 'lucide-react';
 import { ProjectSettings } from './features/project/ProjectSettings';
 import { UpdatePanel } from './features/project/UpdatePanel';
 import { UniversePanel } from './features/project/UniversePanel';
@@ -19,7 +20,8 @@ import { UpdateDialog } from './components/UpdateDialog';
 
 const App: React.FC = () => {
   const { isOpen } = useProjectStore();
-  const { activeView, activeSceneId } = useNavigationStore();
+  const { activeView, activeSceneId, selectedNodeId } = useNavigationStore();
+  const { nodes, updateNode } = useManuscriptStore();
   const { settings, loadSettings, isLoaded } = useSettingsStore();
   const { language, setLanguage, t } = useI18n();
   const [stats, setStats] = useState({ words: 0, readTime: 0 });
@@ -62,18 +64,50 @@ const App: React.FC = () => {
       : 'bg-slate-950 text-slate-200';
 
   // Contenido de la columna derecha (Propiedades de escena/notas)
+  const selectedNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null;
+
+  const handleMetadataChange = useCallback(
+    (field: 'synopsis' | 'writing_goals' | 'author_notes', value: string) => {
+      if (!selectedNode) return;
+      updateNode(selectedNode.id, { ...selectedNode, [field]: value || null });
+    },
+    [selectedNode, updateNode]
+  );
+
   const renderRightPanel = () => {
     if (activeView !== 'manuscript') {
       return null;
     }
+
+    if (!selectedNode) {
+      return (
+        <div className="p-4 flex flex-col gap-4 text-xs h-full overflow-y-auto">
+          <div className="text-slate-600 text-center py-12">
+            {t('editor.noSceneSelected')}
+          </div>
+        </div>
+      );
+    }
+
+    const isScene = selectedNode.type === 'scene';
+
     return (
       <div className="p-4 flex flex-col gap-4 text-xs h-full overflow-y-auto">
         <h3 className="font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-          <Edit className="w-3.5 h-3.5 text-violet-400" />
-          {t('manuscript.status')} / {t('editor.title')}
+          {isScene ? (
+            <>
+              <Edit className="w-3.5 h-3.5 text-violet-400" />
+              {t('manuscript.status')} / {t('editor.title')}
+            </>
+          ) : (
+            <>
+              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+              {t('manuscript.chapterMetadata')}
+            </>
+          )}
         </h3>
 
-        {activeSceneId ? (
+        {isScene ? (
           <div className="space-y-4">
             <div>
               <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">{t('manuscript.status')}</label>
@@ -104,8 +138,39 @@ const App: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="text-slate-600 text-center py-12">
-            {t('editor.noSceneSelected')}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">{t('manuscript.synopsis')}</label>
+              <textarea
+                value={selectedNode.synopsis ?? ''}
+                onChange={(e) => handleMetadataChange('synopsis', e.target.value)}
+                rows={4}
+                className="w-full bg-slate-950 border border-slate-900 focus:border-amber-500 rounded px-2.5 py-1.5 text-xs outline-none resize-none text-slate-200"
+                placeholder={t('manuscript.synopsis')}
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">{t('manuscript.writingGoals')}</label>
+              <textarea
+                value={selectedNode.writing_goals ?? ''}
+                onChange={(e) => handleMetadataChange('writing_goals', e.target.value)}
+                rows={3}
+                className="w-full bg-slate-950 border border-slate-900 focus:border-amber-500 rounded px-2.5 py-1.5 text-xs outline-none resize-none text-slate-200"
+                placeholder={t('manuscript.writingGoals')}
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">{t('manuscript.authorNotes')}</label>
+              <textarea
+                value={selectedNode.author_notes ?? ''}
+                onChange={(e) => handleMetadataChange('author_notes', e.target.value)}
+                rows={4}
+                className="w-full bg-slate-950 border border-slate-900 focus:border-amber-500 rounded px-2.5 py-1.5 text-xs outline-none resize-none text-slate-200"
+                placeholder={t('manuscript.authorNotes')}
+              />
+            </div>
           </div>
         )}
       </div>

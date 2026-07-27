@@ -43,7 +43,7 @@ export const ProjectSettings: React.FC = () => {
   const { settings, loadSettings, saveSettings } = useSettingsStore();
   const { fetchNodes } = useManuscriptStore();
   const { setActiveView } = useWorkspaceStore();
-  const { loadShortcuts, setShortcut, resetToDefaults, getShortcut, formatShortcut } = useShortcutsStore();
+  const { loadShortcuts, setShortcut, resetToDefaults, getShortcut } = useShortcutsStore();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);

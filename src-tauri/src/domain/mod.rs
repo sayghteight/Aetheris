@@ -10,6 +10,9 @@ pub struct ManuscriptNode {
     pub status: String, // 'draft', 'review', 'final'
     pub color: Option<String>,
     pub tags: Option<String>,
+    pub synopsis: Option<String>,
+    pub writing_goals: Option<String>,
+    pub author_notes: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
 }
