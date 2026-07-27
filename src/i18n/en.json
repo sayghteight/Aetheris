@@ -59,7 +59,6 @@
     "bold": "Bold",
     "italic": "Italic",
     "underline": "Underline",
-    "strikethrough": "Strikethrough",
     "heading1": "Heading 1",
     "heading2": "Heading 2",
     "list": "List",
@@ -145,6 +144,7 @@
   },
   "settings": {
     "title": "Settings",
+    "subtitle": "Adjust the application to your preferences.",
     "appearance": "Appearance",
     "theme": "Theme",
     "themeMidnight": "Midnight",
@@ -166,7 +166,11 @@
     "saved": "Settings saved",
     "resetProject": "Reset Project",
     "resetWarning": "Are you sure you want to reset the project? This will delete all your data and cannot be undone.",
-    "resetButton": "Reset Project"
+    "resetButton": "Reset Project",
+    "keyboardShortcuts": "Keyboard Shortcuts",
+    "shortcutsHint": "Customize keyboard shortcuts for editor actions.",
+    "resetShortcuts": "Reset to defaults",
+    "shortcutConflict": "Conflict with"
   },
   "timeline": {
     "title": "Timeline",

@@ -6,11 +6,7 @@ export type ShortcutAction =
   | 'save'
   | 'bold'
   | 'italic'
-  | 'underline'
-  | 'strikethrough'
-  | 'find'
-  | 'replace'
-  | 'formatBlock';
+  | 'underline';
 
 export interface Shortcut {
   key: string;
@@ -28,10 +24,6 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   { action: 'bold', label: 'Negrita', description: 'Aplicar formato negrita' },
   { action: 'italic', label: 'Cursiva', description: 'Aplicar formato cursiva' },
   { action: 'underline', label: 'Subrayado', description: 'Aplicar formato subrayado' },
-  { action: 'strikethrough', label: 'Tachado', description: 'Aplicar formato tachado' },
-  { action: 'find', label: 'Buscar', description: 'Abrir diálogo de búsqueda' },
-  { action: 'replace', label: 'Reemplazar', description: 'Abrir diálogo de reemplazo' },
-  { action: 'formatBlock', label: 'Bloque de formato', description: 'Aplicar formato de bloque' },
 ];
 
 export const DEFAULT_SHORTCUTS: Record<ShortcutAction, Shortcut> = {
@@ -39,10 +31,6 @@ export const DEFAULT_SHORTCUTS: Record<ShortcutAction, Shortcut> = {
   bold: { key: 'b', modifiers: ['ctrl'] },
   italic: { key: 'i', modifiers: ['ctrl'] },
   underline: { key: 'u', modifiers: ['ctrl'] },
-  strikethrough: { key: 's', modifiers: ['ctrl', 'shift'] },
-  find: { key: 'f', modifiers: ['ctrl'] },
-  replace: { key: 'h', modifiers: ['ctrl'] },
-  formatBlock: { key: 'f', modifiers: ['ctrl', 'shift'] },
 };
 
 interface ShortcutsState {
