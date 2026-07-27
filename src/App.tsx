@@ -9,6 +9,7 @@ import { WorkspaceLayout } from './components/WorkspaceLayout';
 import { ManuscriptView } from './features/manuscript/ManuscriptView';
 import { ProjectSettings } from './features/project/ProjectSettings';
 import { UpdatePanel } from './features/project/UpdatePanel';
+import { ChangelogPanel } from './features/project/ChangelogPanel';
 import { UniversePanel } from './features/project/UniversePanel';
 import { WordImportPanel } from './features/import/WordImportPanel';
 import { TimelinePanel } from './features/project/TimelinePanel';
@@ -47,10 +48,10 @@ const App: React.FC = () => {
   }
 
   const themeClassName = settings.theme === 'aurora'
-    ? 'from-emerald-500/20 via-slate-950 to-slate-950'
+    ? 'from-amber-500/10 via-slate-950 to-slate-950'
     : settings.theme === 'noir'
       ? 'from-slate-900 via-slate-950 to-black'
-      : 'from-violet-900/20 via-slate-950 to-slate-950';
+      : 'from-amber-900/15 via-slate-950 to-slate-950';
 
   const appShellClass = settings.focus_mode === 'focus'
     ? 'bg-slate-950 text-slate-100'
@@ -68,6 +69,8 @@ const App: React.FC = () => {
       case 'settings':
         return <ProjectSettings />;
       case 'versioning':
+        return <ChangelogPanel />;
+      case 'about':
         return <UpdatePanel />;
       case 'timeline':
         return <TimelinePanel />;

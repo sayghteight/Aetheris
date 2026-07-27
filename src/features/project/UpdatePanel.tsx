@@ -15,20 +15,12 @@ export const UpdatePanel: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-6">
-        <p className="text-xs uppercase tracking-[0.3em] text-violet-400">Información</p>
-        <h2 className="text-2xl font-extrabold tracking-tight mt-2">Acerca de Aetheria</h2>
-        <p className="text-sm text-slate-400 mt-2">
-          Editor de mundos y narrativas interactivas para escritores y creadores de universos ficticios.
-        </p>
-      </div>
-
       {/* Logo y versión */}
       <div className="flex flex-col items-center text-center mb-10">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 flex items-center justify-center mb-4 shadow-2xl shadow-violet-900/40">
+        <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-amber-600 to-orange-600 flex items-center justify-center mb-4 shadow-2xl shadow-amber-900/30">
           <Sparkles className="w-10 h-10 text-white" />
         </div>
-        <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-black tracking-tight text-white">
           Aetheria
         </h1>
         <p className="text-slate-500 mt-1">Versión {VERSION}</p>
@@ -67,7 +59,7 @@ export const UpdatePanel: React.FC = () => {
         </p>
         <button
           onClick={() => void openGitHub()}
-          className="inline-flex items-center gap-2 mt-4 rounded-lg bg-slate-950 border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:border-violet-500 hover:text-white"
+          className="inline-flex items-center gap-2 mt-4 rounded-lg bg-slate-950 border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:border-amber-500 hover:text-white"
         >
           <GitBranch className="w-4 h-4" />
           Ver en GitHub
