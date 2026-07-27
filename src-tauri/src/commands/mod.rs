@@ -586,7 +586,7 @@ pub struct RecentProject {
     pub last_opened: String,
 }
 
-fn get_config_dir() -> Result<PathBuf, String> {
+pub fn get_config_dir() -> Result<PathBuf, String> {
     let config_dir = dirs::config_dir()
         .ok_or("No se pudo encontrar el directorio de configuración")?
         .join("aetheria");
@@ -963,6 +963,34 @@ pub fn save_workspace_state(state: State<'_, AppState>, data: WorkspaceState) ->
         [&payload],
     )
     .map_err(|e| format!("Error guardando estado: {}", e))?;
+
+    Ok(())
+}
+
+// ─── App Settings (local, outside project file) ──────────────────────────────
+
+#[tauri::command]
+pub fn get_app_settings(key: String) -> Result<Option<String>, String> {
+    let config_dir = get_config_dir()?;
+    let file_path = config_dir.join(format!("{}.json", key));
+
+    if !file_path.exists() {
+        return Ok(None);
+    }
+
+    let content = fs::read_to_string(&file_path)
+        .map_err(|e| format!("Error leyendo configuración: {}", e))?;
+
+    Ok(Some(content))
+}
+
+#[tauri::command]
+pub fn save_app_settings(key: String, value: String) -> Result<(), String> {
+    let config_dir = get_config_dir()?;
+    let file_path = config_dir.join(format!("{}.json", key));
+
+    fs::write(&file_path, &value)
+        .map_err(|e| format!("Error guardando configuración: {}", e))?;
 
     Ok(())
 }

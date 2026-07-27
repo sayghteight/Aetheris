@@ -4,6 +4,7 @@ import { Upload, FileText, Folder, Layers3, CheckCircle, AlertCircle, ArrowLeft 
 import { useManuscriptStore } from '../../store/manuscriptStore';
 import { useI18n } from '../../i18n';
 import { parseDocx, PartImport } from '../../utils/docxParser';
+import { useWorkspaceStore } from '../../store/workspaceStore';
 
 export const WordImportPanel: React.FC = () => {
   const { t } = useI18n();

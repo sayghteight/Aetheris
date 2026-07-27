@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import {
   Bold,
@@ -17,6 +17,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useProjectStore } from '../../store/projectStore';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 
 interface UniverseEntry {
   id: string;
@@ -107,6 +108,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 }) => {
   const editorRef = useRef<HTMLDivElement | null>(null);
   const savedRange = useRef<Range | null>(null);
+  const applyFormatRef = useRef<(command: string, valueArg?: string) => void>(() => {});
 
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
@@ -128,7 +130,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   };
 
-  const applyFormat = (command: string, valueArg?: string) => {
+  const applyFormat = useCallback((command: string, valueArg?: string) => {
     // Restaurar selección guardada antes de aplicar el comando
     if (savedRange.current) {
       const sel = window.getSelection();
@@ -137,7 +139,18 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
     document.execCommand(command, false, valueArg);
     handleInput();
-  };
+  }, []);
+
+  // Keep ref updated
+  applyFormatRef.current = applyFormat;
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onBold: () => applyFormatRef.current('bold'),
+    onItalic: () => applyFormatRef.current('italic'),
+    onUnderline: () => applyFormatRef.current('underline'),
+    onStrikethrough: () => applyFormatRef.current('strikeThrough'),
+  });
 
   const toolbarButtons: Array<{
     icon?: React.ComponentType<{ className?: string }>;
