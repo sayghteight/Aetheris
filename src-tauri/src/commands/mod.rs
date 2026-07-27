@@ -348,7 +348,7 @@ pub fn get_manuscript_nodes(state: State<'_, AppState>) -> Result<Vec<Manuscript
     let conn = db_guard.as_ref().ok_ok_or("No hay proyecto abierto")?;
 
     let mut stmt = conn
-        .prepare("SELECT id, parent_id, title, type, sort_order, status, color, tags, created_at, updated_at FROM manuscript_nodes ORDER BY sort_order ASC;")
+        .prepare("SELECT id, parent_id, title, type, sort_order, status, color, tags, synopsis, writing_goals, author_notes, created_at, updated_at FROM manuscript_nodes ORDER BY sort_order ASC;")
         .map_err(|e| e.to_string())?;
 
     let node_iter = stmt
@@ -362,8 +362,11 @@ pub fn get_manuscript_nodes(state: State<'_, AppState>) -> Result<Vec<Manuscript
                 status: row.get(5)?,
                 color: row.get(6)?,
                 tags: row.get(7)?,
-                created_at: row.get(8)?,
-                updated_at: row.get(9)?,
+                synopsis: row.get(8)?,
+                writing_goals: row.get(9)?,
+                author_notes: row.get(10)?,
+                created_at: row.get(11)?,
+                updated_at: row.get(12)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -421,9 +424,71 @@ pub fn create_manuscript_node(
         status: "draft".to_string(),
         color: None,
         tags: None,
+        synopsis: None,
+        writing_goals: None,
+        author_notes: None,
         created_at: Some(chrono::Utc::now().to_rfc3339()),
         updated_at: Some(chrono::Utc::now().to_rfc3339()),
     })
+}
+
+#[tauri::command]
+pub fn update_manuscript_node(
+    state: State<'_, AppState>,
+    id: String,
+    title: String,
+    status: String,
+    color: Option<String>,
+    tags: Option<String>,
+    synopsis: Option<String>,
+    writing_goals: Option<String>,
+    author_notes: Option<String>,
+) -> Result<ManuscriptNode, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_ok_or("No hay proyecto abierto")?;
+
+    conn.execute(
+        "UPDATE manuscript_nodes SET title = ?1, status = ?2, color = ?3, tags = ?4, synopsis = ?5, writing_goals = ?6, author_notes = ?7, updated_at = CURRENT_TIMESTAMP WHERE id = ?8;",
+        (&title, &status, &color, &tags, &synopsis, &writing_goals, &author_notes, &id),
+    )
+    .map_err(|e| format!("Error actualizando nodo: {}", e))?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, parent_id, title, type, sort_order, status, color, tags, synopsis, writing_goals, author_notes, created_at, updated_at FROM manuscript_nodes WHERE id = ?1;")
+        .map_err(|e| e.to_string())?;
+
+    let node = stmt
+        .query_row([&id], |row| {
+            Ok(ManuscriptNode {
+                id: row.get(0)?,
+                parent_id: row.get(1)?,
+                title: row.get(2)?,
+                r#type: row.get(3)?,
+                sort_order: row.get(4)?,
+                status: row.get(5)?,
+                color: row.get(6)?,
+                tags: row.get(7)?,
+                synopsis: row.get(8)?,
+                writing_goals: row.get(9)?,
+                author_notes: row.get(10)?,
+                created_at: row.get(11)?,
+                updated_at: row.get(12)?,
+            })
+        })
+        .map_err(|e| format!("Nodo no encontrado: {}", e))?;
+
+    Ok(node)
+}
+
+#[tauri::command]
+pub fn delete_manuscript_node(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_ok_or("No hay proyecto abierto")?;
+
+    conn.execute("DELETE FROM manuscript_nodes WHERE id = ?1;", [&id])
+        .map_err(|e| format!("Error eliminando nodo: {}", e))?;
+
+    Ok(())
 }
 
 fn normalize_scene_text(raw_content: &str, plain_text: &str) -> String {

@@ -99,7 +99,17 @@
     "quickNotesPlaceholder": "Escribe notas sobre esta escena aquí...",
     "metrics": "Métricas",
     "lines": "Líneas",
-    "words": "Palabras"
+    "words": "Palabras",
+    "synopsis": "Sinopsis",
+    "synopsisPlaceholder": "Escribe la sinopsis de este capítulo...",
+    "writingGoals": "Objetivos de escritura",
+    "writingGoalsPlaceholder": "¿Qué quieres lograr con este capítulo?",
+    "authorNotes": "Notas del autor",
+    "authorNotesPlaceholder": "Notas privadas sobre este capítulo...",
+    "chapterMetadata": "Metadatos del capítulo",
+    "deleteConfirm": "¿Eliminar este nodo?",
+    "childNodes": "elementos hijos",
+    "empty": "Manuscrito vacío. Crea una nueva Parte para comenzar."
   },
   "import": {
     "title": "Importar desde Word",

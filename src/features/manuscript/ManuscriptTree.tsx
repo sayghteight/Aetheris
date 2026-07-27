@@ -14,7 +14,7 @@ import {
 
 export const ManuscriptTree: React.FC = () => {
   const { nodes, fetchNodes, createNode } = useManuscriptStore();
-  const { activeSceneId, setActiveSceneId } = useNavigationStore();
+  const { setActiveSceneId, selectedNodeId, setSelectedNodeId } = useNavigationStore();
   const { expandedNodeIds, setExpandedNodeIds, treeScrollPosition, setTreeScrollPosition, isLoaded } = useWorkspaceStore();
 
   const treeRef = useRef<HTMLDivElement>(null);
@@ -73,6 +73,7 @@ export const ManuscriptTree: React.FC = () => {
       }
       setNewChildTitle('');
       setAddingChildTo(null);
+      setSelectedNodeId(created.id);
       if (newChildType === 'scene') {
         setActiveSceneId(created.id);
       }
@@ -89,7 +90,7 @@ export const ManuscriptTree: React.FC = () => {
     const children = getChildren(node.id);
     const hasChildren = children.length > 0;
     const isExpanded = !!expandedNodes[node.id];
-    const isActive = activeSceneId === node.id;
+    const isActive = selectedNodeId === node.id;
 
     // Selector de icono
     let Icon = FileText;
@@ -113,10 +114,9 @@ export const ManuscriptTree: React.FC = () => {
               : 'hover:bg-slate-900/60 text-slate-300'
           }`}
           onClick={() => {
+            setSelectedNodeId(node.id);
             if (node.type === 'scene') {
               setActiveSceneId(node.id);
-            } else {
-              toggleExpand(node.id);
             }
           }}
         >

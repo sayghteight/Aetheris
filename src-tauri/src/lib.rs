@@ -29,6 +29,8 @@ pub fn run() {
             commands::close_project,
             commands::get_manuscript_nodes,
             commands::create_manuscript_node,
+            commands::update_manuscript_node,
+            commands::delete_manuscript_node,
             commands::get_scene_content,
             commands::update_scene_content,
             commands::reset_project,

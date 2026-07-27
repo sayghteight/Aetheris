@@ -99,7 +99,17 @@
     "quickNotesPlaceholder": "Write notes about this scene here...",
     "metrics": "Metrics",
     "lines": "Lines",
-    "words": "Words"
+    "words": "Words",
+    "synopsis": "Synopsis",
+    "synopsisPlaceholder": "Write the synopsis for this chapter...",
+    "writingGoals": "Writing goals",
+    "writingGoalsPlaceholder": "What do you want to achieve with this chapter?",
+    "authorNotes": "Author notes",
+    "authorNotesPlaceholder": "Private notes about this chapter...",
+    "chapterMetadata": "Chapter metadata",
+    "deleteConfirm": "Delete this node?",
+    "childNodes": "child elements",
+    "empty": "Manuscript is empty. Create a new Part to get started."
   },
   "import": {
     "title": "Import from Word",
