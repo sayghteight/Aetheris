@@ -7,10 +7,6 @@ import {
   Sparkles,
   Calendar,
   Settings,
-  PanelLeftClose,
-  PanelLeft,
-  PanelRightClose,
-  PanelRight,
   LogOut,
   Compass,
   FileUp,
@@ -19,28 +15,18 @@ import {
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
-  sidebarContent?: React.ReactNode;
-  rightPanelContent?: React.ReactNode;
   wordCount?: number;
   readTime?: number;
 }
 
-export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({ 
-  children, 
-  sidebarContent, 
-  rightPanelContent,
+export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
+  children,
   wordCount = 0,
-  readTime = 0
+  readTime = 0,
 }) => {
   const { currentProject, closeProject } = useProjectStore();
   const { activeView } = useNavigationStore();
-  const {
-    sidebarExpanded,
-    rightPanelExpanded,
-    setSidebarExpanded,
-    setRightPanelExpanded,
-    setActiveView,
-  } = useWorkspaceStore();
+  const { setActiveView } = useWorkspaceStore();
 
   const navItems = [
     { view: 'manuscript' as ActiveView, icon: BookOpen, label: 'Manuscrito' },
@@ -70,7 +56,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <button 
+          <button
             onClick={closeProject}
             className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-slate-400 hover:text-red-400 hover:bg-red-950/20 rounded-md border border-transparent hover:border-red-900/30 transition-all duration-200"
             title="Cerrar Proyecto"
@@ -94,8 +80,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                   key={item.view}
                   onClick={() => setActiveView(item.view)}
                   className={`group relative w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20' 
+                    isActive
+                      ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
                   }`}
                   title={item.label}
@@ -113,60 +99,12 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           <div className="text-xs text-slate-600">v0.1</div>
         </nav>
 
-        {/* Collapsible Sub-Sidebar (Manuscript / Universe selector context) */}
-        {activeView === 'manuscript' ? (
-          <div 
-            className={`border-r border-slate-900 bg-slate-900/20 transition-all duration-300 flex flex-col overflow-hidden ${
-              sidebarExpanded ? 'w-64' : 'w-0 border-r-0'
-            }`}
-          >
-            {sidebarContent}
-          </div>
-        ) : null}
-
         {/* Central Work Area */}
         <main className="flex-1 flex flex-col bg-slate-950 relative overflow-hidden">
-          {/* Panel Toggle Controllers */}
-          {activeView === 'manuscript' ? (
-            <>
-              <div className="absolute top-3 left-3 z-10 flex gap-2">
-                <button
-                  onClick={() => setSidebarExpanded(!sidebarExpanded)}
-                  className="p-1.5 bg-slate-900/60 hover:bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800/80 rounded-md transition-colors"
-                  title={sidebarExpanded ? "Esconder Panel Izquierdo" : "Mostrar Panel Izquierdo"}
-                >
-                  {sidebarExpanded ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
-                </button>
-              </div>
-
-              <div className="absolute top-3 right-3 z-10">
-                <button
-                  onClick={() => setRightPanelExpanded(!rightPanelExpanded)}
-                  className="p-1.5 bg-slate-900/60 hover:bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800/80 rounded-md transition-colors"
-                  title={rightPanelExpanded ? "Esconder Panel Derecho" : "Mostrar Panel Derecho"}
-                >
-                  {rightPanelExpanded ? <PanelRightClose className="w-4 h-4" /> : <PanelRight className="w-4 h-4" />}
-                </button>
-              </div>
-            </>
-          ) : null}
-
-          {/* Central Workspace Content */}
-          <div className="flex-1 overflow-auto p-8 pt-16">
+          <div className="flex-1 overflow-auto">
             {children}
           </div>
         </main>
-
-        {/* Collapsible Right Sidebar (Attributes, Comments) */}
-        {activeView === 'manuscript' ? (
-          <div 
-            className={`border-l border-slate-900 bg-slate-900/10 transition-all duration-300 flex flex-col overflow-hidden ${
-              rightPanelExpanded ? 'w-80' : 'w-0 border-l-0'
-            }`}
-          >
-            {rightPanelContent}
-          </div>
-        ) : null}
       </div>
 
       {/* Bottom Status Bar */}
@@ -181,7 +119,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             <span className="text-emerald-500 font-semibold">Offline</span>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <span>Meta Diaria: <strong className="text-violet-400">{wordCount} / 1000 palabras</strong></span>
           <div className="w-24 bg-slate-900 rounded-full h-1.5 overflow-hidden">
