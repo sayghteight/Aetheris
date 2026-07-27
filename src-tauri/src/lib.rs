@@ -43,7 +43,9 @@ pub fn run() {
             commands::update_calendar,
             commands::delete_calendar,
             commands::get_workspace_state,
-            commands::save_workspace_state
+            commands::save_workspace_state,
+            commands::get_app_settings,
+            commands::save_app_settings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

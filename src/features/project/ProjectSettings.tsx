@@ -4,7 +4,9 @@ import { useProjectStore } from '../../store/projectStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useManuscriptStore } from '../../store/manuscriptStore';
 import { useWorkspaceStore } from '../../store/workspaceStore';
+import { useShortcutsStore, SHORTCUT_DEFINITIONS, ShortcutAction } from '../../store/shortcutsStore';
 import { useI18n } from '../../i18n';
+import { ShortcutRecorder } from '../../components/ShortcutRecorder';
 import {
   BookOpen,
   HardDrive,
@@ -19,6 +21,7 @@ import {
   Minus,
   Plus,
   Check,
+  Keyboard,
 } from 'lucide-react';
 
 // Available languages for spell checking
@@ -40,9 +43,12 @@ export const ProjectSettings: React.FC = () => {
   const { settings, loadSettings, saveSettings } = useSettingsStore();
   const { fetchNodes } = useManuscriptStore();
   const { setActiveView } = useWorkspaceStore();
+  const { loadShortcuts, setShortcut, resetToDefaults, getShortcut, formatShortcut } = useShortcutsStore();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
+  const [editingShortcut, setEditingShortcut] = useState<ShortcutAction | null>(null);
+  const [conflictLabel, setConflictLabel] = useState<string | null>(null);
 
   // Project info
   const [title, setTitle] = useState(project?.title ?? '');
@@ -62,7 +68,8 @@ export const ProjectSettings: React.FC = () => {
 
   useEffect(() => {
     loadSettings();
-  }, [loadSettings]);
+    loadShortcuts();
+  }, [loadSettings, loadShortcuts]);
 
   useEffect(() => {
     if (project) {
@@ -492,6 +499,83 @@ export const ProjectSettings: React.FC = () => {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      </section>
+
+      {/* Keyboard Shortcuts */}
+      <section className="space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-violet-900/30 flex items-center justify-center shrink-0">
+            <Keyboard className="w-5 h-5 text-violet-400" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-slate-200">{t('settings.keyboardShortcuts') || 'Atajos de teclado'}</h3>
+            <p className="text-sm text-slate-400 mt-1">
+              {t('settings.shortcutsHint') || 'Personaliza los atajos de teclado para las acciones del editor.'}
+            </p>
+
+            <div className="mt-4 space-y-2">
+              {SHORTCUT_DEFINITIONS.map(({ action, label }) => {
+                const shortcut = getShortcut(action);
+                const isEditing = editingShortcut === action;
+                const conflict = conflictLabel;
+
+                return (
+                  <div key={action} className="flex items-center justify-between p-3 bg-slate-950/40 border border-slate-800/60 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-slate-300 w-32">{label}</span>
+                      <span className="text-xs text-slate-500 font-mono">{formatShortcut(shortcut)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isEditing ? (
+                        <ShortcutRecorder
+                          shortcut={shortcut}
+                          onSave={(newShortcut) => {
+                            if (newShortcut.key === '') {
+                              setEditingShortcut(null);
+                              setConflictLabel(null);
+                              return;
+                            }
+                            const { conflict: conflictAction } = setShortcut(action, newShortcut);
+                            if (conflictAction) {
+                              const def = SHORTCUT_DEFINITIONS.find(d => d.action === conflictAction);
+                              setConflictLabel(def?.label ?? conflictAction);
+                            } else {
+                              setConflictLabel(null);
+                              setEditingShortcut(null);
+                            }
+                          }}
+                          onCancel={() => {
+                            setEditingShortcut(null);
+                            setConflictLabel(null);
+                          }}
+                          conflictLabel={conflict}
+                        />
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEditingShortcut(action);
+                            setConflictLabel(null);
+                          }}
+                          className="text-xs text-slate-500 hover:text-violet-400 transition-colors"
+                        >
+                          {t('common.edit') || 'Editar'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={resetToDefaults}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-slate-700/60 bg-slate-900/40 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800/50 transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              {t('settings.resetShortcuts') || 'Restablecer valores por defecto'}
+            </button>
           </div>
         </div>
       </section>
