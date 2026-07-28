@@ -1,17 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useProjectStore } from '../store/projectStore';
 import { useNavigationStore, ActiveView } from '../store/navigationStore';
 import { useWorkspaceStore } from '../store/workspaceStore';
+import { useSettingsStore } from '../store/settingsStore';
 import {
   BookOpen,
   Sparkles,
   Calendar,
   Settings,
-  LogOut,
   Compass,
   FileUp,
   Globe,
-  Heart,
+  Search,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 
 // Read version from package.json at runtime
@@ -28,28 +30,95 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   wordCount = 0,
   readTime = 0,
 }) => {
-  const { currentProject, closeProject } = useProjectStore();
+  const { currentProject } = useProjectStore();
   const { activeView } = useNavigationStore();
   const { setActiveView } = useWorkspaceStore();
+  const { settings, saveSettings } = useSettingsStore();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const toggleFocusMode = () => {
+    const next = settings.focus_mode === 'standard' ? 'focus' : 'standard';
+    saveSettings({ ...settings, focus_mode: next });
+  };
 
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-200 overflow-hidden font-sans selection:bg-amber-600 selection:text-white">
-      {/* Top Header */}
-      <header className="h-11 border-b border-slate-800/60 bg-slate-950/50 backdrop-blur-sm flex items-center justify-between px-4 z-20 shrink-0">
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-400 font-medium">
-            {currentProject?.title}
-          </span>
+      {/* Top bar */}
+      <header className="h-12 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-sm flex items-center justify-between px-4 z-20 shrink-0">
+        {/* Left — back + project info */}
+        <div className="flex items-center gap-3 min-w-0">
+          {/* Back button */}
+          <button
+            onClick={() => setActiveView('manuscript')}
+            className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-200 hover:bg-slate-800/60 transition-colors duration-150 shrink-0"
+            title="Volver al manuscrito"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+
+          {/* Project info */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 bg-gradient-to-br from-amber-500/80 to-orange-600/80 rounded flex items-center justify-center shrink-0">
+              <BookOpen className="w-4 h-4 text-white/90" />
+            </div>
+            <div className="min-w-0 flex flex-col">
+              <span className="text-sm text-slate-200 font-semibold truncate leading-tight">{currentProject?.title}</span>
+              {currentProject?.author && (
+                <span className="text-[11px] text-slate-500 truncate leading-tight">{currentProject.author}</span>
+              )}
+            </div>
+          </div>
+          {currentProject?.genre && (
+            <span className="text-[10px] text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0">
+              {currentProject.genre}
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Right — search + focus mode */}
+        <div className="flex items-center gap-1">
+          {/* Search */}
+          <div className={`flex items-center gap-2 transition-all duration-200 ${searchOpen ? 'w-64' : 'w-8'}`}>
+            {searchOpen ? (
+              <>
+                <input
+                  autoFocus
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Buscar..."
+                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-amber-500/60"
+                  onBlur={() => { setSearchOpen(false); setSearchQuery(''); }}
+                />
+              </>
+            ) : (
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="w-8 h-8 flex items-center justify-center rounded text-slate-500 hover:text-slate-200 hover:bg-slate-800/60 transition-colors duration-150"
+                title="Buscar (⌘K)"
+              >
+                <Search className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Focus mode toggle */}
           <button
-            onClick={closeProject}
-            className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-slate-400 hover:text-red-400 hover:bg-red-950/20 rounded-md border border-transparent hover:border-red-900/30 transition-all duration-200"
-            title="Cerrar Proyecto"
+            onClick={toggleFocusMode}
+            className={`w-8 h-8 flex items-center justify-center rounded transition-colors duration-150 ${
+              settings.focus_mode !== 'standard'
+                ? 'text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
+                : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+            title={settings.focus_mode === 'standard' ? 'Activar modo foco' : 'Desactivar modo foco'}
           >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Cerrar</span>
+            {settings.focus_mode === 'standard' ? (
+              <Maximize2 className="w-3.5 h-3.5" />
+            ) : (
+              <Minimize2 className="w-3.5 h-3.5" />
+            )}
           </button>
         </div>
       </header>
@@ -182,8 +251,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         </nav>
 
         {/* Central Work Area */}
-        <main className="flex-1 flex flex-col bg-slate-950 relative overflow-hidden">
-          <div className="flex-1 overflow-auto pl-6 pt-4">
+        <main className="flex-1 bg-slate-950 overflow-y-auto">
+          <div className="pl-6 pt-4 pb-4">
             {children}
           </div>
         </main>
