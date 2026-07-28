@@ -59,7 +59,6 @@
     "bold": "Negrita",
     "italic": "Cursiva",
     "underline": "Subrayado",
-    "strikethrough": "Tachado",
     "heading1": "Título 1",
     "heading2": "Título 2",
     "list": "Lista",
@@ -100,7 +99,17 @@
     "quickNotesPlaceholder": "Escribe notas sobre esta escena aquí...",
     "metrics": "Métricas",
     "lines": "Líneas",
-    "words": "Palabras"
+    "words": "Palabras",
+    "synopsis": "Sinopsis",
+    "synopsisPlaceholder": "Escribe la sinopsis de este capítulo...",
+    "writingGoals": "Objetivos de escritura",
+    "writingGoalsPlaceholder": "¿Qué quieres lograr con este capítulo?",
+    "authorNotes": "Notas del autor",
+    "authorNotesPlaceholder": "Notas privadas sobre este capítulo...",
+    "chapterMetadata": "Metadatos del capítulo",
+    "deleteConfirm": "¿Eliminar este nodo?",
+    "childNodes": "elementos hijos",
+    "empty": "Manuscrito vacío. Crea una nueva Parte para comenzar."
   },
   "import": {
     "title": "Importar desde Word",
@@ -145,6 +154,7 @@
   },
   "settings": {
     "title": "Configuración",
+    "subtitle": "Ajusta la aplicación según tus preferencias.",
     "appearance": "Apariencia",
     "theme": "Tema",
     "themeMidnight": "Medianoche",
@@ -166,7 +176,11 @@
     "saved": "Configuración guardada",
     "resetProject": "Restablecer Proyecto",
     "resetWarning": "¿Estás seguro de que quieres restablecer el proyecto? Esto eliminará todos tus datos y no se puede deshacer.",
-    "resetButton": "Restablecer Proyecto"
+    "resetButton": "Restablecer Proyecto",
+    "keyboardShortcuts": "Atajos de teclado",
+    "shortcutsHint": "Personaliza los atajos para las acciones del editor.",
+    "resetShortcuts": "Restablecer valores por defecto",
+    "shortcutConflict": "Conflicto con"
   },
   "timeline": {
     "title": "Línea Temporal",

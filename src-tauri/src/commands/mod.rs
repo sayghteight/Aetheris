@@ -348,7 +348,7 @@ pub fn get_manuscript_nodes(state: State<'_, AppState>) -> Result<Vec<Manuscript
     let conn = db_guard.as_ref().ok_ok_or("No hay proyecto abierto")?;
 
     let mut stmt = conn
-        .prepare("SELECT id, parent_id, title, type, sort_order, status, color, tags, created_at, updated_at FROM manuscript_nodes ORDER BY sort_order ASC;")
+        .prepare("SELECT id, parent_id, title, type, sort_order, status, color, tags, synopsis, writing_goals, author_notes, created_at, updated_at FROM manuscript_nodes ORDER BY sort_order ASC;")
         .map_err(|e| e.to_string())?;
 
     let node_iter = stmt
@@ -362,8 +362,11 @@ pub fn get_manuscript_nodes(state: State<'_, AppState>) -> Result<Vec<Manuscript
                 status: row.get(5)?,
                 color: row.get(6)?,
                 tags: row.get(7)?,
-                created_at: row.get(8)?,
-                updated_at: row.get(9)?,
+                synopsis: row.get(8)?,
+                writing_goals: row.get(9)?,
+                author_notes: row.get(10)?,
+                created_at: row.get(11)?,
+                updated_at: row.get(12)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -421,9 +424,71 @@ pub fn create_manuscript_node(
         status: "draft".to_string(),
         color: None,
         tags: None,
+        synopsis: None,
+        writing_goals: None,
+        author_notes: None,
         created_at: Some(chrono::Utc::now().to_rfc3339()),
         updated_at: Some(chrono::Utc::now().to_rfc3339()),
     })
+}
+
+#[tauri::command]
+pub fn update_manuscript_node(
+    state: State<'_, AppState>,
+    id: String,
+    title: String,
+    status: String,
+    color: Option<String>,
+    tags: Option<String>,
+    synopsis: Option<String>,
+    writing_goals: Option<String>,
+    author_notes: Option<String>,
+) -> Result<ManuscriptNode, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_ok_or("No hay proyecto abierto")?;
+
+    conn.execute(
+        "UPDATE manuscript_nodes SET title = ?1, status = ?2, color = ?3, tags = ?4, synopsis = ?5, writing_goals = ?6, author_notes = ?7, updated_at = CURRENT_TIMESTAMP WHERE id = ?8;",
+        (&title, &status, &color, &tags, &synopsis, &writing_goals, &author_notes, &id),
+    )
+    .map_err(|e| format!("Error actualizando nodo: {}", e))?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, parent_id, title, type, sort_order, status, color, tags, synopsis, writing_goals, author_notes, created_at, updated_at FROM manuscript_nodes WHERE id = ?1;")
+        .map_err(|e| e.to_string())?;
+
+    let node = stmt
+        .query_row([&id], |row| {
+            Ok(ManuscriptNode {
+                id: row.get(0)?,
+                parent_id: row.get(1)?,
+                title: row.get(2)?,
+                r#type: row.get(3)?,
+                sort_order: row.get(4)?,
+                status: row.get(5)?,
+                color: row.get(6)?,
+                tags: row.get(7)?,
+                synopsis: row.get(8)?,
+                writing_goals: row.get(9)?,
+                author_notes: row.get(10)?,
+                created_at: row.get(11)?,
+                updated_at: row.get(12)?,
+            })
+        })
+        .map_err(|e| format!("Nodo no encontrado: {}", e))?;
+
+    Ok(node)
+}
+
+#[tauri::command]
+pub fn delete_manuscript_node(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_ok_or("No hay proyecto abierto")?;
+
+    conn.execute("DELETE FROM manuscript_nodes WHERE id = ?1;", [&id])
+        .map_err(|e| format!("Error eliminando nodo: {}", e))?;
+
+    Ok(())
 }
 
 fn normalize_scene_text(raw_content: &str, plain_text: &str) -> String {
@@ -586,7 +651,7 @@ pub struct RecentProject {
     pub last_opened: String,
 }
 
-fn get_config_dir() -> Result<PathBuf, String> {
+pub fn get_config_dir() -> Result<PathBuf, String> {
     let config_dir = dirs::config_dir()
         .ok_or("No se pudo encontrar el directorio de configuración")?
         .join("aetheria");
@@ -906,6 +971,91 @@ pub fn delete_calendar(state: State<'_, AppState>, id: String) -> Result<(), Str
     // Eliminar el calendario
     conn.execute("DELETE FROM custom_calendars WHERE id = ?1;", [&id])
         .map_err(|e| format!("Error eliminando calendario: {}", e))?;
+
+    Ok(())
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct WorkspaceState {
+    pub sidebar_expanded: bool,
+    pub right_panel_expanded: bool,
+    pub sidebar_width: i32,
+    pub right_panel_width: i32,
+    pub active_view: String,
+    pub active_scene_id: Option<String>,
+    pub expanded_node_ids: Vec<String>,
+    pub tree_scroll_position: i32,
+    pub editor_scroll_position: i32,
+}
+
+#[tauri::command]
+pub fn get_workspace_state(state: State<'_, AppState>) -> Result<WorkspaceState, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let mut stmt = conn
+        .prepare("SELECT data FROM workspace_state WHERE id = 'default' LIMIT 1;")
+        .map_err(|e| e.to_string())?;
+
+    let payload = stmt
+        .query_row([], |row| row.get::<_, String>(0))
+        .unwrap_or_else(|_| "{}".to_string());
+
+    Ok(serde_json::from_str(&payload).unwrap_or_else(|_| WorkspaceState {
+        sidebar_expanded: true,
+        right_panel_expanded: true,
+        sidebar_width: 256,
+        right_panel_width: 320,
+        active_view: "manuscript".to_string(),
+        active_scene_id: None,
+        expanded_node_ids: vec![],
+        tree_scroll_position: 0,
+        editor_scroll_position: 0,
+    }))
+}
+
+#[tauri::command]
+pub fn save_workspace_state(state: State<'_, AppState>, data: WorkspaceState) -> Result<(), String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let payload = serde_json::to_string(&data).map_err(|e| format!("Error serializando: {}", e))?;
+
+    conn.execute(
+        "INSERT INTO workspace_state (id, data, updated_at)
+         VALUES ('default', ?1, CURRENT_TIMESTAMP)
+         ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = CURRENT_TIMESTAMP;",
+        [&payload],
+    )
+    .map_err(|e| format!("Error guardando estado: {}", e))?;
+
+    Ok(())
+}
+
+// ─── App Settings (local, outside project file) ──────────────────────────────
+
+#[tauri::command]
+pub fn get_app_settings(key: String) -> Result<Option<String>, String> {
+    let config_dir = get_config_dir()?;
+    let file_path = config_dir.join(format!("{}.json", key));
+
+    if !file_path.exists() {
+        return Ok(None);
+    }
+
+    let content = fs::read_to_string(&file_path)
+        .map_err(|e| format!("Error leyendo configuración: {}", e))?;
+
+    Ok(Some(content))
+}
+
+#[tauri::command]
+pub fn save_app_settings(key: String, value: String) -> Result<(), String> {
+    let config_dir = get_config_dir()?;
+    let file_path = config_dir.join(format!("{}.json", key));
+
+    fs::write(&file_path, &value)
+        .map_err(|e| format!("Error guardando configuración: {}", e))?;
 
     Ok(())
 }

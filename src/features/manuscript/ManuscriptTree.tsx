@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useManuscriptStore, ManuscriptNode } from '../../store/manuscriptStore';
 import { useNavigationStore } from '../../store/navigationStore';
+import { useWorkspaceStore, scheduleWorkspaceSave } from '../../store/workspaceStore';
 import { 
   ChevronDown, 
   ChevronRight, 
@@ -13,24 +14,41 @@ import {
 
 export const ManuscriptTree: React.FC = () => {
   const { nodes, fetchNodes, createNode } = useManuscriptStore();
-  const { activeSceneId, setActiveSceneId } = useNavigationStore();
-  
-  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
+  const { setActiveSceneId, selectedNodeId, setSelectedNodeId } = useNavigationStore();
+  const { expandedNodeIds, setExpandedNodeIds, treeScrollPosition, setTreeScrollPosition, isLoaded } = useWorkspaceStore();
+
+  const treeRef = useRef<HTMLDivElement>(null);
   const [isAddingRoot, setIsAddingRoot] = useState(false);
   const [newRootTitle, setNewRootTitle] = useState('');
   const [newRootType, setNewRootType] = useState<'part' | 'chapter' | 'scene' | 'folder'>('part');
-  
+
   // Agregar subnodo
   const [addingChildTo, setAddingChildTo] = useState<string | null>(null);
   const [newChildTitle, setNewChildTitle] = useState('');
   const [newChildType, setNewChildType] = useState<'part' | 'chapter' | 'scene' | 'folder'>('scene');
 
+  // Convert array to Record for existing toggle logic
+  const expandedNodes = expandedNodeIds.reduce((acc, id) => ({ ...acc, [id]: true }), {} as Record<string, boolean>);
+
   useEffect(() => {
     fetchNodes();
   }, []);
 
+  // Restore scroll position after state is loaded
+  useEffect(() => {
+    if (isLoaded && treeScrollPosition > 0 && treeRef.current) {
+      requestAnimationFrame(() => {
+        if (treeRef.current) treeRef.current.scrollTop = treeScrollPosition;
+      });
+    }
+  }, [isLoaded, treeScrollPosition]);
+
   const toggleExpand = (id: string) => {
-    setExpandedNodes(prev => ({ ...prev, [id]: !prev[id] }));
+    const newIds = expandedNodes[id]
+      ? expandedNodeIds.filter(nid => nid !== id)
+      : [...expandedNodeIds, id];
+    setExpandedNodeIds(newIds);
+    scheduleWorkspaceSave();
   };
 
   const handleAddRoot = async (e: React.FormEvent) => {
@@ -50,9 +68,12 @@ export const ManuscriptTree: React.FC = () => {
     try {
       const created = await createNode(parentId, newChildTitle.trim(), newChildType);
       // Auto expandir
-      setExpandedNodes(prev => ({ ...prev, [parentId]: true }));
+      if (!expandedNodeIds.includes(parentId)) {
+        setExpandedNodeIds([...expandedNodeIds, parentId]);
+      }
       setNewChildTitle('');
       setAddingChildTo(null);
+      setSelectedNodeId(created.id);
       if (newChildType === 'scene') {
         setActiveSceneId(created.id);
       }
@@ -69,7 +90,7 @@ export const ManuscriptTree: React.FC = () => {
     const children = getChildren(node.id);
     const hasChildren = children.length > 0;
     const isExpanded = !!expandedNodes[node.id];
-    const isActive = activeSceneId === node.id;
+    const isActive = selectedNodeId === node.id;
 
     // Selector de icono
     let Icon = FileText;
@@ -93,10 +114,9 @@ export const ManuscriptTree: React.FC = () => {
               : 'hover:bg-slate-900/60 text-slate-300'
           }`}
           onClick={() => {
+            setSelectedNodeId(node.id);
             if (node.type === 'scene') {
               setActiveSceneId(node.id);
-            } else {
-              toggleExpand(node.id);
             }
           }}
         >
@@ -200,7 +220,10 @@ export const ManuscriptTree: React.FC = () => {
       </div>
 
       {/* Manuscript Nodes List */}
-      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
+      <div ref={treeRef} className="flex-1 overflow-y-auto px-2 py-3 space-y-1" onScroll={(e) => {
+        setTreeScrollPosition(e.currentTarget.scrollTop);
+        scheduleWorkspaceSave();
+      }}>
         {rootNodes.map(node => renderNode(node))}
 
         {rootNodes.length === 0 && !isAddingRoot && (

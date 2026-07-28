@@ -29,6 +29,8 @@ pub fn run() {
             commands::close_project,
             commands::get_manuscript_nodes,
             commands::create_manuscript_node,
+            commands::update_manuscript_node,
+            commands::delete_manuscript_node,
             commands::get_scene_content,
             commands::update_scene_content,
             commands::reset_project,
@@ -41,7 +43,11 @@ pub fn run() {
             commands::get_calendars,
             commands::create_calendar,
             commands::update_calendar,
-            commands::delete_calendar
+            commands::delete_calendar,
+            commands::get_workspace_state,
+            commands::save_workspace_state,
+            commands::get_app_settings,
+            commands::save_app_settings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

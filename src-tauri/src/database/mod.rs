@@ -216,7 +216,57 @@ pub fn initialize_database(conn: &Connection) -> Result<()> {
         [],
     )?;
 
-    conn.execute("PRAGMA user_version = 1;", [])?;
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS workspace_state (
+            id TEXT PRIMARY KEY DEFAULT 'default',
+            data TEXT NOT NULL,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+        [],
+    )?;
+
+    // Migración 1 → 2: agregar columnas de metadatos a manuscript_nodes
+    let has_synopsis: i32 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('manuscript_nodes') WHERE name = 'synopsis';",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    if has_synopsis == 0 {
+        // Recrear tabla con las nuevas columnas
+        conn.execute(
+            "CREATE TABLE manuscript_nodes_new (
+                id TEXT PRIMARY KEY,
+                parent_id TEXT,
+                title TEXT NOT NULL,
+                type TEXT CHECK(type IN ('part', 'chapter', 'scene', 'folder')) NOT NULL,
+                sort_order INTEGER NOT NULL,
+                status TEXT CHECK(status IN ('draft', 'review', 'final')) DEFAULT 'draft',
+                color TEXT,
+                tags TEXT,
+                synopsis TEXT,
+                writing_goals TEXT,
+                author_notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(parent_id) REFERENCES manuscript_nodes(id) ON DELETE CASCADE
+            );",
+            [],
+        )?;
+
+        conn.execute(
+            "INSERT INTO manuscript_nodes_new (id, parent_id, title, type, sort_order, status, color, tags, created_at, updated_at)
+             SELECT id, parent_id, title, type, sort_order, status, color, tags, created_at, updated_at FROM manuscript_nodes;",
+            [],
+        )?;
+
+        conn.execute("DROP TABLE manuscript_nodes;", [])?;
+        conn.execute("ALTER TABLE manuscript_nodes_new RENAME TO manuscript_nodes;", [])?;
+    }
+
+    conn.execute("PRAGMA user_version = 2;", [])?;
 
     Ok(())
 }

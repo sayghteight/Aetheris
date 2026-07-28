@@ -10,6 +10,9 @@ export interface ManuscriptNode {
   status: 'draft' | 'review' | 'final';
   color: string | null;
   tags: string | null;
+  synopsis: string | null;
+  writing_goals: string | null;
+  author_notes: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -21,6 +24,8 @@ interface ManuscriptState {
 
   fetchNodes: () => Promise<void>;
   createNode: (parentId: string | null, title: string, nodeType: 'part' | 'chapter' | 'scene' | 'folder') => Promise<ManuscriptNode>;
+  updateNode: (id: string, updates: Partial<ManuscriptNode>) => Promise<ManuscriptNode>;
+  deleteNode: (id: string) => Promise<void>;
 }
 
 export const useManuscriptStore = create<ManuscriptState>((set) => ({
@@ -56,5 +61,29 @@ export const useManuscriptStore = create<ManuscriptState>((set) => ({
       set({ error: errMsg, isLoading: false });
       throw new Error(errMsg);
     }
+  },
+
+  updateNode: async (id: string, updates: Partial<ManuscriptNode>) => {
+    const node = await invoke<ManuscriptNode>('update_manuscript_node', {
+      id,
+      title: updates.title ?? '',
+      status: updates.status ?? 'draft',
+      color: updates.color ?? null,
+      tags: updates.tags ?? null,
+      synopsis: updates.synopsis ?? null,
+      writingGoals: updates.writing_goals ?? null,
+      authorNotes: updates.author_notes ?? null,
+    });
+    set((state) => ({
+      nodes: state.nodes.map((n) => (n.id === id ? node : n)),
+    }));
+    return node;
+  },
+
+  deleteNode: async (id: string) => {
+    await invoke('delete_manuscript_node', { id });
+    set((state) => ({
+      nodes: state.nodes.filter((n) => n.id !== id),
+    }));
   },
 }));

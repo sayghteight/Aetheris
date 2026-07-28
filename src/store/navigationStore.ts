@@ -1,27 +1,23 @@
 import { create } from 'zustand';
 
-export type ActiveView = 'manuscript' | 'universe' | 'timeline' | 'calendars' | 'versioning' | 'settings' | 'import';
+export type ActiveView = 'manuscript' | 'universe' | 'timeline' | 'calendars' | 'about' | 'versioning' | 'settings' | 'import';
 
 interface NavigationState {
   activeView: ActiveView;
   activeSceneId: string | null;
-  sidebarExpanded: boolean;
-  rightPanelExpanded: boolean;
+  selectedNodeId: string | null;
 
   setActiveView: (view: ActiveView) => void;
   setActiveSceneId: (id: string | null) => void;
-  toggleSidebar: () => void;
-  toggleRightPanel: () => void;
+  setSelectedNodeId: (id: string | null) => void;
 }
 
 export const useNavigationStore = create<NavigationState>((set) => ({
   activeView: 'manuscript',
   activeSceneId: null,
-  sidebarExpanded: false,
-  rightPanelExpanded: false,
+  selectedNodeId: null,
 
-  setActiveView: (view) => set({ activeView: view, sidebarExpanded: view === 'manuscript' ? true : false, rightPanelExpanded: view === 'manuscript' ? true : false }),
+  setActiveView: (view) => set({ activeView: view }),
   setActiveSceneId: (id) => set({ activeSceneId: id }),
-  toggleSidebar: () => set((state) => ({ sidebarExpanded: !state.sidebarExpanded })),
-  toggleRightPanel: () => set((state) => ({ rightPanelExpanded: !state.rightPanelExpanded })),
+  setSelectedNodeId: (id) => set({ selectedNodeId: id }),
 }));
