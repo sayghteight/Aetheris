@@ -11,12 +11,15 @@ interface ChangelogEntry {
 }
 
 const changelog: ChangelogEntry[] = [
-  { hash: '81bb164', message: 'Refactorizar vista de manuscrito y actualizar layout del workspace para mejor gestión de metadatos de capítulos', type: 'feat' },
-  { hash: '3aefabb', message: 'Añadir soporte de metadatos de capítulo: synopsis, objetivos de escritura y notas del autor', type: 'feat' },
-  { hash: '623880e', message: 'Implementar navegación por tabs en Configuración del proyecto', type: 'feat' },
-  { hash: 'ebdcba1', message: 'Actualizar versión a 0.1.2 y añadir funcionalidad de atajos de teclado', type: 'feat' },
-  { hash: '20f3b07', message: 'Integrar guardado del estado del workspace al cerrar proyecto y persistencia inmediata en cambios de vista y escena', type: 'feat' },
-  { hash: 'c6cb5b5', message: 'Reemplazar uso del store de navegación con store de workspace para gestión de vista activa', type: 'refactor' },
+  { hash: '2cd4b15', message: 'Añadir barra de búsqueda y modo concentración para escribir sin distracciones', type: 'feat' },
+  { hash: '2d9b62d', message: 'Añadir panel de cambios y nueva sección "Acerca de" en el menú', type: 'feat' },
+  { hash: '5560a0e', message: 'Mejoras generales en el menú y navegación del editor', type: 'merge' },
+  { hash: '81bb164', message: 'Mejorar organización de la vista de manuscrito con metadatos de capítulos', type: 'feat' },
+  { hash: '3aefabb', message: 'Añadir sinopsis, objetivos de escritura y notas personales a cada capítulo', type: 'feat' },
+  { hash: '623880e', message: 'Reorganizar configuración del proyecto en secciones con pestañas', type: 'feat' },
+  { hash: 'ebdcba1', message: 'Añadir atajos de teclado para acciones rápidas', type: 'feat' },
+  { hash: '20f3b07', message: 'Guardar automáticamente tu posición y cambios al cerrar el proyecto', type: 'feat' },
+  { hash: 'c6cb5b5', message: 'Mejoras internas en el sistema de navegación', type: 'refactor' },
 ];
 
 const typeColors: Record<ChangelogEntry['type'], string> = {
