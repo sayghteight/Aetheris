@@ -1060,3 +1060,157 @@ pub fn save_app_settings(key: String, value: String) -> Result<(), String> {
     Ok(())
 }
 
+// ─── Export Commands ──────────────────────────────────────────────────────────
+
+use crate::export::{ExportManuscript, ExportPart, ExportChapter, ExportScene, export_as_html, export_as_markdown, export_as_docx, export_as_pdf};
+
+fn build_export_manuscript(conn: &Connection) -> Result<ExportManuscript, String> {
+    use crate::domain::ManuscriptNode;
+
+    // Get project metadata
+    let mut meta_stmt = conn
+        .prepare("SELECT title, author FROM project_metadata LIMIT 1;")
+        .map_err(|e| e.to_string())?;
+
+    let (title, author): (String, Option<String>) = meta_stmt
+        .query_row([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(|e| format!("Error obteniendo metadatos: {}", e))?;
+
+    // Get all nodes
+    let mut nodes_stmt = conn
+        .prepare("SELECT id, parent_id, title, type, synopsis FROM manuscript_nodes ORDER BY sort_order ASC;")
+        .map_err(|e| e.to_string())?;
+
+    let nodes: Vec<ManuscriptNode> = nodes_stmt
+        .query_map([], |row| {
+            Ok(ManuscriptNode {
+                id: row.get(0)?,
+                parent_id: row.get(1)?,
+                title: row.get(2)?,
+                r#type: row.get(3)?,
+                synopsis: row.get(4)?,
+                sort_order: 0,
+                status: String::new(),
+                color: None,
+                tags: None,
+                writing_goals: None,
+                author_notes: None,
+                created_at: None,
+                updated_at: None,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    // Build hierarchy: parts -> chapters -> scenes
+    let mut parts: Vec<ExportPart> = Vec::new();
+
+    for node in &nodes {
+        match node.r#type.as_str() {
+            "part" => {
+                let part = build_part(&node, &nodes, conn)?;
+                parts.push(part);
+            }
+            "chapter" => {
+                // Orphan chapter (no part) - create a default part
+                if node.parent_id.is_none() {
+                    let part = ExportPart {
+                        title: "Sin parte".to_string(),
+                        chapters: vec![build_chapter(&node, &nodes, conn)?],
+                    };
+                    parts.push(part);
+                }
+            }
+            "scene" => {
+                // Double orphan - add to a default part
+                if node.parent_id.is_none() {
+                    let scene = build_scene(&node, conn)?;
+                    let chapter = ExportChapter {
+                        title: "Sin capítulo".to_string(),
+                        scenes: vec![scene],
+                    };
+                    let part = ExportPart {
+                        title: "Sin parte".to_string(),
+                        chapters: vec![chapter],
+                    };
+                    parts.push(part);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Ok(ExportManuscript { title, author, parts })
+}
+
+fn build_part(part_node: &ManuscriptNode, all_nodes: &[ManuscriptNode], conn: &Connection) -> Result<ExportPart, String> {
+    let mut chapters: Vec<ExportChapter> = Vec::new();
+
+    for node in all_nodes {
+        if node.parent_id.as_ref() == Some(&part_node.id) && node.r#type == "chapter" {
+            chapters.push(build_chapter(node, all_nodes, conn)?);
+        }
+    }
+
+    Ok(ExportPart {
+        title: part_node.title.clone(),
+        chapters,
+    })
+}
+
+fn build_chapter(chapter_node: &ManuscriptNode, all_nodes: &[ManuscriptNode], conn: &Connection) -> Result<ExportChapter, String> {
+    let mut scenes: Vec<ExportScene> = Vec::new();
+
+    for node in all_nodes {
+        if node.parent_id.as_ref() == Some(&chapter_node.id) && node.r#type == "scene" {
+            scenes.push(build_scene(node, conn)?);
+        }
+    }
+
+    Ok(ExportChapter {
+        title: chapter_node.title.clone(),
+        scenes,
+    })
+}
+
+fn build_scene(scene_node: &ManuscriptNode, conn: &Connection) -> Result<ExportScene, String> {
+    let mut stmt = conn
+        .prepare("SELECT plain_text FROM scene_contents WHERE node_id = ?1;")
+        .map_err(|e| e.to_string())?;
+
+    let content: String = stmt
+        .query_row([&scene_node.id], |row| row.get(0))
+        .unwrap_or_default();
+
+    Ok(ExportScene {
+        id: scene_node.id.clone(),
+        title: scene_node.title.clone(),
+        content,
+        synopsis: scene_node.synopsis.clone(),
+    })
+}
+
+#[tauri::command]
+pub fn export_manuscript(state: State<'_, AppState>, format: String) -> Result<Vec<u8>, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let manuscript = build_export_manuscript(conn)?;
+
+    match format.as_str() {
+        "html" => Ok(export_as_html(&manuscript).into_bytes()),
+        "markdown" => Ok(export_as_markdown(&manuscript).into_bytes()),
+        "docx" => Ok(export_as_docx(&manuscript)),
+        "pdf" => Ok(export_as_pdf(&manuscript)),
+        _ => Err(format!("Formato no soportado: {}", format)),
+    }
+}
+
+#[tauri::command]
+pub fn save_exported_file(path: String, data: Vec<u8>) -> Result<(), String> {
+    fs::write(&path, &data)
+        .map_err(|e| format!("Error guardando archivo: {}", e))?;
+    Ok(())
+}
+

@@ -1,7 +1,8 @@
-import React from 'react';
-import { FileText, FileCode, FileType, Globe, Download, ArrowLeft, FlaskConical } from 'lucide-react';
+import React, { useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { save } from '@tauri-apps/plugin-dialog';
+import { FileText, FileCode, FileType, Globe, Download, ArrowLeft, FlaskConical, Loader2 } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/workspaceStore';
-import { useI18n } from '../../i18n';
 
 export type ExportFormat = 'pdf' | 'docx' | 'html' | 'markdown';
 
@@ -10,6 +11,7 @@ interface FormatInfo {
   name: string;
   description: string;
   icon: React.ElementType;
+  extension: string;
   badge: string;
 }
 
@@ -17,8 +19,9 @@ const formats: FormatInfo[] = [
   {
     id: 'pdf',
     name: 'PDF',
-    description: 'Para imprenta o compartir documentos finalized',
+    description: 'Para imprenta o compartir documentos finalizados',
     icon: FileText,
+    extension: 'pdf',
     badge: 'Experimental',
   },
   {
@@ -26,6 +29,7 @@ const formats: FormatInfo[] = [
     name: 'Word (DOCX)',
     description: 'Compatible con Microsoft Word y Google Docs',
     icon: FileType,
+    extension: 'docx',
     badge: 'Experimental',
   },
   {
@@ -33,6 +37,7 @@ const formats: FormatInfo[] = [
     name: 'HTML',
     description: 'Publicación web o para convertir a otros formatos',
     icon: Globe,
+    extension: 'html',
     badge: 'Experimental',
   },
   {
@@ -40,17 +45,46 @@ const formats: FormatInfo[] = [
     name: 'Markdown',
     description: 'Formato ligero para editores de texto avanzados',
     icon: FileCode,
+    extension: 'md',
     badge: 'Experimental',
   },
 ];
 
 export const ExportPanel: React.FC = () => {
-  const { t } = useI18n();
   const { setActiveView } = useWorkspaceStore();
+  const [exporting, setExporting] = useState<ExportFormat | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleExport = async (format: ExportFormat) => {
-    // TODO: Implementar exportación cuando se agreguen los servicios
-    console.log('Exportar como:', format);
+  const handleExport = async (format: FormatInfo) => {
+    setExporting(format.id);
+    setError(null);
+
+    try {
+      const filePath = await save({
+        filters: [{
+          name: format.name,
+          extensions: [format.extension],
+        }],
+        defaultPath: `manuscript.${format.extension}`,
+      });
+
+      if (!filePath) {
+        setExporting(null);
+        return;
+      }
+
+      // Generate file in Rust
+      const data: number[] = await invoke('export_manuscript', { format: format.id });
+
+      // Save file using Rust command
+      await invoke('save_exported_file', { path: filePath, data });
+
+    } catch (err) {
+      console.error('Export error:', err);
+      setError(err instanceof Error ? err.message : 'Error desconocido al exportar');
+    } finally {
+      setExporting(null);
+    }
   };
 
   return (
@@ -71,19 +105,33 @@ export const ExportPanel: React.FC = () => {
         </div>
       </div>
 
+      {/* Error */}
+      {error && (
+        <div className="rounded-xl border border-red-800/60 bg-red-950/20 px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
       {/* Formatos */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {formats.map((format) => {
           const Icon = format.icon;
+          const isExporting = exporting === format.id;
+
           return (
             <button
               key={format.id}
-              onClick={() => handleExport(format.id)}
-              className="group relative flex items-start gap-4 p-5 rounded-2xl border border-slate-800/60 bg-slate-900/40 hover:bg-slate-900/70 hover:border-slate-700/80 transition-all duration-200 text-left"
+              onClick={() => handleExport(format)}
+              disabled={exporting !== null}
+              className="group relative flex items-start gap-4 p-5 rounded-2xl border border-slate-800/60 bg-slate-900/40 hover:bg-slate-900/70 hover:border-slate-700/80 transition-all duration-200 text-left disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {/* Icon */}
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-600/20 border border-amber-500/20 flex items-center justify-center shrink-0 group-hover:from-amber-500/30 group-hover:to-orange-600/30 transition-all">
-                <Icon className="w-5 h-5 text-amber-400" />
+                {isExporting ? (
+                  <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
+                ) : (
+                  <Icon className="w-5 h-5 text-amber-400" />
+                )}
               </div>
 
               {/* Content */}
@@ -100,7 +148,11 @@ export const ExportPanel: React.FC = () => {
 
               {/* Download indicator */}
               <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Download className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-colors" />
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-colors" />
+                )}
               </div>
             </button>
           );
