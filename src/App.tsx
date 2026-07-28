@@ -12,6 +12,7 @@ import { UpdatePanel } from './features/project/UpdatePanel';
 import { ChangelogPanel } from './features/project/ChangelogPanel';
 import { UniversePanel } from './features/project/UniversePanel';
 import { WordImportPanel } from './features/import/WordImportPanel';
+import { ExportPanel } from './features/export/ExportPanel';
 import { TimelinePanel } from './features/project/TimelinePanel';
 import { CalendarsPanel } from './features/project/CalendarsPanel';
 import { UpdateDialog } from './components/UpdateDialog';
@@ -78,6 +79,8 @@ const App: React.FC = () => {
         return <CalendarsPanel />;
       case 'import':
         return <WordImportPanel />;
+      case 'export':
+        return <ExportPanel />;
       default:
         return (
           <div className="flex items-center justify-center h-full text-slate-500 text-sm">

@@ -10,6 +10,7 @@ import {
   Settings,
   Compass,
   FileUp,
+  FileDown,
   Globe,
   Search,
   Maximize2,
@@ -180,6 +181,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           <div className="flex flex-col gap-0.5 px-2">
             {[
               { view: 'import' as ActiveView, icon: FileUp, label: 'Importar' },
+              { view: 'export' as ActiveView, icon: FileDown, label: 'Exportar' },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeView === item.view;
