@@ -2,7 +2,7 @@ import React from 'react';
 import { Tag, GitBranch, ArrowUpRight } from 'lucide-react';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
-const VERSION = '0.1.2';
+const VERSION = '0.1.3';
 
 interface ChangelogEntry {
   hash: string;
@@ -10,17 +10,7 @@ interface ChangelogEntry {
   type: 'feat' | 'fix' | 'refactor' | 'chore' | 'merge';
 }
 
-const changelog: ChangelogEntry[] = [
-  { hash: '2cd4b15', message: 'Añadir barra de búsqueda y modo concentración para escribir sin distracciones', type: 'feat' },
-  { hash: '2d9b62d', message: 'Añadir panel de cambios y nueva sección "Acerca de" en el menú', type: 'feat' },
-  { hash: '5560a0e', message: 'Mejoras generales en el menú y navegación del editor', type: 'merge' },
-  { hash: '81bb164', message: 'Mejorar organización de la vista de manuscrito con metadatos de capítulos', type: 'feat' },
-  { hash: '3aefabb', message: 'Añadir sinopsis, objetivos de escritura y notas personales a cada capítulo', type: 'feat' },
-  { hash: '623880e', message: 'Reorganizar configuración del proyecto en secciones con pestañas', type: 'feat' },
-  { hash: 'ebdcba1', message: 'Añadir atajos de teclado para acciones rápidas', type: 'feat' },
-  { hash: '20f3b07', message: 'Guardar automáticamente tu posición y cambios al cerrar el proyecto', type: 'feat' },
-  { hash: 'c6cb5b5', message: 'Mejoras internas en el sistema de navegación', type: 'refactor' },
-];
+const changelog: ChangelogEntry[] = [];
 
 const typeColors: Record<ChangelogEntry['type'], string> = {
   feat: 'text-amber-400 bg-amber-400/10',

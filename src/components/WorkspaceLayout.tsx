@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 // Read version from package.json at runtime
-const APP_VERSION = '0.1.2';
+const APP_VERSION = '0.1.3';
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
