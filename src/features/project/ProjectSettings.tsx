@@ -160,7 +160,7 @@ export const ProjectSettings: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto pt-6 space-y-6">
       <div>
         <h2 className="text-2xl font-extrabold tracking-tight text-white flex items-center gap-3">
           <Settings2 className="w-6 h-6 text-violet-400" />

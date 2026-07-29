@@ -14,7 +14,7 @@ export const UpdatePanel: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto pt-4">
       {/* Logo y versión */}
       <div className="flex flex-col items-center text-center mb-10">
         <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-amber-600 to-orange-600 flex items-center justify-center mb-4 shadow-2xl shadow-amber-900/30">

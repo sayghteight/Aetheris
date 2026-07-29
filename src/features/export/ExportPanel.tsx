@@ -88,7 +88,7 @@ export const ExportPanel: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6 pt-4">
       {/* Header */}
       <div className="flex items-center gap-4">
         <button

@@ -188,7 +188,7 @@ export const TimelinePanel: React.FC = () => {
   const scenes = nodes.filter(n => n.type === 'scene');
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col pl-6 pt-4 pr-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

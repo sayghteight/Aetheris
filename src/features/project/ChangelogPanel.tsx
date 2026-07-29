@@ -38,7 +38,7 @@ export const ChangelogPanel: React.FC = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto pt-6">
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>
