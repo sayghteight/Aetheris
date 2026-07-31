@@ -420,7 +420,7 @@ const CategoryView: React.FC<{
   const renderTree = (entries: UniverseEntry[], parentId: string | null, depth = 0) => {
     const children = getChildren(entries, parentId);
     return (
-      <div className={`space-y-1 ${depth > 0 ? 'ml-4 border-l border-slate-800 pl-3' : ''}`}>
+      <div className={`space-y-1 ${depth > 0 ? 'w-full ml-4 border-l border-slate-800 pl-3' : ''}`}>
         {children.map((entry) => {
           const isActive = selectedEntryId === entry.id;
           const entryChildren = getChildren(entries, entry.id);
@@ -461,7 +461,7 @@ const CategoryView: React.FC<{
   };
 
   return (
-    <div className="mx-auto flex h-full min-h-[calc(100vh-120px)] max-w-7xl flex-col gap-4 px-4 pb-6 pt-4">
+    <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-4 px-4 pb-6 pt-4">
       {/* Header con botón de vuelta */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
