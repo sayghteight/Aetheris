@@ -21,23 +21,52 @@ interface ManuscriptState {
   nodes: ManuscriptNode[];
   isLoading: boolean;
   error: string | null;
+  // Undo history
+  history: ManuscriptNode[][];
+  historyIndex: number;
 
   fetchNodes: () => Promise<void>;
   createNode: (parentId: string | null, title: string, nodeType: 'part' | 'chapter' | 'scene' | 'folder') => Promise<ManuscriptNode>;
   updateNode: (id: string, updates: Partial<ManuscriptNode>) => Promise<ManuscriptNode>;
   deleteNode: (id: string) => Promise<void>;
+  mergeScenes: (sourceIds: string[], targetId: string) => Promise<ManuscriptNode>;
+  splitSceneAtCursor: (nodeId: string, cursorPosition: number) => Promise<ManuscriptNode[]>;
+  splitSceneBySelection: (nodeId: string, start: number, end: number) => Promise<ManuscriptNode[]>;
+  undo: () => void;
+  pushHistory: () => void;
 }
 
-export const useManuscriptStore = create<ManuscriptState>((set) => ({
+export const useManuscriptStore = create<ManuscriptState>((set, get) => ({
   nodes: [],
   isLoading: false,
   error: null,
+  history: [],
+  historyIndex: -1,
+
+  pushHistory: () => {
+    const { nodes, history, historyIndex } = get();
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(JSON.parse(JSON.stringify(nodes)));
+    // Keep max 50 history entries
+    if (newHistory.length > 50) {
+      newHistory.shift();
+    }
+    set({ history: newHistory, historyIndex: newHistory.length - 1 });
+  },
+
+  undo: () => {
+    const { history, historyIndex } = get();
+    if (historyIndex > 0) {
+      const prevState = history[historyIndex - 1];
+      set({ nodes: prevState, historyIndex: historyIndex - 1 });
+    }
+  },
 
   fetchNodes: async () => {
     set({ isLoading: true, error: null });
     try {
       const nodes = await invoke<ManuscriptNode[]>('get_manuscript_nodes');
-      set({ nodes, isLoading: false });
+      set({ nodes, isLoading: false, history: [nodes], historyIndex: 0 });
     } catch (e: any) {
       set({ error: e.message || 'Error al obtener nodos', isLoading: false });
     }
@@ -85,5 +114,63 @@ export const useManuscriptStore = create<ManuscriptState>((set) => ({
     set((state) => ({
       nodes: state.nodes.filter((n) => n.id !== id),
     }));
+  },
+
+  mergeScenes: async (sourceIds: string[], targetId: string) => {
+    set({ isLoading: true, error: null });
+    get().pushHistory();
+    try {
+      const updatedTarget = await invoke<ManuscriptNode>('merge_scenes', {
+        sourceIds,
+        targetId,
+      });
+      // Refresh nodes to get accurate state after merge
+      const nodes = await invoke<ManuscriptNode[]>('get_manuscript_nodes');
+      set({ nodes, isLoading: false });
+      return updatedTarget;
+    } catch (e: any) {
+      const errMsg = e.message || 'Error al fusionar escenas';
+      set({ error: errMsg, isLoading: false });
+      throw new Error(errMsg);
+    }
+  },
+
+  splitSceneAtCursor: async (nodeId: string, cursorPosition: number) => {
+    set({ isLoading: true, error: null });
+    get().pushHistory();
+    try {
+      const newNodes = await invoke<ManuscriptNode[]>('split_scene_at_cursor', {
+        nodeId,
+        cursorPosition,
+      });
+      // Refresh nodes
+      const nodes = await invoke<ManuscriptNode[]>('get_manuscript_nodes');
+      set({ nodes, isLoading: false });
+      return newNodes;
+    } catch (e: any) {
+      const errMsg = e.message || 'Error al dividir escena';
+      set({ error: errMsg, isLoading: false });
+      throw new Error(errMsg);
+    }
+  },
+
+  splitSceneBySelection: async (nodeId: string, start: number, end: number) => {
+    set({ isLoading: true, error: null });
+    get().pushHistory();
+    try {
+      const newNodes = await invoke<ManuscriptNode[]>('split_scene_by_selection', {
+        nodeId,
+        start,
+        end,
+      });
+      // Refresh nodes
+      const nodes = await invoke<ManuscriptNode[]>('get_manuscript_nodes');
+      set({ nodes, isLoading: false });
+      return newNodes;
+    } catch (e: any) {
+      const errMsg = e.message || 'Error al dividir escena';
+      set({ error: errMsg, isLoading: false });
+      throw new Error(errMsg);
+    }
   },
 }));
