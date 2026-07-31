@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { Maximize2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import {
   Bold,
@@ -17,6 +18,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useProjectStore } from '../../store/projectStore';
+import { useSettingsStore } from '../../store/settingsStore';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 
 interface UniverseEntry {
@@ -97,15 +99,20 @@ interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  minHeight?: string;
+  saveLabel?: string;
+  wordCount?: number;
+  showWordCount?: boolean;
 }
 
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   value,
   onChange,
   placeholder = 'Escribe aquí el contenido...',
-  minHeight = '240px',
+  saveLabel,
+  wordCount = 0,
+  showWordCount = true,
 }) => {
+  const [focusMode, setFocusMode] = useState(false);
   const editorRef = useRef<HTMLDivElement | null>(null);
   const savedRange = useRef<Range | null>(null);
   const applyFormatRef = useRef<(command: string, valueArg?: string) => void>(() => {});
@@ -122,16 +129,28 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   };
 
-  // Guardar selección cuando el editor pierde el foco (antes de que el click la borre)
-  const handleEditorMouseDown = () => {
+  // Captura la selección ACTUAL del usuario, sea cual sea el gesto que la originó
+  // (doble clic, triple clic o arrastre). Se llama justo antes de aplicar el
+  // formato, NUNCA en el mousedown del editor: ese evento se dispara al inicio
+  // del gesto de selección, antes de que el rango final quede definido, por lo
+  // que capturarlo ahí siempre deja una selección obsoleta (p. ej. solo la
+  // palabra del doble clic inicial, ignorando la ampliación por arrastre).
+  const captureCurrentSelection = useCallback(() => {
     const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0) {
+    if (
+      sel &&
+      sel.rangeCount > 0 &&
+      editorRef.current &&
+      editorRef.current.contains(sel.anchorNode)
+    ) {
       savedRange.current = sel.getRangeAt(0).cloneRange();
     }
-  };
+  }, []);
 
   const applyFormat = useCallback((command: string, valueArg?: string) => {
-    // Restaurar selección guardada antes de aplicar el comando
+    // Capturar la selección justo aquí, en el instante de aplicar el formato,
+    // para que siempre refleje lo que el usuario ve resaltado en pantalla.
+    captureCurrentSelection();
     if (savedRange.current) {
       const sel = window.getSelection();
       sel?.removeAllRanges();
@@ -139,7 +158,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
     document.execCommand(command, false, valueArg);
     handleInput();
-  }, []);
+  }, [captureCurrentSelection]);
 
   // Keep ref updated
   applyFormatRef.current = applyFormat;
@@ -163,42 +182,86 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     { icon: Strikethrough, label: 'Tachado', action: () => applyFormat('strikeThrough') },
   ];
 
+  // Exit focus mode on ESC
+  useEffect(() => {
+    if (!focusMode) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFocusMode(false);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [focusMode]);
+
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950/80">
-      <div className="flex flex-wrap items-center gap-1 border-b border-slate-800/70 p-2">
-        {toolbarButtons.map((btn) => {
-          const Icon = btn.icon;
-          return (
-            <button
-              key={btn.label}
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                btn.action();
-              }}
-              title={btn.label}
-              className="flex items-center gap-1.5 rounded-md border border-slate-800 bg-slate-950/80 px-2.5 py-1.5 text-xs text-slate-300 hover:border-violet-500 hover:text-white transition-colors"
-            >
-              {Icon && <Icon className="h-3.5 w-3.5" />}
-            </button>
-          );
-        })}
+    <div className="flex h-full min-h-0 flex-col">
+      {/* Toolbar - fixed */}
+      {!focusMode && (
+        <div className="flex flex-wrap items-center gap-1 px-4 py-2 border-b border-slate-800/70 bg-slate-900/40 shrink-0">
+          {toolbarButtons.map((btn) => {
+            const Icon = btn.icon;
+            return (
+              <button
+                key={btn.label}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  btn.action();
+                }}
+                title={btn.label}
+                className="flex items-center gap-1.5 rounded-md border border-slate-800 bg-slate-800/40 px-3 py-1.5 text-xs text-slate-300 hover:border-violet-500/60 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                {Icon && <Icon className="h-3.5 w-3.5" />}
+              </button>
+            );
+          })}
+          {saveLabel && (
+            <span className="ml-auto text-xs text-slate-500 pr-2">{saveLabel}</span>
+          )}
+          <button
+            type="button"
+            onClick={() => setFocusMode(true)}
+            title="Modo enfoque"
+            className="ml-2 flex items-center gap-1.5 rounded-md border border-slate-800 bg-slate-800/40 px-3 py-1.5 text-xs text-slate-400 hover:border-violet-500/60 hover:text-white hover:bg-slate-800 transition-colors"
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Focus mode exit hint */}
+      {focusMode && (
+        <div className="flex items-center justify-center py-1 bg-slate-900/80 border-b border-slate-800/50 text-[10px] text-slate-600">
+          Pulsa <kbd className="mx-1 px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">ESC</kbd> para salir del modo enfoque
+          {showWordCount && wordCount > 0 && (
+            <span className="ml-4 text-slate-500">{wordCount} palabras</span>
+          )}
+        </div>
+      )}
+
+      {/* Scrollable writing area — scroll vive SOLO aquí */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-8 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-950">
+        <div className="mx-auto" >
+          <div
+            ref={editorRef}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={handleInput}
+            className="rounded-2xl border border-slate-800/80 bg-slate-900/60 shadow-xl shadow-slate-950/40 px-12 py-10 text-[19px] leading-[1.85] tracking-[0.01em] text-slate-200 outline-none min-h-[70vh]"
+            style={{
+              whiteSpace: 'pre-wrap',
+              fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
+            }}
+            data-placeholder={placeholder}
+          />
+        </div>
       </div>
 
-      <div
-        ref={editorRef}
-        contentEditable
-        suppressContentEditableWarning
-        onInput={handleInput}
-        onMouseDown={handleEditorMouseDown}
-        className="overflow-y-auto p-4 text-sm leading-7 text-slate-200 outline-none scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-950"
-        style={{
-          minHeight,
-          whiteSpace: 'pre-wrap',
-          fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-        }}
-        data-placeholder={placeholder}
-      />
+      {/* Word count bar */}
+      {!focusMode && showWordCount && (
+        <div className="flex items-center justify-end gap-4 px-4 py-1.5 border-t border-slate-800/50 bg-slate-900/30 text-xs text-slate-500 shrink-0">
+          <span>{wordCount} palabras</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -221,7 +284,7 @@ const CategoriesView: React.FC<{
   };
 
   return (
-    <div className="mx-auto flex h-full min-h-[calc(100vh-120px)] max-w-7xl flex-col gap-5 px-4 pb-6">
+    <div className="mx-auto flex h-full min-h-[calc(100vh-120px)] max-w-7xl flex-col gap-5 px-4 pb-6 pt-4">
       {/* Header */}
       <div className="rounded-2xl border border-slate-800/80 bg-gradient-to-br from-violet-600/10 via-slate-900/70 to-slate-950/90 p-5 shadow-lg shadow-slate-950/10">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -357,7 +420,7 @@ const CategoryView: React.FC<{
   const renderTree = (entries: UniverseEntry[], parentId: string | null, depth = 0) => {
     const children = getChildren(entries, parentId);
     return (
-      <div className={`space-y-1 ${depth > 0 ? 'ml-4 border-l border-slate-800 pl-3' : ''}`}>
+      <div className={`space-y-1 ${depth > 0 ? 'w-full ml-4 border-l border-slate-800 pl-3' : ''}`}>
         {children.map((entry) => {
           const isActive = selectedEntryId === entry.id;
           const entryChildren = getChildren(entries, entry.id);
@@ -398,35 +461,37 @@ const CategoryView: React.FC<{
   };
 
   return (
-    <div className="mx-auto flex h-full min-h-[calc(100vh-120px)] max-w-7xl flex-col gap-4 px-4 pb-6">
+    <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-4 px-4 pb-6 pt-4">
       {/* Header con botón de vuelta */}
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-700 hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </button>
-        <div className="flex items-center gap-2">
-          <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-2 text-violet-300">
-            <Layers3 className="h-4 w-4" />
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-700 hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Volver
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-2 text-violet-300">
+              <Layers3 className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-violet-400">
+                Categoría
+              </p>
+              <h2 className="font-bold text-white">{category.name}</h2>
+            </div>
           </div>
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-violet-400">
-              Categoría
-            </p>
-            <h2 className="font-bold text-white">{category.name}</h2>
-          </div>
+          <p className="text-sm text-slate-400">{category.description}</p>
         </div>
-        <p className="ml-2 text-sm text-slate-400">{category.description}</p>
       </div>
 
       {/* Dos columnas */}
-      <div className="grid flex-1 gap-4 min-h-0" style={{ gridTemplateColumns: '280px 1fr' }}>
+      <div className="grid flex-1 gap-4 min-h-0 overflow-hidden" style={{ gridTemplateColumns: '280px 1fr' }}>
         {/* Columna izquierda: sidebar con estructura */}
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/50">
+        <div className="flex min-h-0 w-[280px] flex-col overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/50">
           <div className="border-b border-slate-800/70 p-4">
             <p className="text-sm font-semibold text-slate-200">Estructura</p>
             <p className="text-xs text-slate-500">Carpetas y fichas</p>
@@ -482,7 +547,7 @@ const CategoryView: React.FC<{
         </div>
 
         {/* Columna derecha: editor del elemento seleccionado */}
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/50">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/50">
           <div className="border-b border-slate-800/70 p-4">
             <p className="text-sm font-semibold text-slate-200">Editor</p>
             <p className="text-xs text-slate-500">
@@ -492,9 +557,9 @@ const CategoryView: React.FC<{
             </p>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-950">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-950">
             {selectedEntry ? (
-              <div className="space-y-4">
+              <div className="flex h-full flex-col space-y-4">
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
                     Nombre
@@ -509,17 +574,18 @@ const CategoryView: React.FC<{
                 </div>
 
                 {selectedEntry.type === 'entry' ? (
-                  <div>
+                  <div className="flex min-h-0 flex-1 flex-col">
                     <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
                       Contenido
                     </label>
-                    <RichTextEditor
-                      value={selectedEntry.content}
-                      onChange={(html) =>
-                        onUpdateEntry(selectedEntry.id, { content: html })
-                      }
-                      minHeight="320px"
-                    />
+                    <div className="flex-1 min-h-0">
+                      <RichTextEditor
+                        value={selectedEntry.content}
+                        onChange={(html) =>
+                          onUpdateEntry(selectedEntry.id, { content: html })
+                        }
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-400">
@@ -532,7 +598,7 @@ const CategoryView: React.FC<{
                 )}
               </div>
             ) : (
-              <div className="flex h-full min-h-[300px] items-center justify-center">
+              <div className="flex h-full items-center justify-center">
                 <div className="rounded-lg border border-dashed border-slate-800 p-8 text-center text-sm text-slate-500">
                   Selecciona una carpeta o ficha en la estructura para
                   editarla, o crea una nueva.
@@ -554,11 +620,13 @@ interface SceneEditorProps {
 }
 
 export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate }) => {
+  const { settings } = useSettingsStore();
   const [content, setContent] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const saveTimeout = useRef<number | null>(null as any);
   const lastStats = useRef({ words: 0, readTime: 0 });
+  const [wordCount, setWordCount] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -583,6 +651,7 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
 
   const updateStats = (value: string) => {
     const { words, readTime } = computeStats(value);
+    setWordCount(words);
     if (lastStats.current.words !== words || lastStats.current.readTime !== readTime) {
       lastStats.current = { words, readTime };
       onStatsUpdate(words, readTime);
@@ -619,17 +688,14 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
           : 'Sin cambios';
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950/40 border border-slate-900 rounded-3xl overflow-hidden shadow-xl shadow-slate-950/20">
-      <RichTextEditor
-        value={content}
-        onChange={scheduleSave}
-        placeholder="Comienza a escribir tu escena aquí..."
-        minHeight="calc(100vh - 240px)"
-      />
-      <div className="px-4 py-2 border-t border-slate-800/70 text-xs text-slate-500">
-        {saveLabel}
-      </div>
-    </div>
+    <RichTextEditor
+      value={content}
+      onChange={scheduleSave}
+      placeholder="Comienza a escribir tu escena aquí..."
+      saveLabel={saveLabel}
+      wordCount={wordCount}
+      showWordCount={settings.showWordCount !== false}
+    />
   );
 };
 

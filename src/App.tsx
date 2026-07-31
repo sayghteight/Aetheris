@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useProjectStore } from './store/projectStore';
 import { useNavigationStore } from './store/navigationStore';
 import { useSettingsStore } from './store/settingsStore';
@@ -22,6 +22,8 @@ const App: React.FC = () => {
   const { activeView } = useNavigationStore();
   const { settings, loadSettings, isLoaded } = useSettingsStore();
   const { language, setLanguage } = useI18n();
+  const [wordCount, setWordCount] = useState(0);
+  const [readTime, setReadTime] = useState(0);
 
   // Sync i18n language with project settings when settings load
   useEffect(() => {
@@ -64,7 +66,7 @@ const App: React.FC = () => {
   const renderMainView = () => {
     switch (activeView) {
       case 'manuscript':
-        return <ManuscriptView />;
+        return <ManuscriptView onStatsUpdate={(w, r) => { setWordCount(w); setReadTime(r); }} />;
       case 'universe':
         return <UniversePanel />;
       case 'settings':
@@ -94,7 +96,7 @@ const App: React.FC = () => {
     <div className={`min-h-screen ${appShellClass}`}>
       <div className={`absolute inset-0 bg-radial-at-t ${themeClassName} pointer-events-none`} />
       <div className="relative z-10 h-screen">
-        <WorkspaceLayout>
+        <WorkspaceLayout wordCount={wordCount} readTime={readTime}>
           {renderMainView()}
         </WorkspaceLayout>
         <UpdateDialog />

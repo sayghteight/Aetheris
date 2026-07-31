@@ -304,7 +304,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ calendars, onRefresh
   const eventsThisMonth = events.filter(e => e.year === currentYear && e.month === currentMonthIndex + 1);
 
   return (
-    <div className="h-full flex flex-col bg-slate-900/50 rounded-2xl border border-slate-800 overflow-hidden">
+    <div className="h-full flex flex-col bg-slate-900/50 pt-6 pr-6 pl-6 rounded-2xl border border-slate-800 overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b border-slate-800 bg-slate-900/80">
         <div className="flex items-center justify-between mb-3">
@@ -319,11 +319,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ calendars, onRefresh
             {calendars.map(cal => <option key={cal.id} value={cal.id}>{cal.name}</option>)}
           </select>
 
-          <div className="flex items-center gap-2">
-            <button onClick={goToPrevMonth} className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+          <div className="flex items-center gap-4 px-2">
+            <button onClick={goToPrevMonth} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <button onClick={goToNextMonth} className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+            <button onClick={goToNextMonth} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>

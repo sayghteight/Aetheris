@@ -19,7 +19,11 @@ import {
   Trash2,
 } from 'lucide-react';
 
-export const ManuscriptView: React.FC = () => {
+interface ManuscriptViewProps {
+  onStatsUpdate?: (words: number, readTime: number) => void;
+}
+
+export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate }) => {
   const { t } = useI18n();
   const { nodes, fetchNodes, createNode, updateNode, deleteNode } = useManuscriptStore();
   const { activeSceneId, setActiveSceneId, selectedNodeId, setSelectedNodeId } = useNavigationStore();
@@ -290,12 +294,10 @@ export const ManuscriptView: React.FC = () => {
 
     if (selectedNode.type === 'scene') {
       return (
-        <div className="flex-1 flex flex-col min-h-0">
-          <SceneEditor
-            sceneId={selectedNode.id}
-            onStatsUpdate={() => {}}
-          />
-        </div>
+        <SceneEditor
+          sceneId={selectedNode.id}
+          onStatsUpdate={onStatsUpdate || (() => {})}
+        />
       );
     }
 
@@ -375,7 +377,7 @@ export const ManuscriptView: React.FC = () => {
 
   // ─── Render ───────────────────────────────────────────────────
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden pt-4">
       {/* Left Sidebar — Tree */}
       <div
         className={`flex flex-col shrink-0 border-r border-slate-800/80 bg-slate-950/50 transition-all duration-200 ${
@@ -450,7 +452,7 @@ export const ManuscriptView: React.FC = () => {
       </div>
 
       {/* Main Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-slate-900/10">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-slate-900/10">
         {renderMainContent()}
       </div>
     </div>
