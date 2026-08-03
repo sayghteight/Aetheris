@@ -109,7 +109,20 @@
     "chapterMetadata": "Chapter metadata",
     "deleteConfirm": "Delete this node?",
     "childNodes": "child elements",
-    "empty": "Manuscript is empty. Create a new Part to get started."
+    "empty": "Manuscript is empty. Create a new Part to get started.",
+    "mergeScenes": "Merge Scenes",
+    "mergeScenesSubtitle": "Select which content and metadata to keep",
+    "selectSceneToKeep": "Scene to keep",
+    "mergeInstructions": "Choose which scene will be the main one and what content to use",
+    "mergePreview": "Merge preview",
+    "mergeConfirm": "Merge scenes",
+    "splitScene": "Split Scene",
+    "splitInstruction": "Click on the text where you want to split the scene",
+    "sceneContent": "Scene content",
+    "firstPart": "First part",
+    "secondPart": "Second part",
+    "splitAt": "Split at position",
+    "splitConfirm": "Split scene"
   },
   "import": {
     "title": "Import from Word",

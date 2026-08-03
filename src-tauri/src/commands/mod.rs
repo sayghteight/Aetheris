@@ -631,10 +631,21 @@ pub fn merge_scenes(
         )
         .map_err(|e| format!("Nodo objetivo no encontrado: {}", e))?;
 
-    // Concatenate all scene contents
-    let mut merged_content = String::new();
-    let mut merged_plain_text = String::new();
+    // Get target's original content first
+    let (target_content, target_plain_text): (Option<String>, Option<String>) = conn
+        .query_row(
+            "SELECT content, plain_text FROM scene_contents WHERE node_id = ?1;",
+            [&target_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .ok()
+        .unwrap_or((None, None));
 
+    // Start with target content
+    let mut merged_content = target_content.unwrap_or_default();
+    let mut merged_plain_text = target_plain_text.unwrap_or_default();
+
+    // Append all source contents
     for source_id in source_ids.iter() {
         let content: Option<String> = conn
             .query_row(
@@ -684,9 +695,11 @@ pub fn merge_scenes(
         (&target_id, &target.title, &merged_plain_text),
     );
 
-    // Delete source nodes
+    // Delete source nodes and their contents
     for source_id in &source_ids {
         if source_id != &target_id {
+            conn.execute("DELETE FROM scene_contents WHERE node_id = ?1;", [source_id])
+                .map_err(|e| format!("Error eliminando contenido source: {}", e))?;
             conn.execute("DELETE FROM manuscript_nodes WHERE id = ?1;", [source_id])
                 .map_err(|e| format!("Error eliminando nodo source: {}", e))?;
         }

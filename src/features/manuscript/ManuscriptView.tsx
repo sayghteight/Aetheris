@@ -6,6 +6,7 @@ import { useI18n } from '../../i18n';
 import { SceneEditor } from '../project/UniversePanel';
 import { ContextMenu, buildMergeActions } from '../../components/ContextMenu';
 import { MergeScenesDialog } from '../../components/MergeScenesDialog';
+import { SplitSceneDialog } from '../../components/SplitSceneDialog';
 import {
   ChevronDown,
   ChevronRight,
@@ -27,7 +28,7 @@ interface ManuscriptViewProps {
 
 export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate }) => {
   const { t } = useI18n();
-  const { nodes, fetchNodes, createNode, updateNode, deleteNode, mergeScenes, undo } = useManuscriptStore();
+  const { nodes, fetchNodes, createNode, updateNode, deleteNode, mergeScenes, splitSceneAtCursor, undo } = useManuscriptStore();
   const { activeSceneId, setActiveSceneId, selectedNodeId, setSelectedNodeId } = useNavigationStore();
   const {
     expandedNodeIds,
@@ -54,6 +55,7 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [mergeDialogScenes, setMergeDialogScenes] = useState<ManuscriptNode[] | null>(null);
+  const [splitDialogScene, setSplitDialogScene] = useState<{ id: string; title: string } | null>(null);
 
   // Keyboard shortcut for undo
   useEffect(() => {
@@ -199,12 +201,10 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
         }
         break;
       case 'split':
-        // For split, we need cursor position from editor - this will be handled separately
         if (selected.length === 1) {
           const node = nodes.find(n => n.id === selected[0]);
           if (node?.type === 'scene') {
-            // Trigger split - the actual cursor position will come from the editor
-            console.log('Split requested for scene:', selected[0]);
+            setSplitDialogScene({ id: node.id, title: node.title });
           }
         }
         break;
@@ -593,6 +593,23 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
             }
           }}
           onCancel={() => setMergeDialogScenes(null)}
+        />
+      )}
+
+      {/* Split Dialog */}
+      {splitDialogScene && (
+        <SplitSceneDialog
+          sceneId={splitDialogScene.id}
+          sceneTitle={splitDialogScene.title}
+          onConfirm={async (cursorPosition) => {
+            setSplitDialogScene(null);
+            try {
+              await splitSceneAtCursor(splitDialogScene.id, cursorPosition);
+            } catch (err) {
+              console.error('Error splitting scene:', err);
+            }
+          }}
+          onCancel={() => setSplitDialogScene(null)}
         />
       )}
     </div>

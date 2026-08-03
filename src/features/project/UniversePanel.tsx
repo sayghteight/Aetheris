@@ -102,6 +102,7 @@ interface RichTextEditorProps {
   saveLabel?: string;
   wordCount?: number;
   showWordCount?: boolean;
+  onSelectionChange?: (selection: { start: number; end: number } | null) => void;
 }
 
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({
@@ -111,6 +112,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   saveLabel,
   wordCount = 0,
   showWordCount = true,
+  onSelectionChange,
 }) => {
   const [focusMode, setFocusMode] = useState(false);
   const editorRef = useRef<HTMLDivElement | null>(null);
@@ -122,6 +124,31 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       editorRef.current.innerHTML = value;
     }
   }, [value]);
+
+  // Report selection as text offsets to parent
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0 || !editorRef.current) {
+        onSelectionChange?.(null);
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      if (!editorRef.current.contains(range.startContainer)) {
+        onSelectionChange?.(null);
+        return;
+      }
+      // Get text content before selection start to calculate offset
+      const preSelectionRange = range.cloneRange();
+      preSelectionRange.selectNodeContents(editorRef.current);
+      preSelectionRange.setEnd(range.startContainer, range.startOffset);
+      const start = preSelectionRange.toString().length;
+      const end = start + range.toString().length;
+      onSelectionChange?.({ start, end });
+    };
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, [onSelectionChange]);
 
   const handleInput = () => {
     if (editorRef.current) {
@@ -617,9 +644,10 @@ const CategoryView: React.FC<{
 interface SceneEditorProps {
   sceneId: string;
   onStatsUpdate: (words: number, readTime: number) => void;
+  onSelectionChange?: (selection: { start: number; end: number } | null) => void;
 }
 
-export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate }) => {
+export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate, onSelectionChange }) => {
   const { settings } = useSettingsStore();
   const [content, setContent] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -695,6 +723,7 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
       saveLabel={saveLabel}
       wordCount={wordCount}
       showWordCount={settings.showWordCount !== false}
+      onSelectionChange={onSelectionChange}
     />
   );
 };
