@@ -10,7 +10,6 @@ import { ShortcutRecorder } from '../../components/ShortcutRecorder';
 import {
   BookOpen,
   HardDrive,
-  Palette,
   Settings2,
   RotateCcw,
   AlertTriangle,
@@ -322,7 +321,18 @@ export const ProjectSettings: React.FC = () => {
               </div>
             </div>
 
+            <div className="mb-6">
+
+            </div>
+
             <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">{t('settings.language')}</label>
+                <select value={settings.language} onChange={(e) => saveSettings({ ...settings, language: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none">
+                  <option value="es">{t('settings.languageEs')}</option>
+                  <option value="en">{t('settings.languageEn')}</option>
+                </select>
+              </div>
               <ToggleOption label={t('editorSettings.spellCheck')} enabled={editorSettings.spellCheck} onChange={(v) => updateEditorSetting('spellCheck', v)} />
               <ToggleOption label={t('editorSettings.autoCorrect')} enabled={editorSettings.autoCorrect} onChange={(v) => updateEditorSetting('autoCorrect', v)} />
               <ToggleOption label={t('editorSettings.showWordCount')} enabled={editorSettings.showWordCount} onChange={(v) => updateEditorSetting('showWordCount', v)} />

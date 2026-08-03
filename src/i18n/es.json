@@ -109,7 +109,20 @@
     "chapterMetadata": "Metadatos del capítulo",
     "deleteConfirm": "¿Eliminar este nodo?",
     "childNodes": "elementos hijos",
-    "empty": "Manuscrito vacío. Crea una nueva Parte para comenzar."
+    "empty": "Manuscrito vacío. Crea una nueva Parte para comenzar.",
+    "mergeScenes": "Fusionar Escenas",
+    "mergeScenesSubtitle": "Selecciona qué contenido y metadatos conservar",
+    "selectSceneToKeep": "Escena a conservar",
+    "mergeInstructions": "Elige qué escena será la principal y qué contenido se usará",
+    "mergePreview": "Vista previa de la fusión",
+    "mergeConfirm": "Fusionar escenas",
+    "splitScene": "Dividir Escena",
+    "splitInstruction": "Haz clic en el texto donde quieres dividir la escena",
+    "sceneContent": "Contenido de la escena",
+    "firstPart": "Primera parte",
+    "secondPart": "Segunda parte",
+    "splitAt": "Dividir en posición",
+    "splitConfirm": "Dividir escena"
   },
   "import": {
     "title": "Importar desde Word",

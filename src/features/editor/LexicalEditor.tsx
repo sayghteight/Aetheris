@@ -25,6 +25,7 @@ import {
 interface LexicalEditorProps {
   sceneId: string;
   onStatsUpdate: (words: number, readTime: number) => void;
+  onSelectionChange?: (selection: { start: number; end: number } | null) => void;
 }
 
 interface LexicalEditorState {
@@ -57,7 +58,7 @@ const WRITER_BUTTONS: Array<{ label: string; icon: React.ComponentType<{ classNa
   { label: 'Escena', icon: Sparkles, action: (editor) => editor.insert('\n\n---\n\n') },
 ];
 
-const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate }) => {
+const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate, onSelectionChange }) => {
   const { settings } = useSettingsStore();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const saveTimeout = useRef<number | null>(null as any);
@@ -122,16 +123,18 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate })
       if (!ta) return;
       // Only capture while the textarea is the active element
       if (document.activeElement !== ta) return;
-      savedSelectionRef.current = {
+      const sel = {
         start: ta.selectionStart ?? 0,
         end: ta.selectionEnd ?? 0,
       };
+      savedSelectionRef.current = sel;
+      onSelectionChange?.(sel);
     };
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  }, []);
+  }, [onSelectionChange]);
 
   const computeStats = (value: string) => {
     const words = value.trim() === '' ? 0 : value.trim().split(/\s+/).length;

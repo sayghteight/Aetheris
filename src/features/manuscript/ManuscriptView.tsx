@@ -4,6 +4,9 @@ import { useNavigationStore } from '../../store/navigationStore';
 import { useWorkspaceStore, scheduleWorkspaceSave } from '../../store/workspaceStore';
 import { useI18n } from '../../i18n';
 import { SceneEditor } from '../project/UniversePanel';
+import { ContextMenu, buildMergeActions } from '../../components/ContextMenu';
+import { MergeScenesDialog } from '../../components/MergeScenesDialog';
+import { SplitSceneDialog } from '../../components/SplitSceneDialog';
 import {
   ChevronDown,
   ChevronRight,
@@ -25,7 +28,7 @@ interface ManuscriptViewProps {
 
 export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate }) => {
   const { t } = useI18n();
-  const { nodes, fetchNodes, createNode, updateNode, deleteNode } = useManuscriptStore();
+  const { nodes, fetchNodes, createNode, updateNode, deleteNode, mergeScenes, splitSceneAtCursor, undo } = useManuscriptStore();
   const { activeSceneId, setActiveSceneId, selectedNodeId, setSelectedNodeId } = useNavigationStore();
   const {
     expandedNodeIds,
@@ -47,6 +50,24 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+
+  // Multi-select state
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [mergeDialogScenes, setMergeDialogScenes] = useState<ManuscriptNode[] | null>(null);
+  const [splitDialogScene, setSplitDialogScene] = useState<{ id: string; title: string } | null>(null);
+
+  // Keyboard shortcut for undo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        undo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo]);
 
   const expandedMap = expandedNodeIds.reduce(
     (acc, id) => ({ ...acc, [id]: true }),
@@ -131,6 +152,81 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
     }
   };
 
+  // Multi-select handlers
+  const handleNodeClick = (node: ManuscriptNode, e: React.MouseEvent) => {
+    if (e.shiftKey && selectedNodeIds.size > 0) {
+      // Range select
+      const nodeList = nodes.filter(n => n.type === 'scene' || n.type === 'chapter' || n.type === 'part' || n.type === 'folder');
+      const lastSelected = Array.from(selectedNodeIds).pop();
+      const lastIndex = nodeList.findIndex(n => n.id === lastSelected);
+      const currentIndex = nodeList.findIndex(n => n.id === node.id);
+      const [start, end] = lastIndex < currentIndex ? [lastIndex, currentIndex] : [currentIndex, lastIndex];
+      const rangeIds = nodeList.slice(start, end + 1).map(n => n.id);
+      setSelectedNodeIds(new Set(rangeIds));
+    } else if (e.ctrlKey || e.metaKey) {
+      // Toggle select
+      const newSet = new Set(selectedNodeIds);
+      if (newSet.has(node.id)) {
+        newSet.delete(node.id);
+      } else {
+        newSet.add(node.id);
+      }
+      setSelectedNodeIds(newSet);
+    } else {
+      // Single select
+      setSelectedNodeIds(new Set([node.id]));
+      setSelectedNodeId(node.id);
+      if (node.type === 'scene') setActiveSceneId(node.id);
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, node: ManuscriptNode) => {
+    e.preventDefault();
+    if (!selectedNodeIds.has(node.id)) {
+      setSelectedNodeIds(new Set([node.id]));
+    }
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleContextMenuAction = async (actionId: string) => {
+    setContextMenu(null);
+    const selected = Array.from(selectedNodeIds);
+
+    switch (actionId) {
+      case 'merge':
+        if (selected.length >= 2) {
+          // Show merge dialog
+          const scenesToMerge = nodes.filter(n => selected.includes(n.id));
+          setMergeDialogScenes(scenesToMerge);
+        }
+        break;
+      case 'split':
+        if (selected.length === 1) {
+          const node = nodes.find(n => n.id === selected[0]);
+          if (node?.type === 'scene') {
+            setSplitDialogScene({ id: node.id, title: node.title });
+          }
+        }
+        break;
+      case 'addChild':
+        if (selected.length === 1) {
+          setAddingChildTo(selected[0]);
+        }
+        break;
+      case 'rename':
+        if (selected.length === 1) {
+          const node = nodes.find(n => n.id === selected[0]);
+          if (node) startEditingTitle(node);
+        }
+        break;
+      case 'delete':
+        if (selected.length >= 1) {
+          setShowDeleteConfirm(selected[0]);
+        }
+        break;
+    }
+  };
+
   const rootNodes = nodes.filter(n => !n.parent_id);
   const getChildren = (parentId: string) => nodes.filter(n => n.parent_id === parentId);
   const selectedNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null;
@@ -160,12 +256,14 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
         <div
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
           className={`group flex items-center justify-between py-1.5 pr-2 rounded-lg cursor-pointer transition-all duration-150 ${
-            isActive ? 'bg-violet-600/20 border-l-2 border-violet-500 text-violet-200' : 'hover:bg-slate-900/60 text-slate-300'
+            isActive
+              ? 'bg-violet-600/20 border-l-2 border-violet-500 text-violet-200'
+              : selectedNodeIds.has(node.id)
+              ? 'bg-violet-600/10 border border-violet-500/30 text-violet-200'
+              : 'hover:bg-slate-900/60 text-slate-300'
           }`}
-          onClick={() => {
-            setSelectedNodeId(node.id);
-            if (node.type === 'scene') setActiveSceneId(node.id);
-          }}
+          onClick={(e) => handleNodeClick(node, e)}
+          onContextMenu={(e) => handleContextMenu(e, node)}
         >
           <div className="flex items-center gap-1.5 overflow-hidden flex-1">
             {node.type !== 'scene' ? (
@@ -455,6 +553,65 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-slate-900/10">
         {renderMainContent()}
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          actions={buildMergeActions(
+            selectedNodeIds.size,
+            nodes.filter(n => selectedNodeIds.has(n.id)).some(n => n.type === 'scene'),
+            {
+              merge: t('manuscript.mergeScenes') || 'Merge Scenes',
+              split: t('manuscript.splitScene') || 'Split Scene',
+              addChild: t('manuscript.addChild') || 'Add Child',
+              rename: t('manuscript.rename') || 'Rename',
+              delete: t('common.delete') || 'Delete',
+            }
+          )}
+          onAction={handleContextMenuAction}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {/* Merge Dialog */}
+      {mergeDialogScenes && (
+        <MergeScenesDialog
+          scenes={mergeDialogScenes}
+          onConfirm={async (_content, _plainText, _keepMetadataFrom) => {
+            setMergeDialogScenes(null);
+            if (mergeDialogScenes.length >= 2) {
+              const targetId = mergeDialogScenes[0].id;
+              const sourceIds = mergeDialogScenes.slice(1).map(s => s.id);
+              try {
+                // Call merge - the backend will concatenate all content
+                await mergeScenes(sourceIds, targetId);
+              } catch (err) {
+                console.error('Error merging scenes:', err);
+              }
+            }
+          }}
+          onCancel={() => setMergeDialogScenes(null)}
+        />
+      )}
+
+      {/* Split Dialog */}
+      {splitDialogScene && (
+        <SplitSceneDialog
+          sceneId={splitDialogScene.id}
+          sceneTitle={splitDialogScene.title}
+          onConfirm={async (cursorPosition) => {
+            setSplitDialogScene(null);
+            try {
+              await splitSceneAtCursor(splitDialogScene.id, cursorPosition);
+            } catch (err) {
+              console.error('Error splitting scene:', err);
+            }
+          }}
+          onCancel={() => setSplitDialogScene(null)}
+        />
+      )}
     </div>
   );
 };
