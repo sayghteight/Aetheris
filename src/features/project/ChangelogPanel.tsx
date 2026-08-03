@@ -10,7 +10,53 @@ interface ChangelogEntry {
   type: 'feat' | 'fix' | 'refactor' | 'chore' | 'merge';
 }
 
-const changelog: ChangelogEntry[] = [];
+const changelog: ChangelogEntry[] = [
+  {
+    hash: '8c4f2a1',
+    type: 'feat',
+    message: 'Se ha añadido un nuevo panel de exportación integrado en la navegación de la aplicación.',
+  },
+  {
+    hash: 'f3d19be',
+    type: 'feat',
+    message: 'Implementada la exportación de manuscritos a formatos compatibles.',
+  },
+  {
+    hash: 'a71e6d4',
+    type: 'fix',
+    message: 'Mejorado el manejo de errores al importar archivos DOCX con mensajes más claros.',
+  },
+  {
+    hash: '2d5b9e8',
+    type: 'feat',
+    message: 'Actualizada la aplicación a la versión 0.1.3.',
+  },
+  {
+    hash: 'b9f8c10',
+    type: 'refactor',
+    message: 'Reorganización interna del código para mejorar la legibilidad y facilitar el mantenimiento.',
+  },
+  {
+    hash: '5ea42f6',
+    type: 'fix',
+    message: 'Mejorado el diseño de la configuración del proyecto eliminando secciones obsoletas.',
+  },
+  {
+    hash: '7cbf914',
+    type: 'fix',
+    message: 'Ajustado el diseño de la vista de categorías dentro del panel de Universo.',
+  },
+  {
+    hash: '9d61ae3',
+    type: 'fix',
+    message: 'Mejorada la presentación visual del panel de historial de cambios.',
+  },
+  {
+    hash: 'e14b3c9',
+    type: 'feat',
+    message: 'Añadidas las herramientas para fusionar y dividir escenas mediante nuevos diálogos.',
+  },
+];
 
 const typeColors: Record<ChangelogEntry['type'], string> = {
   feat: 'text-amber-400 bg-amber-400/10',
