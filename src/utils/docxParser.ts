@@ -1,5 +1,20 @@
 import mammoth from 'mammoth';
 
+/**
+ * Custom error types for DOCX import failures.
+ * Allows callers to handle specific error cases with user-friendly messages.
+ */
+export class DocxImportError extends Error {
+  constructor(
+    message: string,
+    public readonly code: 'CORRUPTED' | 'MISSING_XML' | 'INVALID_FORMAT' | 'PARSE_ERROR' | 'UNKNOWN',
+    public readonly originalError?: unknown
+  ) {
+    super(message);
+    this.name = 'DocxImportError';
+  }
+}
+
 export interface SceneImport {
   title: string;
   content: string; // HTML
@@ -15,12 +30,131 @@ export interface PartImport {
   chapters: ChapterImport[];
 }
 
-export async function parseDocx(file: File): Promise<PartImport[]> {
-  const arrayBuffer = await file.arrayBuffer();
-  const { value: html } = await mammoth.convertToHtml({ arrayBuffer });
+/**
+ * Validates that a file is a valid DOCX by checking its magic bytes.
+ * DOCX files are ZIP archives starting with PK\x03\x04.
+ */
+function validateDocxFile(file: File): void {
+  if (!file.name.endsWith('.docx')) {
+    throw new DocxImportError(
+      'File must have .docx extension',
+      'INVALID_FORMAT'
+    );
+  }
 
+  // File size validations
+  if (file.size === 0) {
+    throw new DocxImportError(
+      'File is empty',
+      'CORRUPTED'
+    );
+  }
+
+  if (file.size < 100) {
+    throw new DocxImportError(
+      'File is too small to be a valid DOCX',
+      'CORRUPTED'
+    );
+  }
+}
+
+export async function parseDocx(file: File): Promise<PartImport[]> {
+  // Step 1: Validate the file before attempting to parse
+  validateDocxFile(file);
+
+  // Step 2: Read file contents
+  let arrayBuffer: ArrayBuffer;
+  try {
+    arrayBuffer = await file.arrayBuffer();
+  } catch (err) {
+    throw new DocxImportError(
+      'Could not read file contents',
+      'UNKNOWN',
+      err
+    );
+  }
+
+  // Step 3: Check for minimum buffer size
+  if (arrayBuffer.byteLength < 100) {
+    throw new DocxImportError(
+      'File appears to be truncated or corrupted',
+      'CORRUPTED'
+    );
+  }
+
+  // Step 4: Convert DOCX to HTML using mammoth
+  let html: string;
+  try {
+    const result = await mammoth.convertToHtml({ arrayBuffer });
+
+    // Check for warnings that might indicate partial success
+    if (result.messages && result.messages.length > 0) {
+      console.warn('[docxParser] Mammoth warnings:', result.messages);
+    }
+
+    html = result.value;
+  } catch (err: unknown) {
+    // Categorize the error based on its nature
+    const errorMessage = err instanceof Error ? err.message : String(err);
+
+    if (errorMessage.includes('ZIP') ||
+        errorMessage.includes('archive') ||
+        errorMessage.includes('compressed') ||
+        errorMessage.includes('PK')) {
+      throw new DocxImportError(
+        'File is corrupted or not a valid DOCX archive',
+        'CORRUPTED',
+        err
+      );
+    }
+
+    if (errorMessage.includes('XML') ||
+        errorMessage.includes('document.xml') ||
+        errorMessage.includes('content types')) {
+      throw new DocxImportError(
+        'File is missing required XML parts',
+        'MISSING_XML',
+        err
+      );
+    }
+
+    if (errorMessage.includes('parse') ||
+        errorMessage.includes('format') ||
+        errorMessage.includes('invalid')) {
+      throw new DocxImportError(
+        'File contains invalid or unsupported content',
+        'INVALID_FORMAT',
+        err
+      );
+    }
+
+    throw new DocxImportError(
+      `Failed to convert document: ${errorMessage}`,
+      'PARSE_ERROR',
+      err
+    );
+  }
+
+  // Step 5: Validate the resulting HTML
+  if (!html || html.trim().length === 0) {
+    throw new DocxImportError(
+      'Document appears to be empty',
+      'INVALID_FORMAT'
+    );
+  }
+
+  // Step 6: Parse HTML into structured data
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
+
+  // Detect parse errors (DOMParser sets parseError if it fails)
+  if (!doc.body || doc.body.childNodes.length === 0) {
+    console.error('[docxParser] DOM parse resulted in empty document');
+    throw new DocxImportError(
+      'Failed to parse document content',
+      'PARSE_ERROR'
+    );
+  }
 
   const parts: PartImport[] = [];
   let currentPart: PartImport | null = null;

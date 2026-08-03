@@ -2,7 +2,7 @@ import React from 'react';
 import { Tag, GitBranch, ArrowUpRight } from 'lucide-react';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
-const VERSION = '0.1.2';
+const VERSION = '0.1.3';
 
 interface ChangelogEntry {
   hash: string;
@@ -11,15 +11,51 @@ interface ChangelogEntry {
 }
 
 const changelog: ChangelogEntry[] = [
-  { hash: '2cd4b15', message: 'Añadir barra de búsqueda y modo concentración para escribir sin distracciones', type: 'feat' },
-  { hash: '2d9b62d', message: 'Añadir panel de cambios y nueva sección "Acerca de" en el menú', type: 'feat' },
-  { hash: '5560a0e', message: 'Mejoras generales en el menú y navegación del editor', type: 'merge' },
-  { hash: '81bb164', message: 'Mejorar organización de la vista de manuscrito con metadatos de capítulos', type: 'feat' },
-  { hash: '3aefabb', message: 'Añadir sinopsis, objetivos de escritura y notas personales a cada capítulo', type: 'feat' },
-  { hash: '623880e', message: 'Reorganizar configuración del proyecto en secciones con pestañas', type: 'feat' },
-  { hash: 'ebdcba1', message: 'Añadir atajos de teclado para acciones rápidas', type: 'feat' },
-  { hash: '20f3b07', message: 'Guardar automáticamente tu posición y cambios al cerrar el proyecto', type: 'feat' },
-  { hash: 'c6cb5b5', message: 'Mejoras internas en el sistema de navegación', type: 'refactor' },
+  {
+    hash: '8c4f2a1',
+    type: 'feat',
+    message: 'Se ha añadido un nuevo panel de exportación integrado en la navegación de la aplicación.',
+  },
+  {
+    hash: 'f3d19be',
+    type: 'feat',
+    message: 'Implementada la exportación de manuscritos a formatos compatibles.',
+  },
+  {
+    hash: 'a71e6d4',
+    type: 'fix',
+    message: 'Mejorado el manejo de errores al importar archivos DOCX con mensajes más claros.',
+  },
+  {
+    hash: '2d5b9e8',
+    type: 'feat',
+    message: 'Actualizada la aplicación a la versión 0.1.3.',
+  },
+  {
+    hash: 'b9f8c10',
+    type: 'refactor',
+    message: 'Reorganización interna del código para mejorar la legibilidad y facilitar el mantenimiento.',
+  },
+  {
+    hash: '5ea42f6',
+    type: 'fix',
+    message: 'Mejorado el diseño de la configuración del proyecto eliminando secciones obsoletas.',
+  },
+  {
+    hash: '7cbf914',
+    type: 'fix',
+    message: 'Ajustado el diseño de la vista de categorías dentro del panel de Universo.',
+  },
+  {
+    hash: '9d61ae3',
+    type: 'fix',
+    message: 'Mejorada la presentación visual del panel de historial de cambios.',
+  },
+  {
+    hash: 'e14b3c9',
+    type: 'feat',
+    message: 'Añadidas las herramientas para fusionar y dividir escenas mediante nuevos diálogos.',
+  },
 ];
 
 const typeColors: Record<ChangelogEntry['type'], string> = {
@@ -48,7 +84,7 @@ export const ChangelogPanel: React.FC = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl w-full mx-auto pt-6">
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>

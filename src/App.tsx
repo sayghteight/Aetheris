@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useProjectStore } from './store/projectStore';
 import { useNavigationStore } from './store/navigationStore';
 import { useSettingsStore } from './store/settingsStore';
@@ -12,6 +12,7 @@ import { UpdatePanel } from './features/project/UpdatePanel';
 import { ChangelogPanel } from './features/project/ChangelogPanel';
 import { UniversePanel } from './features/project/UniversePanel';
 import { WordImportPanel } from './features/import/WordImportPanel';
+import { ExportPanel } from './features/export/ExportPanel';
 import { TimelinePanel } from './features/project/TimelinePanel';
 import { CalendarsPanel } from './features/project/CalendarsPanel';
 import { UpdateDialog } from './components/UpdateDialog';
@@ -21,6 +22,8 @@ const App: React.FC = () => {
   const { activeView } = useNavigationStore();
   const { settings, loadSettings, isLoaded } = useSettingsStore();
   const { language, setLanguage } = useI18n();
+  const [wordCount, setWordCount] = useState(0);
+  const [readTime, setReadTime] = useState(0);
 
   // Sync i18n language with project settings when settings load
   useEffect(() => {
@@ -63,7 +66,7 @@ const App: React.FC = () => {
   const renderMainView = () => {
     switch (activeView) {
       case 'manuscript':
-        return <ManuscriptView />;
+        return <ManuscriptView onStatsUpdate={(w, r) => { setWordCount(w); setReadTime(r); }} />;
       case 'universe':
         return <UniversePanel />;
       case 'settings':
@@ -78,6 +81,8 @@ const App: React.FC = () => {
         return <CalendarsPanel />;
       case 'import':
         return <WordImportPanel />;
+      case 'export':
+        return <ExportPanel />;
       default:
         return (
           <div className="flex items-center justify-center h-full text-slate-500 text-sm">
@@ -91,7 +96,7 @@ const App: React.FC = () => {
     <div className={`min-h-screen ${appShellClass}`}>
       <div className={`absolute inset-0 bg-radial-at-t ${themeClassName} pointer-events-none`} />
       <div className="relative z-10 h-screen">
-        <WorkspaceLayout>
+        <WorkspaceLayout wordCount={wordCount} readTime={readTime}>
           {renderMainView()}
         </WorkspaceLayout>
         <UpdateDialog />

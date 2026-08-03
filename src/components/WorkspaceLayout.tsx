@@ -10,6 +10,7 @@ import {
   Settings,
   Compass,
   FileUp,
+  FileDown,
   Globe,
   Search,
   Maximize2,
@@ -17,7 +18,7 @@ import {
 } from 'lucide-react';
 
 // Read version from package.json at runtime
-const APP_VERSION = '0.1.2';
+const APP_VERSION = '0.1.3';
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
@@ -180,6 +181,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           <div className="flex flex-col gap-0.5 px-2">
             {[
               { view: 'import' as ActiveView, icon: FileUp, label: 'Importar' },
+              { view: 'export' as ActiveView, icon: FileDown, label: 'Exportar' },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeView === item.view;
@@ -251,20 +253,18 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         </nav>
 
         {/* Central Work Area */}
-        <main className="flex-1 bg-slate-950 overflow-y-auto">
-          <div className="pl-6 pt-4 pb-4">
-            {children}
-          </div>
+        <main className="flex-1 flex flex-col min-h-0 bg-slate-950 overflow-hidden">
+          {children}
         </main>
       </div>
 
       {/* Bottom Status Bar */}
-      <footer className="h-8 border-t border-slate-900 bg-slate-950 flex items-center justify-between px-4 text-xs text-slate-500 shrink-0 select-none">
+      <footer className="h-10 border-t border-slate-800/60 bg-slate-950/80 flex items-center justify-between px-4 text-xs text-slate-500 shrink-0 select-none">
         <div className="flex items-center gap-4">
           <span>Palabras: <strong className="text-slate-400">{wordCount}</strong></span>
-          <span className="text-slate-800">|</span>
+          <span className="text-slate-700">·</span>
           <span>Lectura: <strong className="text-slate-400">~{readTime} min</strong></span>
-          <span className="text-slate-800">|</span>
+          <span className="text-slate-700">·</span>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
             <span className="text-emerald-500 font-semibold">Offline</span>
@@ -272,8 +272,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
-          <span>Meta Diaria: <strong className="text-amber-400">{wordCount} / 1000 palabras</strong></span>
-          <div className="w-24 bg-slate-900 rounded-full h-1.5 overflow-hidden">
+          <span>Meta Diaria: <strong className="text-amber-400">{wordCount} / 1000</strong></span>
+          <div className="w-24 bg-slate-800 rounded-full h-1.5 overflow-hidden">
             <div className="bg-gradient-to-r from-amber-600 to-orange-500 h-full w-[45%]" />
           </div>
         </div>

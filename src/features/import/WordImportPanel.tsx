@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { Upload, FileText, Folder, Layers3, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useManuscriptStore } from '../../store/manuscriptStore';
 import { useI18n } from '../../i18n';
-import { parseDocx, PartImport } from '../../utils/docxParser';
+import { parseDocx, PartImport, DocxImportError } from '../../utils/docxParser';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 
 export const WordImportPanel: React.FC = () => {
@@ -26,13 +26,49 @@ export const WordImportPanel: React.FC = () => {
       return;
     }
     setFileName(file.name);
+    setIsImporting(true);
     try {
       const result = await parseDocx(file);
       setParsedDoc(result);
       setImportResult(null);
-    } catch {
-      setImportResult({ success: false, message: t('import.invalidFile') });
+    } catch (err: unknown) {
+      let errorMessage = t('import.invalidFile');
+
+      if (err instanceof DocxImportError) {
+        // Provide specific, user-friendly messages based on error type
+        switch (err.code) {
+          case 'CORRUPTED':
+            errorMessage = t('import.errorCorrupted');
+            console.error('[WordImport] Corrupted file:', err.message, err.originalError);
+            break;
+          case 'MISSING_XML':
+            errorMessage = t('import.errorMissingXml');
+            console.error('[WordImport] Missing XML parts:', err.message, err.originalError);
+            break;
+          case 'INVALID_FORMAT':
+            errorMessage = t('import.errorInvalidFormat');
+            console.error('[WordImport] Invalid format:', err.message, err.originalError);
+            break;
+          case 'PARSE_ERROR':
+            errorMessage = t('import.errorParseFailed');
+            console.error('[WordImport] Parse error:', err.message, err.originalError);
+            break;
+          case 'UNKNOWN':
+          default:
+            errorMessage = t('import.errorUnknown');
+            console.error('[WordImport] Unknown error:', err.message, err.originalError);
+            break;
+        }
+      } else if (err instanceof Error) {
+        // Fallback for unexpected error types
+        errorMessage = `${t('import.errorUnknown')}: ${err.message}`;
+        console.error('[WordImport] Unexpected error:', err);
+      }
+
+      setImportResult({ success: false, message: errorMessage });
       setParsedDoc(null);
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -101,7 +137,7 @@ export const WordImportPanel: React.FC = () => {
     : 0;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6 pt-4">
       {/* Header */}
       <div className="flex items-center gap-4">
         <button

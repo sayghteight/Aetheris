@@ -25,6 +25,7 @@ import {
 interface LexicalEditorProps {
   sceneId: string;
   onStatsUpdate: (words: number, readTime: number) => void;
+  onSelectionChange?: (selection: { start: number; end: number } | null) => void;
 }
 
 interface LexicalEditorState {
@@ -57,11 +58,14 @@ const WRITER_BUTTONS: Array<{ label: string; icon: React.ComponentType<{ classNa
   { label: 'Escena', icon: Sparkles, action: (editor) => editor.insert('\n\n---\n\n') },
 ];
 
-const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate }) => {
+const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate, onSelectionChange }) => {
   const { settings } = useSettingsStore();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const saveTimeout = useRef<number | null>(null as any);
   const lastStats = useRef({ words: 0, readTime: 0 });
+  // Stores the last known valid selection — updated on mouseup/select so it survives
+  // focus loss when clicking toolbar buttons
+  const savedSelectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
 
   // Action refs for keyboard shortcuts (no-arg wrappers)
   const boldActionRef = useRef<() => void>(() => {});
@@ -71,8 +75,8 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate })
 
   const [text, setText] = useState('');
   const [preview, setPreview] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [_saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [_lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [showSpellCheck, setShowSpellCheck] = useState(false);
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,6 +115,27 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate })
     return () => { mounted = false; };
   }, [sceneId]);
 
+  // Keep savedSelectionRef in sync with the actual textarea selection
+  // selectionchange fires on document continuously during drag-select
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      // Only capture while the textarea is the active element
+      if (document.activeElement !== ta) return;
+      const sel = {
+        start: ta.selectionStart ?? 0,
+        end: ta.selectionEnd ?? 0,
+      };
+      savedSelectionRef.current = sel;
+      onSelectionChange?.(sel);
+    };
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, [onSelectionChange]);
+
   const computeStats = (value: string) => {
     const words = value.trim() === '' ? 0 : value.trim().split(/\s+/).length;
     const readTime = Math.ceil(words / 200);
@@ -143,16 +168,20 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate })
   };
 
   const wrapSelection = useCallback((before: string, after?: string) => {
-    const state = getTextAreaState();
-    if (!state) return;
-    const { start, end, value } = state;
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const { start, end } = savedSelectionRef.current;
+    const value = ta.value;
     const selected = value.slice(start, end);
     const wrapped = before + selected + (after ?? before);
     const newText = value.slice(0, start) + wrapped + value.slice(end);
-    setText(newText);
     const newStart = start + before.length;
     const newEnd = newStart + selected.length;
-    restoreSelection(newStart, newEnd);
+    setText(newText);
+    // Use requestAnimationFrame to ensure DOM has updated before restoring selection
+    requestAnimationFrame(() => {
+      restoreSelection(newStart, newEnd);
+    });
     scheduleSave(newText);
   }, [scheduleSave]);
 
@@ -273,14 +302,6 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate })
 
   const fontFamily = settings.theme === 'noir' ? 'Georgia, serif' : 'Inter, ui-sans-serif, system-ui, sans-serif';
 
-  const saveLabel = saveStatus === 'saving'
-    ? 'Guardando…'
-    : saveStatus === 'saved'
-      ? `Guardado ${lastSavedAt ?? ''}`
-      : saveStatus === 'error'
-        ? 'Error al guardar'
-        : 'Sin cambios';
-
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950/40 border border-slate-900 rounded-3xl overflow-hidden shadow-xl shadow-slate-950/20">
       <div className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex flex-col gap-3">
@@ -290,6 +311,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate })
               key={label}
               type="button"
               onClick={() => action(editorState)}
+              onMouseDown={(e) => e.preventDefault()}
               className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-900 transition-colors"
               title={label}
             >
@@ -305,6 +327,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate })
               key={label}
               type="button"
               onClick={() => action(editorState)}
+              onMouseDown={(e) => e.preventDefault()}
               className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-900 transition-colors"
               title={label}
             >
@@ -317,6 +340,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate })
               key={label}
               type="button"
               onClick={() => action(editorState)}
+              onMouseDown={(e) => e.preventDefault()}
               className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-900 transition-colors"
               title={label}
             >
@@ -351,7 +375,6 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate })
           </button>
         </div>
 
-        <div className="text-xs text-slate-500">{saveLabel}</div>
       </div>
 
       <div className="flex-1 p-4 min-h-0">

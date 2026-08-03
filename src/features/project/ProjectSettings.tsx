@@ -10,7 +10,6 @@ import { ShortcutRecorder } from '../../components/ShortcutRecorder';
 import {
   BookOpen,
   HardDrive,
-  Palette,
   Settings2,
   RotateCcw,
   AlertTriangle,
@@ -160,7 +159,7 @@ export const ProjectSettings: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="w-full max-w-5xl mx-auto pt-6 space-y-6">
       <div>
         <h2 className="text-2xl font-extrabold tracking-tight text-white flex items-center gap-3">
           <Settings2 className="w-6 h-6 text-violet-400" />
@@ -178,13 +177,13 @@ export const ProjectSettings: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                 isActive
                   ? 'bg-violet-600/20 text-violet-200 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
               }`}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-4 h-4 shrink-0" />
               {tab.label}
             </button>
           );
@@ -194,7 +193,7 @@ export const ProjectSettings: React.FC = () => {
       {/* ─── Project Tab ─── */}
       {activeTab === 'project' && (
         <>
-          <section className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 shadow-xl shadow-slate-950/40">
+          <section className="min-w-[420px] rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 shadow-xl shadow-slate-950/40">
             <div className="flex items-center gap-2 mb-4">
               <BookOpen className="w-4 h-4 text-violet-400" />
               <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">{t('setup.title')}</h3>
@@ -217,38 +216,6 @@ export const ProjectSettings: React.FC = () => {
               </div>
             </div>
             <button onClick={handleSaveProjectInfo} className="mt-4 w-full md:w-auto rounded-lg bg-violet-600/20 px-4 py-2 text-sm font-semibold text-violet-200 hover:bg-violet-600/30 transition-colors">{t('common.save')}</button>
-          </section>
-
-          <section className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 shadow-xl shadow-slate-950/40">
-            <div className="flex items-center gap-2 mb-4">
-              <Palette className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">{t('settings.appearance')}</h3>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">{t('settings.theme')}</label>
-                <select value={settings.theme} onChange={(e) => saveSettings({ ...settings, theme: e.target.value as 'midnight' | 'aurora' | 'noir' })} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none">
-                  <option value="midnight">{t('settings.themeMidnight')}</option>
-                  <option value="aurora">{t('settings.themeAurora')}</option>
-                  <option value="noir">{t('settings.themeNoir')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">{t('settings.focusMode')}</label>
-                <select value={settings.focus_mode} onChange={(e) => saveSettings({ ...settings, focus_mode: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none">
-                  <option value="standard">{t('settings.focusStandard')}</option>
-                  <option value="focus">{t('settings.focusFocus')}</option>
-                  <option value="distraction-free">{t('settings.focusDistractionFree')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">{t('settings.language')}</label>
-                <select value={settings.language} onChange={(e) => saveSettings({ ...settings, language: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none">
-                  <option value="es">{t('settings.languageEs')}</option>
-                  <option value="en">{t('settings.languageEn')}</option>
-                </select>
-              </div>
-            </div>
           </section>
 
           <section className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 shadow-xl shadow-slate-950/40">
@@ -301,7 +268,7 @@ export const ProjectSettings: React.FC = () => {
       {/* ─── Editor Tab ─── */}
       {activeTab === 'editor' && (
         <>
-          <section className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 shadow-xl shadow-slate-950/40">
+          <section className="min-w-[420px] rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 shadow-xl shadow-slate-950/40">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Type className="w-4 h-4 text-amber-400" />
@@ -354,7 +321,18 @@ export const ProjectSettings: React.FC = () => {
               </div>
             </div>
 
+            <div className="mb-6">
+
+            </div>
+
             <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">{t('settings.language')}</label>
+                <select value={settings.language} onChange={(e) => saveSettings({ ...settings, language: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none">
+                  <option value="es">{t('settings.languageEs')}</option>
+                  <option value="en">{t('settings.languageEn')}</option>
+                </select>
+              </div>
               <ToggleOption label={t('editorSettings.spellCheck')} enabled={editorSettings.spellCheck} onChange={(v) => updateEditorSetting('spellCheck', v)} />
               <ToggleOption label={t('editorSettings.autoCorrect')} enabled={editorSettings.autoCorrect} onChange={(v) => updateEditorSetting('autoCorrect', v)} />
               <ToggleOption label={t('editorSettings.showWordCount')} enabled={editorSettings.showWordCount} onChange={(v) => updateEditorSetting('showWordCount', v)} />
@@ -383,7 +361,8 @@ export const ProjectSettings: React.FC = () => {
 
       {/* ─── Shortcuts Tab ─── */}
       {activeTab === 'shortcuts' && (
-        <section className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 shadow-xl shadow-slate-950/40">
+        <>
+        <section className="min-w-[420px] rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 shadow-xl shadow-slate-950/40">
           <div className="flex items-center gap-2 mb-5">
             <Keyboard className="w-4 h-4 text-violet-400" />
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">{t('settings.keyboardShortcuts')}</h3>
@@ -445,6 +424,7 @@ export const ProjectSettings: React.FC = () => {
             <RotateCcw className="w-4 h-4" />{t('settings.resetShortcuts')}
           </button>
         </section>
+        </>
       )}
     </div>
   );

@@ -228,7 +228,7 @@ export const CalendarsPanel: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col p-6 pt-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -240,11 +240,11 @@ export const CalendarsPanel: React.FC = () => {
             {calendars.length} {calendars.length === 1 ? 'calendario' : 'calendarios'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <div className="flex rounded-lg border border-slate-700 overflow-hidden">
             <button
               onClick={() => setView('list')}
-              className={`px-3 py-2 text-xs font-medium transition-colors ${
+              className={`px-4 py-2 text-xs font-medium transition-colors ${
                 view === 'list' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
               }`}
             >
@@ -252,7 +252,7 @@ export const CalendarsPanel: React.FC = () => {
             </button>
             <button
               onClick={() => setView('calendar')}
-              className={`px-3 py-2 text-xs font-medium transition-colors ${
+              className={`px-4 py-2 text-xs font-medium transition-colors ${
                 view === 'calendar' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
               }`}
             >

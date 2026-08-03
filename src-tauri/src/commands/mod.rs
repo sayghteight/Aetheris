@@ -596,6 +596,465 @@ pub fn update_scene_content(
     Ok(())
 }
 
+#[tauri::command]
+pub fn merge_scenes(
+    state: State<'_, AppState>,
+    source_ids: Vec<String>,
+    target_id: String,
+) -> Result<ManuscriptNode, String> {
+    let mut db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_mut().ok_or("No hay proyecto abierto")?;
+
+    // Get target node info
+    let target: ManuscriptNode = conn
+        .query_row(
+            "SELECT id, parent_id, title, type, sort_order, status, color, tags, synopsis, writing_goals, author_notes, created_at, updated_at
+             FROM manuscript_nodes WHERE id = ?1;",
+            [&target_id],
+            |row| {
+                Ok(ManuscriptNode {
+                    id: row.get(0)?,
+                    parent_id: row.get(1)?,
+                    title: row.get(2)?,
+                    r#type: row.get(3)?,
+                    sort_order: row.get(4)?,
+                    status: row.get(5)?,
+                    color: row.get(6)?,
+                    tags: row.get(7)?,
+                    synopsis: row.get(8)?,
+                    writing_goals: row.get(9)?,
+                    author_notes: row.get(10)?,
+                    created_at: row.get(11)?,
+                    updated_at: row.get(12)?,
+                })
+            },
+        )
+        .map_err(|e| format!("Nodo objetivo no encontrado: {}", e))?;
+
+    // Get target's original content first
+    let (target_content, target_plain_text): (Option<String>, Option<String>) = conn
+        .query_row(
+            "SELECT content, plain_text FROM scene_contents WHERE node_id = ?1;",
+            [&target_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .ok()
+        .unwrap_or((None, None));
+
+    // Start with target content
+    let mut merged_content = target_content.unwrap_or_default();
+    let mut merged_plain_text = target_plain_text.unwrap_or_default();
+
+    // Append all source contents
+    for source_id in source_ids.iter() {
+        let content: Option<String> = conn
+            .query_row(
+                "SELECT content FROM scene_contents WHERE node_id = ?1;",
+                [source_id],
+                |row| row.get(0),
+            )
+            .ok();
+
+        let plain_text: Option<String> = conn
+            .query_row(
+                "SELECT plain_text FROM scene_contents WHERE node_id = ?1;",
+                [source_id],
+                |row| row.get(0),
+            )
+            .ok();
+
+        if let Some(content) = content {
+            if !merged_content.is_empty() {
+                merged_content.push('\n');
+                merged_plain_text.push_str("\n\n");
+            }
+            merged_content.push_str(&content);
+            if let Some(pt) = plain_text {
+                merged_plain_text.push_str(&pt);
+            }
+        }
+    }
+
+    // Update target with merged content
+    conn.execute(
+        "INSERT INTO scene_contents (node_id, content, plain_text, updated_at)
+         VALUES (?1, ?2, ?3, CURRENT_TIMESTAMP)
+         ON CONFLICT(node_id) DO UPDATE SET
+            content = excluded.content,
+            plain_text = excluded.plain_text,
+            updated_at = CURRENT_TIMESTAMP;",
+        (&target_id, &merged_content, &merged_plain_text),
+    )
+    .map_err(|e| format!("Error actualizando contenido fusionado: {}", e))?;
+
+    // Update FTS index
+    let _ = conn.execute("DELETE FROM fts_index WHERE id = ?1;", [&target_id]);
+    let _ = conn.execute(
+        "INSERT INTO fts_index (id, title, content, type)
+         VALUES (?1, ?2, ?3, 'scene');",
+        (&target_id, &target.title, &merged_plain_text),
+    );
+
+    // Delete source nodes and their contents
+    for source_id in &source_ids {
+        if source_id != &target_id {
+            conn.execute("DELETE FROM scene_contents WHERE node_id = ?1;", [source_id])
+                .map_err(|e| format!("Error eliminando contenido source: {}", e))?;
+            conn.execute("DELETE FROM manuscript_nodes WHERE id = ?1;", [source_id])
+                .map_err(|e| format!("Error eliminando nodo source: {}", e))?;
+        }
+    }
+
+    // Return updated target
+    Ok(target)
+}
+
+#[tauri::command]
+pub fn split_scene_at_cursor(
+    state: State<'_, AppState>,
+    node_id: String,
+    cursor_position: usize,
+) -> Result<Vec<ManuscriptNode>, String> {
+    let mut db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_mut().ok_or("No hay proyecto abierto")?;
+
+    // Get original content and metadata
+    let (content, plain_text): (Option<String>, Option<String>) = conn
+        .query_row(
+            "SELECT content, plain_text FROM scene_contents WHERE node_id = ?1;",
+            [&node_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|e| format!("Contenido no encontrado: {}", e))?;
+
+    let original_node: ManuscriptNode = conn
+        .query_row(
+            "SELECT id, parent_id, title, type, sort_order, status, color, tags, synopsis, writing_goals, author_notes, created_at, updated_at
+             FROM manuscript_nodes WHERE id = ?1;",
+            [&node_id],
+            |row| {
+                Ok(ManuscriptNode {
+                    id: row.get(0)?,
+                    parent_id: row.get(1)?,
+                    title: row.get(2)?,
+                    r#type: row.get(3)?,
+                    sort_order: row.get(4)?,
+                    status: row.get(5)?,
+                    color: row.get(6)?,
+                    tags: row.get(7)?,
+                    synopsis: row.get(8)?,
+                    writing_goals: row.get(9)?,
+                    author_notes: row.get(10)?,
+                    created_at: row.get(11)?,
+                    updated_at: row.get(12)?,
+                })
+            },
+        )
+        .map_err(|e| format!("Nodo no encontrado: {}", e))?;
+
+    let parent_id = original_node.parent_id.clone();
+    let base_sort_order = original_node.sort_order;
+
+    // Split the plain text at cursor position
+    let text = plain_text.unwrap_or_default();
+    let (first_text, second_text) = text.split_at(cursor_position.min(text.len()));
+
+    // Create first scene with original ID and content
+    let first_content = if let Some(ref c) = content {
+        let first_c: String = c.chars().take(cursor_position.min(c.len())).collect();
+        first_c
+    } else {
+        String::new()
+    };
+
+    conn.execute(
+        "INSERT INTO scene_contents (node_id, content, plain_text, updated_at)
+         VALUES (?1, ?2, ?3, CURRENT_TIMESTAMP)
+         ON CONFLICT(node_id) DO UPDATE SET
+            content = excluded.content,
+            plain_text = excluded.plain_text,
+            updated_at = CURRENT_TIMESTAMP;",
+        (&node_id, &first_content, first_text),
+    )
+    .map_err(|e| format!("Error actualizando primera escena: {}", e))?;
+
+    // Create second scene
+    let second_id = Uuid::new_v4().to_string();
+    let second_title = format!("{} (2)", original_node.title);
+
+    conn.execute(
+        "INSERT INTO manuscript_nodes (id, parent_id, title, type, sort_order, status, color, tags, synopsis, writing_goals, author_notes, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
+        (
+            &second_id,
+            &parent_id,
+            &second_title,
+            &original_node.r#type,
+            base_sort_order + 1,
+            &original_node.status,
+            &original_node.color,
+            &original_node.tags,
+            &original_node.synopsis,
+            &original_node.writing_goals,
+            &original_node.author_notes,
+        ),
+    )
+    .map_err(|e| format!("Error creando segunda escena: {}", e))?;
+
+    let second_content = if let Some(ref c) = content {
+        let second_c: String = c.chars().skip(cursor_position).collect();
+        second_c
+    } else {
+        String::new()
+    };
+
+    conn.execute(
+        "INSERT INTO scene_contents (node_id, content, plain_text, updated_at)
+         VALUES (?1, ?2, ?3, CURRENT_TIMESTAMP);",
+        (&second_id, &second_content, second_text),
+    )
+    .map_err(|e| format!("Error creando contenido segunda escena: {}", e))?;
+
+    // Update FTS for both
+    let _ = conn.execute("DELETE FROM fts_index WHERE id = ?1;", [&node_id]);
+    let _ = conn.execute(
+        "INSERT INTO fTS_index (id, title, content, type) VALUES (?1, ?2, ?3, 'scene');",
+        (&node_id, &original_node.title, first_text),
+    );
+    let _ = conn.execute(
+        "INSERT INTO fts_index (id, title, content, type) VALUES (?1, ?2, ?3, 'scene');",
+        (&second_id, &second_title, second_text),
+    );
+
+    // Return both nodes
+    let second_node = ManuscriptNode {
+        id: second_id,
+        parent_id,
+        title: second_title,
+        r#type: original_node.r#type.clone(),
+        sort_order: base_sort_order + 1,
+        status: original_node.status.clone(),
+        color: original_node.color.clone(),
+        tags: original_node.tags.clone(),
+        synopsis: original_node.synopsis.clone(),
+        writing_goals: original_node.writing_goals.clone(),
+        author_notes: original_node.author_notes.clone(),
+        created_at: original_node.created_at.clone(),
+        updated_at: original_node.updated_at.clone(),
+    };
+
+    Ok(vec![original_node, second_node])
+}
+
+#[tauri::command]
+pub fn split_scene_by_selection(
+    state: State<'_, AppState>,
+    node_id: String,
+    start: usize,
+    end: usize,
+) -> Result<Vec<ManuscriptNode>, String> {
+    let mut db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_mut().ok_or("No hay proyecto abierto")?;
+
+    // Get original content and metadata
+    let (content, plain_text): (Option<String>, Option<String>) = conn
+        .query_row(
+            "SELECT content, plain_text FROM scene_contents WHERE node_id = ?1;",
+            [&node_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|e| format!("Contenido no encontrado: {}", e))?;
+
+    let original_node: ManuscriptNode = conn
+        .query_row(
+            "SELECT id, parent_id, title, type, sort_order, status, color, tags, synopsis, writing_goals, author_notes, created_at, updated_at
+             FROM manuscript_nodes WHERE id = ?1;",
+            [&node_id],
+            |row| {
+                Ok(ManuscriptNode {
+                    id: row.get(0)?,
+                    parent_id: row.get(1)?,
+                    title: row.get(2)?,
+                    r#type: row.get(3)?,
+                    sort_order: row.get(4)?,
+                    status: row.get(5)?,
+                    color: row.get(6)?,
+                    tags: row.get(7)?,
+                    synopsis: row.get(8)?,
+                    writing_goals: row.get(9)?,
+                    author_notes: row.get(10)?,
+                    created_at: row.get(11)?,
+                    updated_at: row.get(12)?,
+                })
+            },
+        )
+        .map_err(|e| format!("Nodo no encontrado: {}", e))?;
+
+    let parent_id = original_node.parent_id.clone();
+    let base_sort_order = original_node.sort_order;
+
+    let text = plain_text.unwrap_or_default();
+    let start_idx = start.min(text.len());
+    let end_idx = end.min(text.len());
+
+    let (before_text, rest) = text.split_at(start_idx);
+    let (selected_text, after_text) = rest.split_at(end_idx.saturating_sub(start_idx));
+
+    // First scene (before selection)
+    let first_content = if let Some(ref c) = content {
+        let first_c: String = c.chars().take(start_idx).collect();
+        first_c
+    } else {
+        String::new()
+    };
+
+    conn.execute(
+        "INSERT INTO scene_contents (node_id, content, plain_text, updated_at)
+         VALUES (?1, ?2, ?3, CURRENT_TIMESTAMP)
+         ON CONFLICT(node_id) DO UPDATE SET
+            content = excluded.content,
+            plain_text = excluded.plain_text,
+            updated_at = CURRENT_TIMESTAMP;",
+        (&node_id, &first_content, before_text),
+    )
+    .map_err(|e| format!("Error actualizando primera escena: {}", e))?;
+
+    // Second scene (selection)
+    let second_id = Uuid::new_v4().to_string();
+    let second_title = format!("{} (2)", original_node.title);
+
+    conn.execute(
+        "INSERT INTO manuscript_nodes (id, parent_id, title, type, sort_order, status, color, tags, synopsis, writing_goals, author_notes, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
+        (
+            &second_id,
+            &parent_id,
+            &second_title,
+            &original_node.r#type,
+            base_sort_order + 1,
+            &original_node.status,
+            &original_node.color,
+            &original_node.tags,
+            &original_node.synopsis,
+            &original_node.writing_goals,
+            &original_node.author_notes,
+        ),
+    )
+    .map_err(|e| format!("Error creando segunda escena: {}", e))?;
+
+    let second_content = if let Some(ref c) = content {
+        let second_c: String = c.chars().skip(start_idx).take(end_idx - start_idx).collect();
+        second_c
+    } else {
+        String::new()
+    };
+
+    conn.execute(
+        "INSERT INTO scene_contents (node_id, content, plain_text, updated_at)
+         VALUES (?1, ?2, ?3, CURRENT_TIMESTAMP);",
+        (&second_id, &second_content, selected_text),
+    )
+    .map_err(|e| format!("Error creando contenido segunda escena: {}", e))?;
+
+    // Third scene (after selection) - if there's content after
+    let third_id = if !after_text.is_empty() {
+        let id = Uuid::new_v4().to_string();
+        let third_title = format!("{} (3)", original_node.title);
+
+        conn.execute(
+            "INSERT INTO manuscript_nodes (id, parent_id, title, type, sort_order, status, color, tags, synopsis, writing_goals, author_notes, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
+            (
+                &id,
+                &parent_id,
+                &third_title,
+                &original_node.r#type,
+                base_sort_order + 2,
+                &original_node.status,
+                &original_node.color,
+                &original_node.tags,
+                &original_node.synopsis,
+                &original_node.writing_goals,
+                &original_node.author_notes,
+            ),
+        )
+        .map_err(|e| format!("Error creando tercera escena: {}", e))?;
+
+        let third_content = if let Some(ref c) = content {
+            let third_c: String = c.chars().skip(end_idx).collect();
+            third_c
+        } else {
+            String::new()
+        };
+
+        conn.execute(
+            "INSERT INTO scene_contents (node_id, content, plain_text, updated_at)
+             VALUES (?1, ?2, ?3, CURRENT_TIMESTAMP);",
+            (&id, &third_content, after_text),
+        )
+        .map_err(|e| format!("Error creando contenido tercera escena: {}", e))?;
+
+        Some(ManuscriptNode {
+            id: id.clone(),
+            parent_id: parent_id.clone(),
+            title: third_title,
+            r#type: original_node.r#type.clone(),
+            sort_order: base_sort_order + 2,
+            status: original_node.status.clone(),
+            color: original_node.color.clone(),
+            tags: original_node.tags.clone(),
+            synopsis: original_node.synopsis.clone(),
+            writing_goals: original_node.writing_goals.clone(),
+            author_notes: original_node.author_notes.clone(),
+            created_at: original_node.created_at.clone(),
+            updated_at: original_node.updated_at.clone(),
+        })
+    } else {
+        None
+    };
+
+    // Update FTS
+    let _ = conn.execute("DELETE FROM fts_index WHERE id = ?1;", [&node_id]);
+    let _ = conn.execute(
+        "INSERT INTO fts_index (id, title, content, type) VALUES (?1, ?2, ?3, 'scene');",
+        (&node_id, &original_node.title, before_text),
+    );
+    let _ = conn.execute(
+        "INSERT INTO fts_index (id, title, content, type) VALUES (?1, ?2, ?3, 'scene');",
+        (&second_id, &second_title, selected_text),
+    );
+    if let Some(ref third) = third_id {
+        let _ = conn.execute(
+            "INSERT INTO fts_index (id, title, content, type) VALUES (?1, ?2, ?3, 'scene');",
+            (&third.id, &third.title, after_text),
+        );
+    }
+
+    // Return nodes
+    let second_node = ManuscriptNode {
+        id: second_id,
+        parent_id,
+        title: second_title,
+        r#type: original_node.r#type.clone(),
+        sort_order: base_sort_order + 1,
+        status: original_node.status.clone(),
+        color: original_node.color.clone(),
+        tags: original_node.tags.clone(),
+        synopsis: original_node.synopsis.clone(),
+        writing_goals: original_node.writing_goals.clone(),
+        author_notes: original_node.author_notes.clone(),
+        created_at: original_node.created_at.clone(),
+        updated_at: original_node.updated_at.clone(),
+    };
+
+    let mut result = vec![original_node, second_node];
+    if let Some(third) = third_id {
+        result.push(third);
+    }
+
+    Ok(result)
+}
+
 // Extensión rápida para retornar un String customizado en lugar de Option para manejar errores
 trait OptionExt<T> {
     fn ok_ok_or(self, err: &str) -> Result<T, String>;
@@ -1057,6 +1516,160 @@ pub fn save_app_settings(key: String, value: String) -> Result<(), String> {
     fs::write(&file_path, &value)
         .map_err(|e| format!("Error guardando configuración: {}", e))?;
 
+    Ok(())
+}
+
+// ─── Export Commands ──────────────────────────────────────────────────────────
+
+use crate::export::{ExportManuscript, ExportPart, ExportChapter, ExportScene, export_as_html, export_as_markdown, export_as_docx, export_as_pdf};
+
+fn build_export_manuscript(conn: &Connection) -> Result<ExportManuscript, String> {
+    use crate::domain::ManuscriptNode;
+
+    // Get project metadata
+    let mut meta_stmt = conn
+        .prepare("SELECT title, author FROM project_metadata LIMIT 1;")
+        .map_err(|e| e.to_string())?;
+
+    let (title, author): (String, Option<String>) = meta_stmt
+        .query_row([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(|e| format!("Error obteniendo metadatos: {}", e))?;
+
+    // Get all nodes
+    let mut nodes_stmt = conn
+        .prepare("SELECT id, parent_id, title, type, synopsis FROM manuscript_nodes ORDER BY sort_order ASC;")
+        .map_err(|e| e.to_string())?;
+
+    let nodes: Vec<ManuscriptNode> = nodes_stmt
+        .query_map([], |row| {
+            Ok(ManuscriptNode {
+                id: row.get(0)?,
+                parent_id: row.get(1)?,
+                title: row.get(2)?,
+                r#type: row.get(3)?,
+                synopsis: row.get(4)?,
+                sort_order: 0,
+                status: String::new(),
+                color: None,
+                tags: None,
+                writing_goals: None,
+                author_notes: None,
+                created_at: None,
+                updated_at: None,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    // Build hierarchy: parts -> chapters -> scenes
+    let mut parts: Vec<ExportPart> = Vec::new();
+
+    for node in &nodes {
+        match node.r#type.as_str() {
+            "part" => {
+                let part = build_part(&node, &nodes, conn)?;
+                parts.push(part);
+            }
+            "chapter" => {
+                // Orphan chapter (no part) - create a default part
+                if node.parent_id.is_none() {
+                    let part = ExportPart {
+                        title: "Sin parte".to_string(),
+                        chapters: vec![build_chapter(&node, &nodes, conn)?],
+                    };
+                    parts.push(part);
+                }
+            }
+            "scene" => {
+                // Double orphan - add to a default part
+                if node.parent_id.is_none() {
+                    let scene = build_scene(&node, conn)?;
+                    let chapter = ExportChapter {
+                        title: "Sin capítulo".to_string(),
+                        scenes: vec![scene],
+                    };
+                    let part = ExportPart {
+                        title: "Sin parte".to_string(),
+                        chapters: vec![chapter],
+                    };
+                    parts.push(part);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Ok(ExportManuscript { title, author, parts })
+}
+
+fn build_part(part_node: &ManuscriptNode, all_nodes: &[ManuscriptNode], conn: &Connection) -> Result<ExportPart, String> {
+    let mut chapters: Vec<ExportChapter> = Vec::new();
+
+    for node in all_nodes {
+        if node.parent_id.as_ref() == Some(&part_node.id) && node.r#type == "chapter" {
+            chapters.push(build_chapter(node, all_nodes, conn)?);
+        }
+    }
+
+    Ok(ExportPart {
+        title: part_node.title.clone(),
+        chapters,
+    })
+}
+
+fn build_chapter(chapter_node: &ManuscriptNode, all_nodes: &[ManuscriptNode], conn: &Connection) -> Result<ExportChapter, String> {
+    let mut scenes: Vec<ExportScene> = Vec::new();
+
+    for node in all_nodes {
+        if node.parent_id.as_ref() == Some(&chapter_node.id) && node.r#type == "scene" {
+            scenes.push(build_scene(node, conn)?);
+        }
+    }
+
+    Ok(ExportChapter {
+        title: chapter_node.title.clone(),
+        scenes,
+    })
+}
+
+fn build_scene(scene_node: &ManuscriptNode, conn: &Connection) -> Result<ExportScene, String> {
+    let mut stmt = conn
+        .prepare("SELECT plain_text FROM scene_contents WHERE node_id = ?1;")
+        .map_err(|e| e.to_string())?;
+
+    let content: String = stmt
+        .query_row([&scene_node.id], |row| row.get(0))
+        .unwrap_or_default();
+
+    Ok(ExportScene {
+        id: scene_node.id.clone(),
+        title: scene_node.title.clone(),
+        content,
+        synopsis: scene_node.synopsis.clone(),
+    })
+}
+
+#[tauri::command]
+pub fn export_manuscript(state: State<'_, AppState>, format: String) -> Result<Vec<u8>, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let manuscript = build_export_manuscript(conn)?;
+
+    match format.as_str() {
+        "html" => Ok(export_as_html(&manuscript).into_bytes()),
+        "markdown" => Ok(export_as_markdown(&manuscript).into_bytes()),
+        "docx" => Ok(export_as_docx(&manuscript)),
+        "pdf" => Ok(export_as_pdf(&manuscript)),
+        _ => Err(format!("Formato no soportado: {}", format)),
+    }
+}
+
+#[tauri::command]
+pub fn save_exported_file(path: String, data: Vec<u8>) -> Result<(), String> {
+    fs::write(&path, &data)
+        .map_err(|e| format!("Error guardando archivo: {}", e))?;
     Ok(())
 }
 
