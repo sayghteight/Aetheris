@@ -20,6 +20,7 @@ import {
 import { useProjectStore } from '../../store/projectStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { useNavigationStore } from '../../store/navigationStore';
 
 interface UniverseEntry {
   id: string;
@@ -732,6 +733,7 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
 
 export const UniversePanel: React.FC = () => {
   const { isOpen, currentProject } = useProjectStore();
+  const { selectedUniverseCategoryId, selectedUniverseEntryId, setSelectedUniverse } = useNavigationStore();
   const [categories, setCategories] = useState<UniverseCategory[]>(defaultCategories);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
@@ -766,6 +768,28 @@ export const UniversePanel: React.FC = () => {
 
     void loadUniverseData();
   }, [isOpen, currentProject?.id]);
+
+  // Sync with navigation store (for search navigation)
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    if (selectedUniverseCategoryId) {
+      // Check if category exists
+      const catExists = categories.some(c => c.id === selectedUniverseCategoryId);
+      if (catExists) {
+        setSelectedCategoryId(selectedUniverseCategoryId);
+        // If we also have an entry to select, set it after a brief delay to allow state to settle
+        if (selectedUniverseEntryId) {
+          // Small delay to ensure the category view is rendered first
+          setTimeout(() => {
+            setSelectedEntryId(selectedUniverseEntryId);
+            // Clear the navigation state so repeated searches work correctly
+            setSelectedUniverse(null, null);
+          }, 50);
+        }
+      }
+    }
+  }, [selectedUniverseCategoryId, selectedUniverseEntryId, isHydrated, categories, setSelectedUniverse]);
 
   useEffect(() => {
     if (!isOpen || !isHydrated) return;

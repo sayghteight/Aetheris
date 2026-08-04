@@ -2,7 +2,7 @@ import React from 'react';
 import { Tag, GitBranch, ArrowUpRight } from 'lucide-react';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
-const VERSION = '0.1.3';
+const VERSION = '0.1.4';
 
 interface ChangelogEntry {
   hash: string;
