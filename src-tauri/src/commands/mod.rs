@@ -818,7 +818,7 @@ pub fn split_scene_at_cursor(
     // Update FTS for both
     let _ = conn.execute("DELETE FROM fts_index WHERE id = ?1;", [&node_id]);
     let _ = conn.execute(
-        "INSERT INTO fTS_index (id, title, content, type) VALUES (?1, ?2, ?3, 'scene');",
+        "INSERT INTO fts_index (id, title, content, type) VALUES (?1, ?2, ?3, 'scene');",
         (&node_id, &original_node.title, first_text),
     );
     let _ = conn.execute(
@@ -1517,6 +1517,207 @@ pub fn save_app_settings(key: String, value: String) -> Result<(), String> {
         .map_err(|e| format!("Error guardando configuración: {}", e))?;
 
     Ok(())
+}
+
+// ─── Search Commands ─────────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct SearchResult {
+    pub id: String,
+    pub title: String,
+    pub snippet: String,
+    pub rank: f64,
+    #[serde(rename = "resultType")]
+    pub result_type: String,  // "scene" | "universe"
+    pub category: Option<String>,  // e.g. "character", "location" — null for scenes
+    #[serde(rename = "categoryId")]
+    pub category_id: Option<String>,  // category identifier for universe navigation
+}
+
+// Get parent chapter title for a scene
+fn get_scene_parent_title(conn: &Connection, scene_id: &str) -> Option<String> {
+    let parent_id: Option<String> = conn
+        .query_row(
+            "SELECT parent_id FROM manuscript_nodes WHERE id = ?1;",
+            [scene_id],
+            |row| row.get(0),
+        )
+        .ok()?;
+
+    if let Some(pid) = parent_id {
+        conn.query_row(
+            "SELECT title FROM manuscript_nodes WHERE id = ?1;",
+            [pid],
+            |row| row.get(0),
+        )
+        .ok()
+    } else {
+        None
+    }
+}
+
+#[tauri::command]
+pub fn search_all(state: State<'_, AppState>, query: String) -> Result<Vec<SearchResult>, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    if query.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut all_results: Vec<SearchResult> = Vec::new();
+
+    // ── Search manuscripts (FTS5) ─────────────────────────────────────────────
+    let escaped_query = query
+        .replace('"', "\"\"")
+        .replace('*', " ");
+    let fts_query = format!("\"{}\"", escaped_query);
+
+    if let Ok(mut stmt) = conn.prepare(
+        "SELECT id, title, bm25(fts_index) as rank
+         FROM fts_index
+         WHERE fts_index MATCH ?1 AND type = 'scene'
+         ORDER BY rank
+         LIMIT 50;",
+    ) {
+        let rows: Vec<(String, String, f64)> = stmt
+            .query_map([&fts_query], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })
+            .map_err(|e| e.to_string())
+            .ok()
+            .map(|m| m.filter_map(|r| r.ok()).collect::<Vec<_>>())
+            .unwrap_or_default();
+
+        for (scene_id, title, rank) in rows {
+            let snippet = conn
+                .query_row(
+                    "SELECT snippet(fts_index, 2, '<mark>', '</mark>', '…', 30) FROM fts_index WHERE id = ?1 AND type = 'scene';",
+                    [&scene_id],
+                    |row| row.get::<_, String>(0),
+                )
+                .unwrap_or_else(|_| title.clone());
+
+            let chapter_title = get_scene_parent_title(conn, &scene_id);
+            let full_snippet = if let Some(ch) = chapter_title {
+                format!("{} › {}", ch, snippet)
+            } else {
+                snippet
+            };
+
+            all_results.push(SearchResult {
+                id: scene_id,
+                title,
+                snippet: full_snippet,
+                rank,
+                result_type: "scene".to_string(),
+                category: None,
+                category_id: None,
+            });
+        }
+    }
+
+    // ── Search universe (universe_state JSON) ─────────────────────────────────
+    let universe_payload: Option<String> = conn
+        .query_row(
+            "SELECT data FROM universe_state WHERE id = 'default' LIMIT 1;",
+            [],
+            |row| row.get(0),
+        )
+        .ok();
+
+    if let Some(payload) = universe_payload {
+        #[derive(Deserialize)]
+        struct UniverseEntry {
+            id: String,
+            name: String,
+            #[serde(rename = "type")]
+            entry_type: Option<String>,
+            content: Option<String>,
+        }
+        #[derive(Deserialize)]
+        struct UniverseCategory {
+            #[allow(dead_code)]
+            id: String,
+            name: String,
+            entries: Vec<UniverseEntry>,
+        }
+
+        if let Ok(categories) = serde_json::from_str::<Vec<UniverseCategory>>(&payload) {
+            let query_lower = query.to_lowercase();
+
+            for category in categories {
+                for entry in category.entries {
+                    let name_match = entry.name.to_lowercase().contains(&query_lower);
+                    let content_match = entry.content.as_ref()
+                        .map(|c| c.to_lowercase().contains(&query_lower))
+                        .unwrap_or(false);
+
+                    if name_match || content_match {
+                        let snippet = entry.content.as_ref().map(|c| {
+                            if c.len() > 120 {
+                                if let Some(pos) = c.to_lowercase().find(&query_lower) {
+                                    let start = pos.saturating_sub(40);
+                                    let end = (pos + query.len() + 40).min(c.len());
+                                    let prefix = if start > 0 { "…" } else { "" };
+                                    let suffix = if end < c.len() { "…" } else { "" };
+                                    format!("{}{}{}", prefix, &c[start..end], suffix)
+                                } else {
+                                    format!("{}…", &c[..120])
+                                }
+                            } else {
+                                c.clone()
+                            }
+                        }).unwrap_or_default();
+
+                        let rank = if name_match { 0.0 } else { 2.0 };
+
+                        // Strip HTML tags from snippet for clean text display
+                        let mut in_tag = false;
+                        let mut plain_chars: Vec<char> = Vec::new();
+                        for c in snippet.chars() {
+                            if c == '<' {
+                                in_tag = true;
+                            } else if c == '>' {
+                                in_tag = false;
+                            } else if !in_tag {
+                                plain_chars.push(c);
+                            }
+                        }
+                        let plain_text: String = plain_chars.into_iter().collect();
+                        // Collapse multiple spaces/tabs but preserve newlines, then truncate
+                        let final_snippet = plain_text
+                            .replace("\t", " ")
+                            .replace("  ", " ")  // collapse double spaces
+                            .lines()
+                            .take(3)  // max 3 lines
+                            .collect::<Vec<_>>()
+                            .join("\n");
+                        let final_snippet = if final_snippet.len() > 150 {
+                            format!("{}…", &final_snippet[..150.min(final_snippet.len())])
+                        } else {
+                            final_snippet
+                        };
+
+                        all_results.push(SearchResult {
+                            id: entry.id,
+                            title: entry.name.clone(),
+                            snippet: final_snippet,
+                            rank,
+                            result_type: "universe".to_string(),
+                            category: Some(category.name.clone()),
+                            category_id: Some(category.id.clone()),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort all results by rank
+    all_results.sort_by(|a, b| a.rank.partial_cmp(&b.rank).unwrap_or(std::cmp::Ordering::Equal));
+
+    Ok(all_results)
 }
 
 // ─── Export Commands ──────────────────────────────────────────────────────────

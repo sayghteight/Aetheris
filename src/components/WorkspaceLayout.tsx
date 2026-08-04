@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProjectStore } from '../store/projectStore';
 import { useNavigationStore, ActiveView } from '../store/navigationStore';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { SearchPanel } from '../features/search/SearchPanel';
 import {
   BookOpen,
   Sparkles,
@@ -18,7 +19,7 @@ import {
 } from 'lucide-react';
 
 // Read version from package.json at runtime
-const APP_VERSION = '0.1.3';
+const APP_VERSION = '0.1.4';
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
@@ -36,7 +37,21 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   const { setActiveView } = useWorkspaceStore();
   const { settings, saveSettings } = useSettingsStore();
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+
+  // Keyboard shortcut: Ctrl+Shift+F to open search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+      if (e.key === 'Escape' && searchOpen) {
+        setSearchOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchOpen]);
 
   const toggleFocusMode = () => {
     const next = settings.focus_mode === 'standard' ? 'focus' : 'standard';
@@ -82,23 +97,16 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         {/* Right — search + focus mode */}
         <div className="flex items-center gap-1">
           {/* Search */}
-          <div className={`flex items-center gap-2 transition-all duration-200 ${searchOpen ? 'w-64' : 'w-8'}`}>
+          <div className={`items-center gap-2 transition-all duration-200 ${searchOpen ? 'flex' : 'flex'}`}>
             {searchOpen ? (
-              <>
-                <input
-                  autoFocus
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Buscar..."
-                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-amber-500/60"
-                  onBlur={() => { setSearchOpen(false); setSearchQuery(''); }}
-                />
-              </>
+              <div className="w-[420px] h-[500px] absolute top-14 right-4 z-50 shadow-2xl rounded-2xl overflow-hidden">
+                <SearchPanel />
+              </div>
             ) : (
               <button
                 onClick={() => setSearchOpen(true)}
                 className="w-8 h-8 flex items-center justify-center rounded text-slate-500 hover:text-slate-200 hover:bg-slate-800/60 transition-colors duration-150"
-                title="Buscar (⌘K)"
+                title="Buscar (Ctrl+Shift+F)"
               >
                 <Search className="w-3.5 h-3.5" />
               </button>
