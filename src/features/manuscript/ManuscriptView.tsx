@@ -257,10 +257,10 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
           className={`group flex items-center justify-between py-1.5 pr-2 rounded-lg cursor-pointer transition-all duration-150 ${
             isActive
-              ? 'bg-violet-600/20 border-l-2 border-violet-500 text-violet-200'
+              ? 'bg-[var(--color-brand-bg)] border-l-2 border-[var(--color-brand)] text-[var(--color-brand)]'
               : selectedNodeIds.has(node.id)
-              ? 'bg-violet-600/10 border border-violet-500/30 text-violet-200'
-              : 'hover:bg-slate-900/60 text-slate-300'
+              ? 'bg-[var(--color-brand-bg)] border border-[var(--color-brand)]/30 text-[var(--color-brand)]'
+              : 'hover:bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)]'
           }`}
           onClick={(e) => handleNodeClick(node, e)}
           onContextMenu={(e) => handleContextMenu(e, node)}
@@ -269,7 +269,7 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
             {node.type !== 'scene' ? (
               <span
                 onClick={(e) => { e.stopPropagation(); toggleExpand(node.id); }}
-                className="p-0.5 hover:bg-slate-800 rounded text-slate-500"
+                className="p-0.5 hover:bg-[var(--color-bg-hover)] rounded text-[var(--color-text-muted)]"
               >
                 {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </span>
@@ -288,7 +288,7 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
                   if (e.key === 'Escape') setEditingNodeId(null);
                 }}
                 onClick={e => e.stopPropagation()}
-                className="bg-slate-800 border border-violet-500 rounded px-1 py-0.5 text-sm text-white outline-none flex-1"
+                className="bg-[var(--color-bg-secondary)] border border-[var(--color-brand)] rounded px-1 py-0.5 text-sm text-[var(--color-text-primary)] outline-none flex-1"
               />
             ) : (
               <span className="text-sm truncate font-medium">{node.title}</span>
@@ -300,7 +300,7 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
             {node.type !== 'scene' && (
               <button
                 onClick={(e) => { e.stopPropagation(); setAddingChildTo(node.id); setNewChildType(node.type === 'part' ? 'chapter' : 'scene'); }}
-                className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded"
+                className="p-1 hover:bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] rounded"
                 title="Añadir"
               >
                 <Plus className="w-3 h-3" />
@@ -308,14 +308,14 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
             )}
             <button
               onClick={(e) => { e.stopPropagation(); startEditingTitle(node); }}
-              className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded"
+              className="p-1 hover:bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] rounded"
               title="Renombrar"
             >
               <FileText className="w-3 h-3" />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(node.id); }}
-              className="p-1 hover:bg-red-900/50 text-slate-400 hover:text-red-400 rounded"
+              className="p-1 hover:bg-[var(--color-danger-bg)] text-[var(--color-text-muted)] hover:text-[var(--color-danger)] rounded"
               title="Eliminar"
             >
               <Trash2 className="w-3 h-3" />
@@ -326,10 +326,10 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
         {/* Delete confirm */}
         {showDeleteConfirm === node.id && (
           <div style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }} className="py-1 pr-2">
-            <div className="flex items-center gap-2 bg-red-950/60 border border-red-800/60 rounded-lg px-3 py-2">
-              <span className="text-xs text-red-300 flex-1">{t('manuscript.deleteConfirm') || '¿Eliminar este nodo?'}</span>
-              <button onClick={() => handleDelete(node.id)} className="text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded font-semibold">{t('common.delete')}</button>
-              <button onClick={() => setShowDeleteConfirm(null)} className="text-xs text-slate-400 hover:text-white px-2 py-1">{t('common.cancel')}</button>
+            <div className="flex items-center gap-2 bg-[var(--color-danger-bg)] border border-[var(--color-danger)]/30 rounded-lg px-3 py-2">
+              <span className="text-xs text-[var(--color-danger)] flex-1">{t('manuscript.deleteConfirm') || '¿Eliminar este nodo?'}</span>
+              <button onClick={() => handleDelete(node.id)} className="text-xs bg-[var(--color-danger)] hover:bg-[var(--color-danger)]/80 text-white px-2 py-1 rounded font-semibold">{t('common.delete')}</button>
+              <button onClick={() => setShowDeleteConfirm(null)} className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] px-2 py-1">{t('common.cancel')}</button>
             </div>
           </div>
         )}
@@ -337,28 +337,28 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
         {/* Add child form */}
         {addingChildTo === node.id && (
           <div style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }} className="py-2 pr-2">
-            <div className="flex flex-col gap-2 bg-slate-950/80 p-2 rounded-lg border border-slate-900">
+            <div className="flex flex-col gap-2 bg-[var(--color-bg-secondary)] p-2 rounded-lg border border-[var(--color-border)]">
               <input
                 type="text"
                 autoFocus
                 value={newChildTitle}
                 onChange={e => setNewChildTitle(e.target.value)}
                 placeholder="Título..."
-                className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded px-2 py-1 text-xs outline-none"
+                className="w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] focus:border-[var(--color-brand)] rounded px-2 py-1 text-xs outline-none text-[var(--color-text-primary)]"
                 onKeyDown={e => {
                   if (e.key === 'Enter') handleAddChild(node.id);
                   if (e.key === 'Escape') setAddingChildTo(null);
                 }}
               />
               <div className="flex justify-between items-center gap-2">
-                <select value={newChildType} onChange={e => setNewChildType(e.target.value as any)} className="bg-slate-900 border border-slate-850 rounded text-[10px] text-slate-350 px-1 py-0.5 outline-none">
+                <select value={newChildType} onChange={e => setNewChildType(e.target.value as any)} className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[10px] text-[var(--color-text-secondary)] px-1 py-0.5 outline-none">
                   <option value="scene">Escena</option>
                   <option value="chapter">Capítulo</option>
                   <option value="folder">Carpeta</option>
                 </select>
                 <div className="flex gap-1.5">
-                  <button onClick={() => setAddingChildTo(null)} className="text-[10px] text-slate-500 hover:text-slate-300">{t('common.cancel')}</button>
-                  <button onClick={() => handleAddChild(node.id)} className="text-[10px] bg-violet-600 hover:bg-violet-500 text-white px-2 py-0.5 rounded font-semibold">{t('common.create')}</button>
+                  <button onClick={() => setAddingChildTo(null)} className="text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]">{t('common.cancel')}</button>
+                  <button onClick={() => handleAddChild(node.id)} className="text-[10px] bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white px-2 py-0.5 rounded font-semibold">{t('common.create')}</button>
                 </div>
               </div>
             </div>
@@ -378,12 +378,12 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
   const renderMainContent = () => {
     if (!selectedNode) {
       return (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500">
-          <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center border border-slate-800 mb-4 text-slate-400">
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-[var(--color-text-muted)]">
+          <div className="w-12 h-12 rounded-xl bg-[var(--color-bg-secondary)] flex items-center justify-center border border-[var(--color-border)] mb-4 text-[var(--color-text-secondary)]">
             <BookOpenIcon className="w-6 h-6" />
           </div>
-          <h3 className="font-semibold text-slate-300">{t('editor.noSceneSelected')}</h3>
-          <p className="text-xs text-slate-600 mt-1 max-w-xs">
+          <h3 className="font-semibold text-[var(--color-text-secondary)]">{t('editor.noSceneSelected')}</h3>
+          <p className="text-xs text-[var(--color-text-muted)] mt-1 max-w-xs">
             Selecciona un nodo del árbol lateral para comenzar.
           </p>
         </div>
@@ -478,18 +478,18 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
     <div className="flex h-full w-full overflow-hidden pt-4">
       {/* Left Sidebar — Tree */}
       <div
-        className={`flex flex-col shrink-0 border-r border-slate-800/80 bg-slate-950/50 transition-all duration-200 ${
+        className={`flex flex-col shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg-primary)]/50 transition-all duration-200 ${
           sidebarExpanded ? 'w-64' : 'w-10'
         }`}
       >
         {/* Header */}
-        <div className="px-3 py-3 border-b border-slate-900 flex items-center justify-between gap-2">
+        <div className="px-3 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-2">
           {sidebarExpanded && (
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Manuscrito</h2>
+            <h2 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Manuscrito</h2>
           )}
           <button
             onClick={() => { setSidebarExpanded(!sidebarExpanded); scheduleWorkspaceSave(); }}
-            className="p-1 hover:bg-slate-900 text-slate-500 hover:text-slate-300 rounded transition-colors shrink-0"
+            className="p-1 hover:bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] rounded transition-colors shrink-0"
             title={sidebarExpanded ? 'Colapsar' : 'Expandir'}
           >
             {sidebarExpanded ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -499,10 +499,10 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
         {/* Tree content */}
         {sidebarExpanded && (
           <>
-            <div className="px-2 py-2 border-b border-slate-900">
+            <div className="px-2 py-2 border-b border-[var(--color-border)]">
               <button
                 onClick={() => { setIsAddingRoot(true); setNewRootType('part'); }}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-slate-400 hover:bg-slate-900 hover:text-violet-400 transition-colors"
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-[var(--color-text-muted)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-brand)] transition-colors"
               >
                 <PlusCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>{t('manuscript.newPart')}</span>
@@ -516,13 +516,13 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
               {rootNodes.map(node => renderNode(node))}
 
               {rootNodes.length === 0 && !isAddingRoot && (
-                <div className="text-center py-8 px-4 text-xs text-slate-600">
+                <div className="text-center py-8 px-4 text-xs text-[var(--color-text-muted)]">
                   {t('manuscript.empty') || 'Manuscrito vacío'}
                 </div>
               )}
 
               {isAddingRoot && (
-                <form onSubmit={handleAddRoot} className="p-3 bg-slate-900/40 rounded-xl border border-slate-900 flex flex-col gap-2 mt-2">
+                <form onSubmit={handleAddRoot} className="p-3 bg-[var(--color-bg-secondary)] rounded-xl border border-[var(--color-border)] flex flex-col gap-2 mt-2">
                   <input
                     type="text"
                     autoFocus
@@ -530,16 +530,16 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
                     value={newRootTitle}
                     onChange={e => setNewRootTitle(e.target.value)}
                     placeholder="Título del nodo..."
-                    className="bg-slate-950 border border-slate-800 focus:border-violet-500 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none"
+                    className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] focus:border-[var(--color-brand)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--color-text-primary)] outline-none"
                   />
                   <div className="flex justify-between items-center">
-                    <select value={newRootType} onChange={e => setNewRootType(e.target.value as any)} className="bg-slate-950 border border-slate-850 rounded text-xs text-slate-400 px-2 py-1 outline-none">
+                    <select value={newRootType} onChange={e => setNewRootType(e.target.value as any)} className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-secondary)] px-2 py-1 outline-none">
                       <option value="part">Parte</option>
                       <option value="folder">Carpeta</option>
                     </select>
                     <div className="flex gap-2 text-xs">
-                      <button type="button" onClick={() => setIsAddingRoot(false)} className="text-slate-500 hover:text-slate-300">{t('common.cancel')}</button>
-                      <button type="submit" className="bg-violet-600 hover:bg-violet-500 text-white font-semibold px-2.5 py-1 rounded">{t('common.create')}</button>
+                      <button type="button" onClick={() => setIsAddingRoot(false)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]">{t('common.cancel')}</button>
+                      <button type="submit" className="bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white font-semibold px-2.5 py-1 rounded">{t('common.create')}</button>
                     </div>
                   </div>
                 </form>
@@ -550,7 +550,7 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
       </div>
 
       {/* Main Area */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-slate-900/10">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-[var(--color-bg-primary)]/10">
         {renderMainContent()}
       </div>
 

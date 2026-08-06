@@ -303,8 +303,8 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate, o
   const fontFamily = settings.theme === 'noir' ? 'Georgia, serif' : 'Inter, ui-sans-serif, system-ui, sans-serif';
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950/40 border border-slate-900 rounded-3xl overflow-hidden shadow-xl shadow-slate-950/20">
-      <div className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex flex-col gap-3">
+    <div className="flex-1 flex flex-col h-full bg-[var(--color-bg-secondary)]/40 border border-[var(--color-border)] rounded-3xl overflow-hidden shadow-xl">
+      <div className="bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] px-4 py-3 flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {FORMAT_BUTTONS.map(({ label, icon: Icon, action }) => (
             <button
@@ -312,7 +312,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate, o
               type="button"
               onClick={() => action(editorState)}
               onMouseDown={(e) => e.preventDefault()}
-              className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-900 transition-colors"
+              className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)]/80 px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] transition-colors"
               title={label}
             >
               <Icon className="w-4 h-4" />
@@ -328,7 +328,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate, o
               type="button"
               onClick={() => action(editorState)}
               onMouseDown={(e) => e.preventDefault()}
-              className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-900 transition-colors"
+              className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)]/80 px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] transition-colors"
               title={label}
             >
               <Icon className="w-4 h-4" />
@@ -341,7 +341,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate, o
               type="button"
               onClick={() => action(editorState)}
               onMouseDown={(e) => e.preventDefault()}
-              className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-900 transition-colors"
+              className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)]/80 px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] transition-colors"
               title={label}
             >
               <Icon className="w-4 h-4" />
@@ -356,7 +356,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate, o
               className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
                 showSpellCheck
                   ? 'border-emerald-600 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/40'
-                  : 'border-slate-800 bg-slate-950/80 text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                  : 'border-[var(--color-border)] bg-[var(--color-bg-primary)]/80 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]'
               }`}
               title={showSpellCheck ? 'Desactivar revisión' : 'Activar revisión ortográfica'}
             >
@@ -368,7 +368,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate, o
           <button
             type="button"
             onClick={() => setPreview((p) => !p)}
-            className="ml-auto flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-500 transition-colors"
+            className="ml-auto flex items-center gap-2 rounded-lg bg-[var(--color-brand)] px-4 py-2 text-xs font-semibold text-white hover:bg-[var(--color-brand-hover)] transition-colors"
           >
             {preview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             {preview ? 'Volver al editor' : 'Vista previa'}
@@ -409,7 +409,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate, o
                   return;
                 }
               }}
-              className="w-full h-full resize-none bg-slate-950/0 text-slate-100 placeholder-slate-500 outline-none p-4 rounded-3xl border border-slate-900 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
+              className="w-full h-full resize-none bg-transparent text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none p-4 rounded-3xl border border-[var(--color-border)] focus:border-[var(--color-brand)] focus:ring-2 focus:ring-[var(--color-brand-bg)]"
               style={{ fontFamily, fontSize: 18, lineHeight: 1.75 }}
               placeholder="Comienza a escribir tu escena aquí..."
               spellCheck={settings.spellCheck}
@@ -417,7 +417,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({ sceneId, onStatsUpdate, o
             />
           </div>
         ) : (
-          <div className="w-full h-full overflow-auto prose prose-invert max-w-none rounded-3xl border border-slate-900 bg-slate-950/60 p-6" dangerouslySetInnerHTML={renderPreview()} />
+          <div className="w-full h-full overflow-auto prose prose-invert max-w-none rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/60 p-6 text-[var(--color-text-primary)]" dangerouslySetInnerHTML={renderPreview()} />
         )}
       </div>
     </div>
