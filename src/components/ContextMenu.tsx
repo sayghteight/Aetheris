@@ -59,12 +59,12 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, actions, onActio
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1 min-w-[180px] overflow-hidden"
+      className="fixed z-50 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg shadow-xl py-1 min-w-[180px] overflow-hidden"
       style={{ left: x, top: y }}
     >
       {actions.map((action, index) => {
         if (action.separator) {
-          return <div key={`sep-${index}`} className="h-px bg-slate-700 my-1" />;
+          return <div key={`sep-${index}`} className="h-px bg-[var(--color-border)] my-1" />;
         }
 
         return (
@@ -74,10 +74,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, actions, onActio
             onClick={() => !action.disabled && onAction(action.id)}
             className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors ${
               action.disabled
-                ? 'text-slate-600 cursor-not-allowed'
+                ? 'text-[var(--color-text-muted)] cursor-not-allowed'
                 : action.danger
-                ? 'text-red-400 hover:bg-red-900/40'
-                : 'text-slate-200 hover:bg-slate-700 hover:text-white'
+                ? 'text-[var(--color-danger)] hover:bg-[var(--color-danger-bg)]'
+                : 'text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]'
             }`}
           >
             {action.icon && <span className="w-4 h-4">{action.icon}</span>}
