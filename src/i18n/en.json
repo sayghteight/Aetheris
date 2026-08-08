@@ -109,7 +109,8 @@
     "chapterMetadata": "Chapter metadata",
     "deleteConfirm": "Delete this node?",
     "childNodes": "child elements",
-    "empty": "Manuscript is empty. Create a new Part to get started.",
+    "empty": "Manuscript is empty",
+    "emptyHint": "Create a new Part to start building your story.",
     "mergeScenes": "Merge Scenes",
     "mergeScenesSubtitle": "Select which content and metadata to keep",
     "selectSceneToKeep": "Scene to keep",
@@ -168,7 +169,9 @@
     "newResearch": "New Research",
     "searchPlaceholder": "Search in the universe...",
     "noResults": "No results",
-    "addFirst": "Add your first entry to the universe."
+    "addFirst": "Add your first entry to the universe.",
+    "noEntrySelected": "No element selected",
+    "noEntrySelectedHint": "Select a folder or entry in the structure to edit it, or create a new one."
   },
   "settings": {
     "title": "Settings",
@@ -238,6 +241,12 @@
     "days": "days",
     "empty": "No calendars",
     "emptyHint": "Create your first calendar to get started"
+  },
+  "search": {
+    "typeToSearch": "Type to search",
+    "typeToSearchHint": "Search through all your scenes and the universe.",
+    "noResults": "No results found",
+    "noResultsHint": "Try different keywords."
   },
   "common": {
     "save": "Save",

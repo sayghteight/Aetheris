@@ -218,23 +218,28 @@ export async function parseDocx(file: File): Promise<PartImport[]> {
       // Párrafos y contenido de texto van al contenido de la escena actual
       if (!text) continue;
 
-      const content = (node as Element).innerHTML ?? node.textContent ?? '';
+      // Usar outerHTML si ya es bloque HTML (headings, etc), si no envolver en <p>
+      const isBlockElement = nodeName === 'DIV';
+      const content = isBlockElement
+        ? ((node as Element).outerHTML ?? '')
+        : ((node as Element).innerHTML ?? node.textContent ?? '');
+
+      // Si el contenido ya empieza con <p> o <h y termina con >, ya tiene estructura de bloque
+      const trimmed = content.trim();
+      const hasBlockStructure = /^(<p|<h[1-6]|<ul|<ol|<blockquote)/i.test(trimmed);
 
       if (currentScene) {
-        // Acumular contenido en la escena actual
-        currentScene.content += '\n' + content;
+        // Acumular contenido — envolver en <p> si no tiene estructura de bloque ya
+        currentScene.content += hasBlockStructure ? content : `<p>${content}</p>`;
       } else if (currentChapter) {
-        // No hay escena abierta, crear una con este contenido
-        currentScene = { title: text.slice(0, 50), content };
+        currentScene = { title: text.slice(0, 50), content: hasBlockStructure ? content : `<p>${content}</p>` };
       } else if (currentPart) {
-        // No hay capítulo, crear uno con esta escena
         currentChapter = { title: 'Capítulo 1', scenes: [] };
-        currentScene = { title: text.slice(0, 50), content };
+        currentScene = { title: text.slice(0, 50), content: hasBlockStructure ? content : `<p>${content}</p>` };
       } else {
-        // No hay nada, crear estructura base
         currentPart = { title: 'Parte 1', chapters: [] };
         currentChapter = { title: 'Capítulo 1', scenes: [] };
-        currentScene = { title: text.slice(0, 50), content };
+        currentScene = { title: text.slice(0, 50), content: hasBlockStructure ? content : `<p>${content}</p>` };
       }
     }
   }

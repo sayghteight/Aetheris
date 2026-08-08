@@ -18,9 +18,10 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useProjectStore } from '../../store/projectStore';
-import { useSettingsStore } from '../../store/settingsStore';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useNavigationStore } from '../../store/navigationStore';
+import { TiptapEditor } from '../editor/TiptapEditor';
+import { EmptyState } from '../../components/EmptyState';
 
 interface UniverseEntry {
   id: string;
@@ -425,22 +426,49 @@ const CategoryView: React.FC<{
 }) => {
   const [newFolderName, setNewFolderName] = useState('');
   const [newEntryName, setNewEntryName] = useState('');
+  const [folderError, setFolderError] = useState<string | null>(null);
+  const [entryError, setEntryError] = useState<string | null>(null);
 
   const selectedEntry = useMemo(
     () => findEntry(category.entries, selectedEntryId),
     [category.entries, selectedEntryId],
   );
 
+  // Check for duplicate names in the current category
+  const isDuplicateName = (name: string, excludeId?: string) => {
+    return category.entries.some(
+      (e) => e.name.toLowerCase() === name.toLowerCase() && e.id !== excludeId
+    );
+  };
+
   const handleAddFolder = () => {
-    if (!newFolderName.trim()) return;
-    onAddFolder(newFolderName.trim());
+    const trimmed = newFolderName.trim();
+    if (!trimmed) {
+      setFolderError('El nombre es obligatorio');
+      return;
+    }
+    if (isDuplicateName(trimmed)) {
+      setFolderError('Ya existe una carpeta con este nombre');
+      return;
+    }
+    setFolderError(null);
+    onAddFolder(trimmed);
     setNewFolderName('');
   };
 
   const handleAddEntry = () => {
-    if (!newEntryName.trim()) return;
-    const defaultContent = `<h3>${newEntryName.trim()}</h3><p>Escribe aquí la información sobre ${newEntryName.trim()}.</p>`;
-    onAddEntry(newEntryName.trim(), defaultContent);
+    const trimmed = newEntryName.trim();
+    if (!trimmed) {
+      setEntryError('El nombre es obligatorio');
+      return;
+    }
+    if (isDuplicateName(trimmed)) {
+      setEntryError('Ya existe una ficha con este nombre');
+      return;
+    }
+    setEntryError(null);
+    const defaultContent = `<h3>${trimmed}</h3><p>Escribe aquí la información sobre ${trimmed}.</p>`;
+    onAddEntry(trimmed, defaultContent);
     setNewEntryName('');
   };
 
@@ -537,20 +565,27 @@ const CategoryView: React.FC<{
             <div className="flex gap-2">
               <input
                 value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
+                onChange={(e) => {
+                  setNewFolderName(e.target.value);
+                  setFolderError(null);
+                }}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddFolder()}
                 placeholder="Nombre"
-                className="flex-1 rounded-lg border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-200 outline-none focus:border-violet-500"
+                className={`flex-1 rounded-lg border bg-slate-950 px-2.5 py-1.5 text-sm text-slate-200 outline-none focus:border-violet-500 ${
+                  folderError ? 'border-red-500' : 'border-slate-800'
+                }`}
               />
               <button
                 type="button"
                 onClick={handleAddFolder}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950/70 px-2.5 py-1.5 text-sm text-slate-300 transition hover:border-violet-500 hover:text-white"
+                disabled={!newFolderName.trim() || !!folderError}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950/70 px-2.5 py-1.5 text-sm text-slate-300 transition hover:border-violet-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FolderPlus className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only">Añadir</span>
               </button>
             </div>
+            {folderError && <p className="text-xs text-red-400">{folderError}</p>}
 
             {/* Agregar entrada */}
             <p className="mt-3 text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
@@ -558,15 +593,22 @@ const CategoryView: React.FC<{
             </p>
             <input
               value={newEntryName}
-              onChange={(e) => setNewEntryName(e.target.value)}
+              onChange={(e) => {
+                setNewEntryName(e.target.value);
+                setEntryError(null);
+              }}
               onKeyDown={(e) => e.key === 'Enter' && handleAddEntry()}
               placeholder="Nombre de la ficha"
-              className="w-full rounded-lg border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-200 outline-none focus:border-violet-500"
+              className={`w-full rounded-lg border bg-slate-950 px-2.5 py-1.5 text-sm text-slate-200 outline-none focus:border-violet-500 ${
+                entryError ? 'border-red-500' : 'border-slate-800'
+              }`}
             />
+            {entryError && <p className="text-xs text-red-400">{entryError}</p>}
             <button
               type="button"
               onClick={handleAddEntry}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-violet-500"
+              disabled={!newEntryName.trim() || !!entryError}
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <StickyNote className="h-3.5 w-3.5" />
               Guardar ficha
@@ -626,12 +668,7 @@ const CategoryView: React.FC<{
                 )}
               </div>
             ) : (
-              <div className="flex h-full items-center justify-center">
-                <div className="rounded-lg border border-dashed border-slate-800 p-8 text-center text-sm text-slate-500">
-                  Selecciona una carpeta o ficha en la estructura para
-                  editarla, o crea una nueva.
-                </div>
-              </div>
+              <EmptyState variant="universe" />
             )}
           </div>
         </div>
@@ -645,18 +682,14 @@ const CategoryView: React.FC<{
 interface SceneEditorProps {
   sceneId: string;
   onStatsUpdate: (words: number, readTime: number) => void;
-  onSelectionChange?: (selection: { start: number; end: number } | null) => void;
+  onSelectionChange?: (selection: { from: number; to: number } | null) => void;
 }
 
 export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate, onSelectionChange }) => {
-  const { settings } = useSettingsStore();
   const [content, setContent] = useState('');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const saveTimeout = useRef<number | null>(null as any);
-  const lastStats = useRef({ words: 0, readTime: 0 });
-  const [wordCount, setWordCount] = useState(0);
 
+  // Load content on mount
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -671,59 +704,26 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
     return () => { mounted = false; };
   }, [sceneId]);
 
-  const computeStats = (value: string) => {
-    const stripped = value.replace(/<[^>]+>/g, ' ').trim();
-    const words = stripped === '' ? 0 : stripped.split(/\s+/).length;
-    const readTime = Math.ceil(words / 200);
-    return { words, readTime };
-  };
-
-  const updateStats = (value: string) => {
-    const { words, readTime } = computeStats(value);
-    setWordCount(words);
-    if (lastStats.current.words !== words || lastStats.current.readTime !== readTime) {
-      lastStats.current = { words, readTime };
-      onStatsUpdate(words, readTime);
-    }
-  };
-
-  const saveContent = async (newContent: string) => {
-    setSaveStatus('saving');
-    try {
-      const plainText = newContent.replace(/<[^>]+>/g, ' ');
-      await invoke('update_scene_content', { nodeId: sceneId, content: newContent, plainText });
-      setSaveStatus('saved');
-      setLastSavedAt(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
-    } catch (err) {
-      console.error('Auto-save failed', err);
-      setSaveStatus('error');
-    }
-  };
-
-  const scheduleSave = (newContent: string) => {
+  // Handle content change with autosave
+  const handleChange = (newContent: string) => {
     setContent(newContent);
-    updateStats(newContent);
     if (saveTimeout.current) window.clearTimeout(saveTimeout.current);
-    saveTimeout.current = window.setTimeout(() => saveContent(newContent), 700);
+    saveTimeout.current = window.setTimeout(async () => {
+      try {
+        const plainText = newContent.replace(/<[^>]+>/g, ' ');
+        await invoke('update_scene_content', { nodeId: sceneId, content: newContent, plainText });
+      } catch (err) {
+        console.error('Auto-save failed', err);
+      }
+    }, 700);
   };
-
-  const saveLabel =
-    saveStatus === 'saving'
-      ? 'Guardando…'
-      : saveStatus === 'saved'
-        ? `Guardado ${lastSavedAt ?? ''}`
-        : saveStatus === 'error'
-          ? 'Error al guardar'
-          : 'Sin cambios';
 
   return (
-    <RichTextEditor
-      value={content}
-      onChange={scheduleSave}
+    <TiptapEditor
+      content={content}
+      onChange={handleChange}
       placeholder="Comienza a escribir tu escena aquí..."
-      saveLabel={saveLabel}
-      wordCount={wordCount}
-      showWordCount={settings.showWordCount !== false}
+      onStatsUpdate={onStatsUpdate}
       onSelectionChange={onSelectionChange}
     />
   );

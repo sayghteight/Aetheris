@@ -107,10 +107,43 @@ fn escape_html(s: &str) -> String {
 }
 
 fn format_scene_content(content: &str) -> String {
-    let paragraphs: Vec<&str> = content.split("\n\n").filter(|p| !p.trim().is_empty()).collect();
+    // Si el contenido ya es HTML (de Tiptap), limpiarlo ligeramente y devolverlo
+    // Si es texto plano con saltos de línea, envolver en <p>
+    let trimmed = content.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
 
-    paragraphs
-        .iter()
-        .map(|p| format!("            <p>{}</p>\n", escape_html(p.trim())))
-        .collect()
+    // Si contiene etiquetas HTML al inicio, asumimos que es HTML de Tiptap
+    if trimmed.starts_with('<') {
+        // Convertir <br> en separadores de párrafo y envolver accordingly
+        let with_paragraphs = trimmed
+            .replace("<br>", "\n")
+            .replace("<br/>", "\n")
+            .replace("<br />", "\n");
+        let paragraphs: Vec<&str> = with_paragraphs
+            .split('\n')
+            .filter(|p| !p.trim().is_empty())
+            .collect();
+
+        paragraphs
+            .iter()
+            .map(|p| {
+                let p = p.trim();
+                if p.starts_with('<') {
+                    // Ya es HTML (probablemente <p>...</p>), devolverlo indentado
+                    format!("            {}\n", p)
+                } else {
+                    format!("            <p>{}</p>\n", escape_html(p))
+                }
+            })
+            .collect()
+    } else {
+        // Texto plano — separar por saltos de línea dobles
+        let paragraphs: Vec<&str> = trimmed.split("\n\n").filter(|p| !p.trim().is_empty()).collect();
+        paragraphs
+            .iter()
+            .map(|p| format!("            <p>{}</p>\n", escape_html(p.trim())))
+            .collect()
+    }
 }

@@ -5,6 +5,7 @@ import { useWorkspaceStore, scheduleWorkspaceSave } from '../../store/workspaceS
 import { useI18n } from '../../i18n';
 import { SceneEditor } from '../project/UniversePanel';
 import { ContextMenu, buildMergeActions } from '../../components/ContextMenu';
+import { EmptyState } from '../../components/EmptyState';
 import { MergeScenesDialog } from '../../components/MergeScenesDialog';
 import { SplitSceneDialog } from '../../components/SplitSceneDialog';
 import {
@@ -50,6 +51,8 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [rootTitleError, setRootTitleError] = useState<string | null>(null);
+  const [childTitleError, setChildTitleError] = useState<string | null>(null);
 
   // Multi-select state
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
@@ -96,10 +99,21 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
 
   const handleAddRoot = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newRootTitle.trim()) return;
+    const trimmed = newRootTitle.trim();
+    if (!trimmed) {
+      setRootTitleError('El título es obligatorio');
+      return;
+    }
+    // Check for duplicate root nodes
+    const isDuplicate = nodes.some(n => !n.parent_id && n.title.toLowerCase() === trimmed.toLowerCase());
+    if (isDuplicate) {
+      setRootTitleError('Ya existe un elemento con este nombre');
+      return;
+    }
     try {
-      const created = await createNode(null, newRootTitle.trim(), newRootType);
+      const created = await createNode(null, trimmed, newRootType);
       setNewRootTitle('');
+      setRootTitleError(null);
       setIsAddingRoot(false);
       setSelectedNodeId(created.id);
       if (created.type === 'scene') setActiveSceneId(created.id);
@@ -109,13 +123,24 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
   };
 
   const handleAddChild = async (parentId: string) => {
-    if (!newChildTitle.trim()) return;
+    const trimmed = newChildTitle.trim();
+    if (!trimmed) {
+      setChildTitleError('El título es obligatorio');
+      return;
+    }
+    // Check for duplicate children under this parent
+    const isDuplicate = nodes.some(n => n.parent_id === parentId && n.title.toLowerCase() === trimmed.toLowerCase());
+    if (isDuplicate) {
+      setChildTitleError('Ya existe un elemento con este nombre');
+      return;
+    }
     try {
-      const created = await createNode(parentId, newChildTitle.trim(), newChildType);
+      const created = await createNode(parentId, trimmed, newChildType);
       if (!expandedNodeIds.includes(parentId)) {
         setExpandedNodeIds([...expandedNodeIds, parentId]);
       }
       setNewChildTitle('');
+      setChildTitleError(null);
       setAddingChildTo(null);
       setSelectedNodeId(created.id);
       if (created.type === 'scene') setActiveSceneId(created.id);
@@ -342,14 +367,20 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
                 type="text"
                 autoFocus
                 value={newChildTitle}
-                onChange={e => setNewChildTitle(e.target.value)}
+                onChange={e => {
+                  setNewChildTitle(e.target.value);
+                  setChildTitleError(null);
+                }}
                 placeholder="Título..."
-                className="w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] focus:border-[var(--color-brand)] rounded px-2 py-1 text-xs outline-none text-[var(--color-text-primary)]"
+                className={`w-full bg-[var(--color-bg-primary)] border rounded px-2 py-1 text-xs outline-none text-[var(--color-text-primary)] ${
+                  childTitleError ? 'border-red-500 focus:border-red-500' : 'border-[var(--color-border)] focus:border-[var(--color-brand)]'
+                }`}
                 onKeyDown={e => {
                   if (e.key === 'Enter') handleAddChild(node.id);
-                  if (e.key === 'Escape') setAddingChildTo(null);
+                  if (e.key === 'Escape') () => { setAddingChildTo(null); setChildTitleError(null); };
                 }}
               />
+              {childTitleError && <p className="text-[10px] text-red-400">{childTitleError}</p>}
               <div className="flex justify-between items-center gap-2">
                 <select value={newChildType} onChange={e => setNewChildType(e.target.value as any)} className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[10px] text-[var(--color-text-secondary)] px-1 py-0.5 outline-none">
                   <option value="scene">Escena</option>
@@ -357,8 +388,8 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
                   <option value="folder">Carpeta</option>
                 </select>
                 <div className="flex gap-1.5">
-                  <button onClick={() => setAddingChildTo(null)} className="text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]">{t('common.cancel')}</button>
-                  <button onClick={() => handleAddChild(node.id)} className="text-[10px] bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white px-2 py-0.5 rounded font-semibold">{t('common.create')}</button>
+                  <button onClick={() => { setAddingChildTo(null); setChildTitleError(null); }} className="text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]">{t('common.cancel')}</button>
+                  <button onClick={() => handleAddChild(node.id)} disabled={!newChildTitle.trim() || !!childTitleError} className="text-[10px] bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] disabled:opacity-50 disabled:cursor-not-allowed text-white px-2 py-0.5 rounded font-semibold">{t('common.create')}</button>
                 </div>
               </div>
             </div>
@@ -378,15 +409,7 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
   const renderMainContent = () => {
     if (!selectedNode) {
       return (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-[var(--color-text-muted)]">
-          <div className="w-12 h-12 rounded-xl bg-[var(--color-bg-secondary)] flex items-center justify-center border border-[var(--color-border)] mb-4 text-[var(--color-text-secondary)]">
-            <BookOpenIcon className="w-6 h-6" />
-          </div>
-          <h3 className="font-semibold text-[var(--color-text-secondary)]">{t('editor.noSceneSelected')}</h3>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1 max-w-xs">
-            Selecciona un nodo del árbol lateral para comenzar.
-          </p>
-        </div>
+        <EmptyState variant="manuscript" />
       );
     }
 
@@ -516,9 +539,7 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
               {rootNodes.map(node => renderNode(node))}
 
               {rootNodes.length === 0 && !isAddingRoot && (
-                <div className="text-center py-8 px-4 text-xs text-[var(--color-text-muted)]">
-                  {t('manuscript.empty') || 'Manuscrito vacío'}
-                </div>
+                <EmptyState variant="manuscript-tree" />
               )}
 
               {isAddingRoot && (
@@ -528,18 +549,24 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
                     autoFocus
                     required
                     value={newRootTitle}
-                    onChange={e => setNewRootTitle(e.target.value)}
+                    onChange={e => {
+                      setNewRootTitle(e.target.value);
+                      setRootTitleError(null);
+                    }}
                     placeholder="Título del nodo..."
-                    className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] focus:border-[var(--color-brand)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--color-text-primary)] outline-none"
+                    className={`bg-[var(--color-bg-primary)] border rounded-lg px-2.5 py-1.5 text-xs text-[var(--color-text-primary)] outline-none ${
+                      rootTitleError ? 'border-red-500 focus:border-red-500' : 'border-[var(--color-border)] focus:border-[var(--color-brand)]'
+                    }`}
                   />
+                  {rootTitleError && <p className="text-[10px] text-red-400">{rootTitleError}</p>}
                   <div className="flex justify-between items-center">
                     <select value={newRootType} onChange={e => setNewRootType(e.target.value as any)} className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-secondary)] px-2 py-1 outline-none">
                       <option value="part">Parte</option>
                       <option value="folder">Carpeta</option>
                     </select>
                     <div className="flex gap-2 text-xs">
-                      <button type="button" onClick={() => setIsAddingRoot(false)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]">{t('common.cancel')}</button>
-                      <button type="submit" className="bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white font-semibold px-2.5 py-1 rounded">{t('common.create')}</button>
+                      <button type="button" onClick={() => { setIsAddingRoot(false); setRootTitleError(null); }} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]">{t('common.cancel')}</button>
+                      <button type="submit" disabled={!newRootTitle.trim() || !!rootTitleError} className="bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-2.5 py-1 rounded">{t('common.create')}</button>
                     </div>
                   </div>
                 </form>
