@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Search, X, FileText, ArrowRight, Loader2, User, MapPin, Sword, Book, FlaskConical, StickyNote } from 'lucide-react';
 import { useNavigationStore } from '../../store/navigationStore';
+import { EmptyState } from '../../components/EmptyState';
 
 interface SearchResult {
   id: string;
@@ -149,22 +150,12 @@ export const SearchPanel: React.FC = () => {
 
         {/* No results */}
         {!isSearching && hasSearched && results.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-            <Search className="w-10 h-10 mb-3 text-slate-700" />
-            <p className="text-sm font-medium">No se encontraron resultados</p>
-            <p className="text-xs mt-1">Prueba con otras palabras clave</p>
-          </div>
+          <EmptyState variant="search-no-results" />
         )}
 
         {/* Empty state before search */}
         {!hasSearched && !query && (
-          <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-            <Search className="w-10 h-10 mb-3 text-slate-700" />
-            <p className="text-sm font-medium">Escribe para buscar</p>
-            <p className="text-xs mt-1 max-w-xs text-center">
-              Busca en el contenido de todas tus escenas y en el universo
-            </p>
-          </div>
+          <EmptyState variant="search" />
         )}
 
         {/* Results list */}

@@ -109,7 +109,8 @@
     "chapterMetadata": "Metadatos del capítulo",
     "deleteConfirm": "¿Eliminar este nodo?",
     "childNodes": "elementos hijos",
-    "empty": "Manuscrito vacío. Crea una nueva Parte para comenzar.",
+    "empty": "Manuscrito vacío",
+    "emptyHint": "Crea una nueva Parte para comenzar a construir tu historia.",
     "mergeScenes": "Fusionar Escenas",
     "mergeScenesSubtitle": "Selecciona qué contenido y metadatos conservar",
     "selectSceneToKeep": "Escena a conservar",
@@ -168,7 +169,9 @@
     "newResearch": "Nueva Investigación",
     "searchPlaceholder": "Buscar en el universo...",
     "noResults": "Sin resultados",
-    "addFirst": "Añade tu primera entrada al universo."
+    "addFirst": "Añade tu primera entrada al universo.",
+    "noEntrySelected": "Ningún elemento seleccionado",
+    "noEntrySelectedHint": "Selecciona una carpeta o ficha en la estructura para editarla, o crea una nueva."
   },
   "settings": {
     "title": "Configuración",
@@ -238,6 +241,12 @@
     "days": "días",
     "empty": "Sin calendarios",
     "emptyHint": "Crea tu primer calendario para comenzar"
+  },
+  "search": {
+    "typeToSearch": "Escribe para buscar",
+    "typeToSearchHint": "Busca en el contenido de todas tus escenas y en el universo.",
+    "noResults": "No se encontraron resultados",
+    "noResultsHint": "Prueba con otras palabras clave."
   },
   "common": {
     "save": "Guardar",
