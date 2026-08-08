@@ -21,6 +21,7 @@ import { useProjectStore } from '../../store/projectStore';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useNavigationStore } from '../../store/navigationStore';
 import { TiptapEditor } from '../editor/TiptapEditor';
+import { EmptyState } from '../../components/EmptyState';
 
 interface UniverseEntry {
   id: string;
@@ -626,12 +627,7 @@ const CategoryView: React.FC<{
                 )}
               </div>
             ) : (
-              <div className="flex h-full items-center justify-center">
-                <div className="rounded-lg border border-dashed border-slate-800 p-8 text-center text-sm text-slate-500">
-                  Selecciona una carpeta o ficha en la estructura para
-                  editarla, o crea una nueva.
-                </div>
-              </div>
+              <EmptyState variant="universe" />
             )}
           </div>
         </div>

@@ -6,9 +6,9 @@ import {
   ChevronRight,
   Trash2,
   X,
-  Calendar as CalendarIcon,
   Plus,
 } from 'lucide-react';
+import { EmptyState } from '../../components/EmptyState';
 
 interface CustomCalendar {
   id: string;
@@ -288,11 +288,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ calendars, onRefresh
 
   if (isLoading) return <div className="flex items-center justify-center h-64 text-slate-500">{t('common.loading')}</div>;
   if (!selectedCalendar || !currentMonth) return (
-    <div className="flex flex-col items-center justify-center h-64 text-slate-600">
-      <CalendarIcon className="w-12 h-12 mb-4 text-slate-700" />
-      <p className="text-lg font-medium">{t('calendars.empty')}</p>
-      <p className="text-sm mt-1">{t('calendars.emptyHint')}</p>
-    </div>
+    <EmptyState variant="calendar" />
   );
 
   // Calculate offset for current month - use cumulative ref for continuous, or base offset for non-continuous

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useI18n } from '../../i18n';
 import { useManuscriptStore } from '../../store/manuscriptStore';
+import { EmptyState } from '../../components/EmptyState';
 import {
   Calendar,
   Plus,
@@ -363,11 +364,7 @@ export const TimelinePanel: React.FC = () => {
             {t('common.loading')}
           </div>
         ) : events.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-slate-600">
-            <Calendar className="w-12 h-12 mb-4 text-slate-700" />
-            <p className="text-lg font-medium">{t('timeline.empty')}</p>
-            <p className="text-sm mt-1">{t('timeline.emptyHint')}</p>
-          </div>
+          <EmptyState variant="timeline" />
         ) : (
           <div className="space-y-4">
             {years.map((year) => (

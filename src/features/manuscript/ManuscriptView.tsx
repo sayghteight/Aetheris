@@ -5,6 +5,7 @@ import { useWorkspaceStore, scheduleWorkspaceSave } from '../../store/workspaceS
 import { useI18n } from '../../i18n';
 import { SceneEditor } from '../project/UniversePanel';
 import { ContextMenu, buildMergeActions } from '../../components/ContextMenu';
+import { EmptyState } from '../../components/EmptyState';
 import { MergeScenesDialog } from '../../components/MergeScenesDialog';
 import { SplitSceneDialog } from '../../components/SplitSceneDialog';
 import {
@@ -378,15 +379,7 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
   const renderMainContent = () => {
     if (!selectedNode) {
       return (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-[var(--color-text-muted)]">
-          <div className="w-12 h-12 rounded-xl bg-[var(--color-bg-secondary)] flex items-center justify-center border border-[var(--color-border)] mb-4 text-[var(--color-text-secondary)]">
-            <BookOpenIcon className="w-6 h-6" />
-          </div>
-          <h3 className="font-semibold text-[var(--color-text-secondary)]">{t('editor.noSceneSelected')}</h3>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1 max-w-xs">
-            Selecciona un nodo del árbol lateral para comenzar.
-          </p>
-        </div>
+        <EmptyState variant="manuscript" />
       );
     }
 
@@ -516,9 +509,7 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
               {rootNodes.map(node => renderNode(node))}
 
               {rootNodes.length === 0 && !isAddingRoot && (
-                <div className="text-center py-8 px-4 text-xs text-[var(--color-text-muted)]">
-                  {t('manuscript.empty') || 'Manuscrito vacío'}
-                </div>
+                <EmptyState variant="manuscript-tree" />
               )}
 
               {isAddingRoot && (

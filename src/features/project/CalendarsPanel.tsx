@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useI18n } from '../../i18n';
 import { CalendarView } from './CalendarView';
+import { EmptyState } from '../../components/EmptyState';
 import {
   Calendar,
   Plus,
@@ -499,11 +500,7 @@ export const CalendarsPanel: React.FC = () => {
               {t('common.loading')}
             </div>
           ) : calendars.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-slate-600">
-              <Globe className="w-12 h-12 mb-4 text-slate-700" />
-              <p className="text-lg font-medium">{t('calendars.empty')}</p>
-              <p className="text-sm mt-1">{t('calendars.emptyHint')}</p>
-            </div>
+            <EmptyState variant="calendars" />
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {calendars.map((calendar) => {
