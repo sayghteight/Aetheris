@@ -1,45 +1,194 @@
 @import "tailwindcss";
 
-/* Temas y variables CSS personalizadas para una estética premium */
-:root {
-  --color-brand-primary: #8b5cf6; /* Violet */
-  --color-brand-secondary: #ec4899; /* Pink */
-  --color-background-dark: #0f172a; /* Slate 900 */
+/* ═══════════════════════════════════════════════════════════════════════════
+   TEMA: MIDNIGHT (Azul-Violeta)
+   Personalidad: Elegante, sereno, profesional
+   ═══════════════════════════════════════════════════════════════════════════ */
+@theme {
+  --color-bg-primary: #13162a;
+  --color-bg-secondary: #1c2040;
+  --color-bg-tertiary: #252d55;
+  --color-bg-hover: #1e2348;
+  --color-bg-elevated: #28305e;
+  --color-bg-overlay: rgba(19, 22, 42, 0.96);
+
+  --color-text-primary: #e2e5f0;
+  --color-text-secondary: #8b95b5;
+  --color-text-muted: #5a6285;
+  --color-text-inverse: #13162a;
+
+  --color-border: #333d66;
+  --color-border-subtle: rgba(51, 61, 102, 0.5);
+
+  --color-accent: #f0c040;
+  --color-accent-hover: #f5cc55;
+  --color-accent-bg: rgba(240, 192, 64, 0.12);
+  --color-accent-border: rgba(240, 192, 64, 0.3);
+
+  --color-brand: #9090f0;
+  --color-brand-hover: #a8a8f5;
+  --color-brand-bg: rgba(144, 144, 240, 0.12);
+
+  --color-danger: #f06060;
+  --color-danger-bg: rgba(240, 96, 96, 0.12);
+
+  --color-success: #60c090;
+  --color-success-bg: rgba(96, 192, 144, 0.12);
+
+  --color-canvas: #13162a;
+  --color-surface: #1c2040;
+  --color-surface-hover: #252d55;
+  --color-input-bg: #161b35;
+  --color-scrollbar-track: transparent;
+  --color-scrollbar-thumb: rgba(80, 90, 130, 0.4);
+  --color-scrollbar-thumb-hover: rgba(80, 90, 130, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TEMA: AURORA (Ámbar-Dorado)
+   Personalidad: Cálido, acogedor, amanecer
+   ═══════════════════════════════════════════════════════════════════════════ */
+[data-theme="aurora"] {
+  --color-bg-primary: #1a1510;
+  --color-bg-secondary: #252015;
+  --color-bg-tertiary: #352d20;
+  --color-bg-hover: #2a2218;
+  --color-bg-elevated: #3d3528;
+  --color-bg-overlay: rgba(26, 21, 16, 0.96);
+
+  --color-text-primary: #f0ebe2;
+  --color-text-secondary: #a89880;
+  --color-text-muted: #786858;
+  --color-text-inverse: #1a1510;
+
+  --color-border: #4a3d2e;
+  --color-border-subtle: rgba(74, 61, 46, 0.5);
+
+  --color-accent: #f0b040;
+  --color-accent-hover: #f5c055;
+  --color-accent-bg: rgba(240, 176, 64, 0.12);
+  --color-accent-border: rgba(240, 176, 64, 0.3);
+
+  --color-brand: #d4a060;
+  --color-brand-hover: #e0b070;
+  --color-brand-bg: rgba(212, 160, 96, 0.12);
+
+  --color-danger: #d87878;
+  --color-danger-bg: rgba(216, 120, 120, 0.12);
+
+  --color-success: #88c090;
+  --color-success-bg: rgba(136, 192, 144, 0.12);
+
+  --color-canvas: #1a1510;
+  --color-surface: #252015;
+  --color-surface-hover: #352d20;
+  --color-input-bg: #1e1812;
+  --color-scrollbar-track: transparent;
+  --color-scrollbar-thumb: rgba(120, 100, 80, 0.4);
+  --color-scrollbar-thumb-hover: rgba(120, 100, 80, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TEMA: NOIR (Cyan Neón)
+   Personalidad: Futurista, urbano, cyberpunk
+   ═══════════════════════════════════════════════════════════════════════════ */
+[data-theme="noir"] {
+  --color-bg-primary: #080a0d;
+  --color-bg-secondary: #0f1218;
+  --color-bg-tertiary: #181c24;
+  --color-bg-hover: #0e1115;
+  --color-bg-elevated: #1c222c;
+  --color-bg-overlay: rgba(8, 10, 13, 0.97);
+
+  --color-text-primary: #d8dce8;
+  --color-text-secondary: #7888a0;
+  --color-text-muted: #485068;
+  --color-text-inverse: #080a0d;
+
+  --color-border: #28303d;
+  --color-border-subtle: rgba(40, 48, 61, 0.5);
+
+  --color-accent: #50e8e0;
+  --color-accent-hover: #70f0ec;
+  --color-accent-bg: rgba(80, 232, 224, 0.08);
+  --color-accent-border: rgba(80, 232, 224, 0.25);
+
+  --color-brand: #70d0e0;
+  --color-brand-hover: #90dce8;
+  --color-brand-bg: rgba(112, 208, 224, 0.1);
+
+  --color-danger: #e06060;
+  --color-danger-bg: rgba(224, 96, 96, 0.1);
+
+  --color-success: #60c890;
+  --color-success-bg: rgba(96, 200, 136, 0.1);
+
+  --color-canvas: #080a0d;
+  --color-surface: #0f1218;
+  --color-surface-hover: #181c24;
+  --color-input-bg: #0a0c10;
+  --color-scrollbar-track: transparent;
+  --color-scrollbar-thumb: rgba(60, 75, 100, 0.4);
+  --color-scrollbar-thumb-hover: rgba(60, 75, 100, 0.6);
 }
 
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-body.dark {
-  background-color: #0f172a;
-  color: #f1f5f9;
-}
-
+/* Custom scrollbar styles */
 .scrollbar-custom {
   scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.6) transparent;
+  scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
 }
 
 .scrollbar-custom::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 .scrollbar-custom::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--color-scrollbar-track);
 }
 
 .scrollbar-custom::-webkit-scrollbar-thumb {
-  background-color: rgba(148, 163, 184, 0.4);
+  background-color: var(--color-scrollbar-thumb);
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
 .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(148, 163, 184, 0.65);
+  background-color: var(--color-scrollbar-thumb-hover);
 }
+
+/* Utility classes */
+.bg-theme-primary { background-color: var(--color-bg-primary); }
+.bg-theme-secondary { background-color: var(--color-bg-secondary); }
+.bg-theme-tertiary { background-color: var(--color-bg-tertiary); }
+.bg-theme-elevated { background-color: var(--color-bg-elevated); }
+.bg-theme-hover { background-color: var(--color-bg-hover); }
+
+.text-theme-primary { color: var(--color-text-primary); }
+.text-theme-secondary { color: var(--color-text-secondary); }
+.text-theme-muted { color: var(--color-text-muted); }
+
+.border-theme { border-color: var(--color-border); }
+.border-theme-subtle { border-color: var(--color-border-subtle); }
+
+.bg-accent { background-color: var(--color-accent); }
+.bg-accent-bg { background-color: var(--color-accent-bg); }
+.text-accent { color: var(--color-accent); }
+.border-accent { border-color: var(--color-accent-border); }
+
+.bg-brand { background-color: var(--color-brand); }
+.bg-brand-bg { background-color: var(--color-brand-bg); }
+.text-brand { color: var(--color-brand); }
+
+.bg-canvas { background-color: var(--color-canvas); }
+.bg-surface { background-color: var(--color-surface); }
+.bg-surface-hover { background-color: var(--color-surface-hover); }

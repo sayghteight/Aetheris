@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 
-export type ThemeOption = 'midnight' | 'aurora' | 'noir';
+export type ThemeOption = 'midnight' | 'aurora' | 'noir' | 'light';
 
 export interface AppSettingsState {
   theme: ThemeOption;

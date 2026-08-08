@@ -2,7 +2,7 @@ import React from 'react';
 import { Tag, GitBranch, ArrowUpRight } from 'lucide-react';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
-const VERSION = '0.1.3';
+const VERSION = '0.1.4';
 
 interface ChangelogEntry {
   hash: string;
@@ -12,49 +12,44 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
-    hash: '8c4f2a1',
+    hash: '638fb209',
+    message: 'Mejoras en la creación de carpetas y entradas, con validaciones para evitar nombres no válidos.',
+    type: 'merge',
+  },
+  {
+    hash: 'f7849f84',
+    message: 'Ahora se comprueban los nombres al crear carpetas y entradas para evitar errores.',
     type: 'feat',
-    message: 'Se ha añadido un nuevo panel de exportación integrado en la navegación de la aplicación.',
   },
   {
-    hash: 'f3d19be',
+    hash: '8a5cbdf6',
+    message: 'Mejoras en las pantallas vacías para mostrar información y orientación más útil.',
+    type: 'merge',
+  },
+  {
+    hash: '0477259d',
+    message: 'Añadidas nuevas ilustraciones y mensajes para mejorar las pantallas sin contenido.',
     type: 'feat',
-    message: 'Implementada la exportación de manuscritos a formatos compatibles.',
   },
   {
-    hash: 'a71e6d4',
-    type: 'fix',
-    message: 'Mejorado el manejo de errores al importar archivos DOCX con mensajes más claros.',
+    hash: 'd21976b2',
+    message: 'Nuevo editor de texto con mejoras en la escritura y el formato.',
+    type: 'merge',
   },
   {
-    hash: '2d5b9e8',
+    hash: '3ae63c31',
+    message: 'Nuevo editor de texto más completo, con mejor formato y compatibilidad al exportar documentos.',
     type: 'feat',
-    message: 'Actualizada la aplicación a la versión 0.1.3.',
   },
   {
-    hash: 'b9f8c10',
-    type: 'refactor',
-    message: 'Reorganización interna del código para mejorar la legibilidad y facilitar el mantenimiento.',
+    hash: '4c293576',
+    message: 'Mejoras en la personalización visual de la aplicación.',
+    type: 'merge',
   },
   {
-    hash: '5ea42f6',
-    type: 'fix',
-    message: 'Mejorado el diseño de la configuración del proyecto eliminando secciones obsoletas.',
-  },
-  {
-    hash: '7cbf914',
-    type: 'fix',
-    message: 'Ajustado el diseño de la vista de categorías dentro del panel de Universo.',
-  },
-  {
-    hash: '9d61ae3',
-    type: 'fix',
-    message: 'Mejorada la presentación visual del panel de historial de cambios.',
-  },
-  {
-    hash: 'e14b3c9',
+    hash: '9d90ae58',
+    message: 'Añadidos nuevos temas visuales y mejoras generales en la apariencia de la aplicación.',
     type: 'feat',
-    message: 'Añadidas las herramientas para fusionar y dividir escenas mediante nuevos diálogos.',
   },
 ];
 

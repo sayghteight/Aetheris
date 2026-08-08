@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useI18n } from '../../i18n';
 import { CalendarView } from './CalendarView';
+import { EmptyState } from '../../components/EmptyState';
 import {
   Calendar,
   Plus,
@@ -80,6 +81,7 @@ export const CalendarsPanel: React.FC = () => {
   const [view, setView] = useState<'list' | 'calendar'>('list');
   const [expandedMonths, setExpandedMonths] = useState(false);
   const [expandedDays, setExpandedDays] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<CalendarFormData>({
     name: '',
@@ -118,6 +120,23 @@ export const CalendarsPanel: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate name
+    const trimmedName = formData.name.trim();
+    if (!trimmedName) {
+      setNameError(t('calendars.nameRequired') || 'El nombre es obligatorio');
+      return;
+    }
+
+    // Check for duplicates (only for new calendars or if name changed)
+    if (!editingCalendar || editingCalendar.name !== trimmedName) {
+      const isDuplicate = calendars.some(c => c.name.toLowerCase() === trimmedName.toLowerCase());
+      if (isDuplicate) {
+        setNameError(t('calendars.nameDuplicate') || 'Ya existe un calendario con este nombre');
+        return;
+      }
+    }
+
     try {
       const calendarData = JSON.stringify({
         day_names: formData.day_names,
@@ -130,14 +149,14 @@ export const CalendarsPanel: React.FC = () => {
       if (editingCalendar) {
         await invoke('update_calendar', {
           id: editingCalendar.id,
-          name: formData.name,
+          name: trimmedName,
           monthsJson: calendarData,
           daysPerWeek: formData.days_per_week,
           eraName: formData.era_name || null,
         });
       } else {
         await invoke('create_calendar', {
-          name: formData.name,
+          name: trimmedName,
           monthsJson: calendarData,
           daysPerWeek: formData.days_per_week,
           eraName: formData.era_name || null,
@@ -180,6 +199,7 @@ export const CalendarsPanel: React.FC = () => {
     setEditingCalendar(null);
     setExpandedDays(false);
     setExpandedMonths(false);
+    setNameError(null);
     setFormData({
       name: '',
       era_name: '',
@@ -293,10 +313,18 @@ export const CalendarsPanel: React.FC = () => {
                     type="text"
                     required
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, name: e.target.value });
+                      setNameError(null);
+                    }}
                     placeholder={t('calendars.namePlaceholder')}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white placeholder-slate-600 outline-none focus:border-emerald-500"
+                    className={`w-full bg-slate-950 border rounded-lg px-3 py-2 text-white placeholder-slate-600 outline-none focus:border-emerald-500 ${
+                      nameError ? 'border-red-500 focus:border-red-500' : 'border-slate-800'
+                    }`}
                   />
+                  {nameError && (
+                    <p className="mt-1 text-xs text-red-400">{nameError}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
@@ -478,7 +506,8 @@ export const CalendarsPanel: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold transition-colors"
+                  disabled={!formData.name.trim() || !!nameError}
+                  className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors"
                 >
                   {editingCalendar ? t('common.save') : t('common.create')}
                 </button>
@@ -499,11 +528,7 @@ export const CalendarsPanel: React.FC = () => {
               {t('common.loading')}
             </div>
           ) : calendars.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-slate-600">
-              <Globe className="w-12 h-12 mb-4 text-slate-700" />
-              <p className="text-lg font-medium">{t('calendars.empty')}</p>
-              <p className="text-sm mt-1">{t('calendars.emptyHint')}</p>
-            </div>
+            <EmptyState variant="calendars" />
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {calendars.map((calendar) => {

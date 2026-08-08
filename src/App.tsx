@@ -38,6 +38,18 @@ const App: React.FC = () => {
     }
   }, [isOpen, isLoaded, loadSettings]);
 
+  // Apply theme to document - use dark class for dark themes, data-theme for light
+  useEffect(() => {
+    const theme = settings.theme;
+    if (theme === 'light') {
+      document.documentElement.removeAttribute('class');
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      document.documentElement.classList.add('dark');
+    }
+  }, [settings.theme]);
+
   // Load workspace state when project opens
   const { loadWorkspaceState } = useWorkspaceStore();
   useEffect(() => {
@@ -50,17 +62,20 @@ const App: React.FC = () => {
     return <ProjectSetup />;
   }
 
-  const themeClassName = settings.theme === 'aurora'
-    ? 'from-amber-500/10 via-slate-950 to-slate-950'
-    : settings.theme === 'noir'
-      ? 'from-slate-900 via-slate-950 to-black'
-      : 'from-amber-900/15 via-slate-950 to-slate-950';
+  // Theme-specific gradient overlays (only for dark themes)
+  const themeOverlayClass = settings.theme === 'light'
+    ? 'bg-[var(--color-bg-primary)]'
+    : settings.theme === 'aurora'
+      ? 'bg-gradient-to-b from-amber-500/5 via-[var(--color-bg-primary)] to-[var(--color-bg-primary)]'
+      : settings.theme === 'noir'
+        ? 'bg-gradient-to-b from-slate-900 via-[var(--color-bg-primary)] to-black'
+        : 'bg-gradient-to-b from-amber-900/10 via-[var(--color-bg-primary)] to-[var(--color-bg-primary)]';
 
   const appShellClass = settings.focus_mode === 'focus'
-    ? 'bg-slate-950 text-slate-100'
+    ? 'bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]'
     : settings.focus_mode === 'distraction-free'
       ? 'bg-black text-slate-100'
-      : 'bg-slate-950 text-slate-200';
+      : 'bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)]';
 
   // Contenido principal de la vista activa
   const renderMainView = () => {
@@ -94,7 +109,7 @@ const App: React.FC = () => {
 
   return (
     <div className={`min-h-screen ${appShellClass}`}>
-      <div className={`absolute inset-0 bg-radial-at-t ${themeClassName} pointer-events-none`} />
+      <div className={`absolute inset-0 pointer-events-none ${themeOverlayClass}`} />
       <div className="relative z-10 h-screen">
         <WorkspaceLayout wordCount={wordCount} readTime={readTime}>
           {renderMainView()}

@@ -53,7 +53,8 @@ pub fn run() {
             commands::save_exported_file,
             commands::merge_scenes,
             commands::split_scene_at_cursor,
-            commands::split_scene_by_selection
+            commands::split_scene_by_selection,
+            commands::search_all
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

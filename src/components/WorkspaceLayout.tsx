@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProjectStore } from '../store/projectStore';
 import { useNavigationStore, ActiveView } from '../store/navigationStore';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { SearchPanel } from '../features/search/SearchPanel';
 import {
   BookOpen,
   Sparkles,
@@ -15,10 +16,11 @@ import {
   Search,
   Maximize2,
   Minimize2,
+  LogOut,
 } from 'lucide-react';
 
 // Read version from package.json at runtime
-const APP_VERSION = '0.1.3';
+const APP_VERSION = '0.1.4';
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
@@ -31,12 +33,26 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   wordCount = 0,
   readTime = 0,
 }) => {
-  const { currentProject } = useProjectStore();
+  const { currentProject, closeProject } = useProjectStore();
   const { activeView } = useNavigationStore();
   const { setActiveView } = useWorkspaceStore();
   const { settings, saveSettings } = useSettingsStore();
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+
+  // Keyboard shortcut: Ctrl+Shift+F to open search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+      if (e.key === 'Escape' && searchOpen) {
+        setSearchOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchOpen]);
 
   const toggleFocusMode = () => {
     const next = settings.focus_mode === 'standard' ? 'focus' : 'standard';
@@ -44,20 +60,29 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-200 overflow-hidden font-sans selection:bg-amber-600 selection:text-white">
+    <div className="h-screen w-screen flex flex-col bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] overflow-hidden font-sans selection:bg-[var(--color-accent)] selection:text-[var(--color-text-inverse)]">
       {/* Top bar */}
-      <header className="h-12 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-sm flex items-center justify-between px-4 z-20 shrink-0">
+      <header className="h-12 border-b border-[var(--color-border)] bg-[var(--color-bg-primary)]/80 backdrop-blur-sm flex items-center justify-between px-4 z-20 shrink-0">
         {/* Left — back + project info */}
         <div className="flex items-center gap-3 min-w-0">
           {/* Back button */}
           <button
             onClick={() => setActiveView('manuscript')}
-            className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-200 hover:bg-slate-800/60 transition-colors duration-150 shrink-0"
+            className="w-8 h-8 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] transition-colors duration-150 shrink-0"
             title="Volver al manuscrito"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
+          </button>
+
+          {/* Exit button */}
+          <button
+            onClick={closeProject}
+            className="w-8 h-8 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:text-red-400 hover:bg-[var(--color-bg-hover)] transition-colors duration-150 shrink-0"
+            title="Salir al selector de proyectos"
+          >
+            <LogOut className="w-4 h-4" />
           </button>
 
           {/* Project info */}
@@ -66,14 +91,14 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
               <BookOpen className="w-4 h-4 text-white/90" />
             </div>
             <div className="min-w-0 flex flex-col">
-              <span className="text-sm text-slate-200 font-semibold truncate leading-tight">{currentProject?.title}</span>
+              <span className="text-sm text-[var(--color-text-primary)] font-semibold truncate leading-tight">{currentProject?.title}</span>
               {currentProject?.author && (
-                <span className="text-[11px] text-slate-500 truncate leading-tight">{currentProject.author}</span>
+                <span className="text-[11px] text-[var(--color-text-muted)] truncate leading-tight">{currentProject.author}</span>
               )}
             </div>
           </div>
           {currentProject?.genre && (
-            <span className="text-[10px] text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0">
+            <span className="text-[10px] text-[var(--color-accent)] bg-[var(--color-accent-bg)] px-1.5 py-0.5 rounded border border-[var(--color-accent-border)] shrink-0">
               {currentProject.genre}
             </span>
           )}
@@ -82,23 +107,16 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         {/* Right — search + focus mode */}
         <div className="flex items-center gap-1">
           {/* Search */}
-          <div className={`flex items-center gap-2 transition-all duration-200 ${searchOpen ? 'w-64' : 'w-8'}`}>
+          <div className={`items-center gap-2 transition-all duration-200 ${searchOpen ? 'flex' : 'flex'}`}>
             {searchOpen ? (
-              <>
-                <input
-                  autoFocus
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Buscar..."
-                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-amber-500/60"
-                  onBlur={() => { setSearchOpen(false); setSearchQuery(''); }}
-                />
-              </>
+              <div className="w-[420px] h-[500px] absolute top-14 right-4 z-50 shadow-2xl rounded-2xl overflow-hidden">
+                <SearchPanel />
+              </div>
             ) : (
               <button
                 onClick={() => setSearchOpen(true)}
-                className="w-8 h-8 flex items-center justify-center rounded text-slate-500 hover:text-slate-200 hover:bg-slate-800/60 transition-colors duration-150"
-                title="Buscar (⌘K)"
+                className="w-8 h-8 flex items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] transition-colors duration-150"
+                title="Buscar (Ctrl+Shift+F)"
               >
                 <Search className="w-3.5 h-3.5" />
               </button>
@@ -110,8 +128,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             onClick={toggleFocusMode}
             className={`w-8 h-8 flex items-center justify-center rounded transition-colors duration-150 ${
               settings.focus_mode !== 'standard'
-                ? 'text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
-                : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/60'
+                ? 'text-[var(--color-accent)] bg-[var(--color-accent-bg)] hover:bg-[var(--color-accent-bg)]'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)]'
             }`}
             title={settings.focus_mode === 'standard' ? 'Activar modo foco' : 'Desactivar modo foco'}
           >
@@ -127,20 +145,20 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
       {/* Main Workspace Area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Navigation Bar (Slim Left Column) */}
-        <nav className="w-48 border-r border-slate-800/60 bg-gradient-to-b from-slate-900/50 to-slate-950 flex flex-col shrink-0">
+        <nav className="w-48 border-r border-[var(--color-border)] bg-gradient-to-b from-[var(--color-bg-secondary)] to-[var(--color-bg-primary)] flex flex-col shrink-0">
           {/* Logo area */}
           <div className="px-4 pt-5 pb-4">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 bg-gradient-to-br from-amber-500 to-orange-600 rounded flex items-center justify-center">
                 <Sparkles className="w-3.5 h-3.5 text-white" />
               </div>
-              <span className="text-xs font-semibold tracking-widest text-slate-300 uppercase">Aetheria</span>
+              <span className="text-xs font-semibold tracking-widest text-[var(--color-text-secondary)] uppercase">Aetheria</span>
             </div>
           </div>
 
           {/* Section label */}
           <div className="px-4 mb-1">
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Proyecto</span>
+            <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-widest font-medium">Proyecto</span>
           </div>
 
           {/* Navigation items */}
@@ -160,14 +178,14 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                   className={`group relative flex items-center gap-2.5 pl-3 pr-2 py-2 rounded text-left transition-all duration-150 ${
                     isActive
                       ? 'text-amber-200'
-                      : 'text-slate-500 hover:text-slate-200'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                   }`}
                 >
                   {/* Active indicator - left border accent */}
                   {isActive && (
-                    <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-amber-500 rounded-full" />
+                    <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-[var(--color-accent)] rounded-full" />
                   )}
-                  <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-amber-400' : 'text-slate-600 group-hover:text-slate-400'}`} />
+                  <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-text-secondary)]'}`} />
                   <span className="text-xs font-medium flex-1 tracking-wide">{item.label}</span>
                 </button>
               );
@@ -176,7 +194,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
           {/* Tools section */}
           <div className="px-4 mt-4 mb-1">
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Herramientas</span>
+            <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-widest font-medium">Herramientas</span>
           </div>
           <div className="flex flex-col gap-0.5 px-2">
             {[
@@ -192,13 +210,13 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                   className={`group relative flex items-center gap-2.5 pl-3 pr-2 py-2 rounded text-left transition-all duration-150 ${
                     isActive
                       ? 'text-amber-200'
-                      : 'text-slate-500 hover:text-slate-200'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                   }`}
                 >
                   {isActive && (
-                    <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-amber-500 rounded-full" />
+                    <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-[var(--color-accent)] rounded-full" />
                   )}
-                  <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-amber-400' : 'text-slate-600 group-hover:text-slate-400'}`} />
+                  <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-text-secondary)]'}`} />
                   <span className="text-xs font-medium flex-1 tracking-wide">{item.label}</span>
                 </button>
               );
@@ -207,9 +225,9 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
           {/* Config section */}
           <div className="px-4 mt-4 mb-1">
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Configuración</span>
+            <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-widest font-medium">Configuración</span>
           </div>
-          
+
           <div className="flex flex-col gap-0.5 px-2">
             {[
               { view: 'settings' as ActiveView, icon: Settings, label: 'Ajustes' },
@@ -224,28 +242,28 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                   className={`group relative flex items-center gap-2.5 pl-3 pr-2 py-2 rounded text-left transition-all duration-150 ${
                     isActive
                       ? 'text-amber-200'
-                      : 'text-slate-500 hover:text-slate-200'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                   }`}
                 >
                   {isActive && (
-                    <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-amber-500 rounded-full" />
+                    <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-[var(--color-accent)] rounded-full" />
                   )}
-                  <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-amber-400' : 'text-slate-600 group-hover:text-slate-400'}`} />
+                  <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-text-secondary)]'}`} />
                   <span className="text-xs font-medium flex-1 tracking-wide">{item.label}</span>
                 </button>
               );
             })}
           </div>
-          
+
           {/* Spacer */}
           <div className="flex-1" />
 
-          
+
           {/* Version */}
           <div className="pb-4 text-center">
             <button
               onClick={() => setActiveView('versioning')}
-              className="text-xs text-slate-600 font-mono hover:text-amber-500 transition-colors cursor-pointer"
+              className="text-xs text-[var(--color-text-muted)] font-mono hover:text-[var(--color-accent)] transition-colors cursor-pointer"
             >
               v{APP_VERSION}
             </button>
@@ -253,18 +271,18 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         </nav>
 
         {/* Central Work Area */}
-        <main className="flex-1 flex flex-col min-h-0 bg-slate-950 overflow-hidden">
+        <main className="flex-1 flex flex-col min-h-0 bg-[var(--color-bg-primary)] overflow-hidden">
           {children}
         </main>
       </div>
 
       {/* Bottom Status Bar */}
-      <footer className="h-10 border-t border-slate-800/60 bg-slate-950/80 flex items-center justify-between px-4 text-xs text-slate-500 shrink-0 select-none">
+      <footer className="h-10 border-t border-[var(--color-border)] bg-[var(--color-bg-primary)]/80 flex items-center justify-between px-4 text-xs text-[var(--color-text-muted)] shrink-0 select-none">
         <div className="flex items-center gap-4">
-          <span>Palabras: <strong className="text-slate-400">{wordCount}</strong></span>
-          <span className="text-slate-700">·</span>
-          <span>Lectura: <strong className="text-slate-400">~{readTime} min</strong></span>
-          <span className="text-slate-700">·</span>
+          <span>Palabras: <strong className="text-[var(--color-text-secondary)]">{wordCount}</strong></span>
+          <span className="opacity-40">·</span>
+          <span>Lectura: <strong className="text-[var(--color-text-secondary)]">~{readTime} min</strong></span>
+          <span className="opacity-40">·</span>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
             <span className="text-emerald-500 font-semibold">Offline</span>
@@ -272,8 +290,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
-          <span>Meta Diaria: <strong className="text-amber-400">{wordCount} / 1000</strong></span>
-          <div className="w-24 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+          <span>Meta Diaria: <strong className="text-[var(--color-accent)]">{wordCount} / 1000</strong></span>
+          <div className="w-24 bg-[var(--color-bg-tertiary)] rounded-full h-1.5 overflow-hidden">
             <div className="bg-gradient-to-r from-amber-600 to-orange-500 h-full w-[45%]" />
           </div>
         </div>
