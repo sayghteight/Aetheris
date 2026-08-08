@@ -426,22 +426,49 @@ const CategoryView: React.FC<{
 }) => {
   const [newFolderName, setNewFolderName] = useState('');
   const [newEntryName, setNewEntryName] = useState('');
+  const [folderError, setFolderError] = useState<string | null>(null);
+  const [entryError, setEntryError] = useState<string | null>(null);
 
   const selectedEntry = useMemo(
     () => findEntry(category.entries, selectedEntryId),
     [category.entries, selectedEntryId],
   );
 
+  // Check for duplicate names in the current category
+  const isDuplicateName = (name: string, excludeId?: string) => {
+    return category.entries.some(
+      (e) => e.name.toLowerCase() === name.toLowerCase() && e.id !== excludeId
+    );
+  };
+
   const handleAddFolder = () => {
-    if (!newFolderName.trim()) return;
-    onAddFolder(newFolderName.trim());
+    const trimmed = newFolderName.trim();
+    if (!trimmed) {
+      setFolderError('El nombre es obligatorio');
+      return;
+    }
+    if (isDuplicateName(trimmed)) {
+      setFolderError('Ya existe una carpeta con este nombre');
+      return;
+    }
+    setFolderError(null);
+    onAddFolder(trimmed);
     setNewFolderName('');
   };
 
   const handleAddEntry = () => {
-    if (!newEntryName.trim()) return;
-    const defaultContent = `<h3>${newEntryName.trim()}</h3><p>Escribe aquí la información sobre ${newEntryName.trim()}.</p>`;
-    onAddEntry(newEntryName.trim(), defaultContent);
+    const trimmed = newEntryName.trim();
+    if (!trimmed) {
+      setEntryError('El nombre es obligatorio');
+      return;
+    }
+    if (isDuplicateName(trimmed)) {
+      setEntryError('Ya existe una ficha con este nombre');
+      return;
+    }
+    setEntryError(null);
+    const defaultContent = `<h3>${trimmed}</h3><p>Escribe aquí la información sobre ${trimmed}.</p>`;
+    onAddEntry(trimmed, defaultContent);
     setNewEntryName('');
   };
 
@@ -538,20 +565,27 @@ const CategoryView: React.FC<{
             <div className="flex gap-2">
               <input
                 value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
+                onChange={(e) => {
+                  setNewFolderName(e.target.value);
+                  setFolderError(null);
+                }}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddFolder()}
                 placeholder="Nombre"
-                className="flex-1 rounded-lg border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-200 outline-none focus:border-violet-500"
+                className={`flex-1 rounded-lg border bg-slate-950 px-2.5 py-1.5 text-sm text-slate-200 outline-none focus:border-violet-500 ${
+                  folderError ? 'border-red-500' : 'border-slate-800'
+                }`}
               />
               <button
                 type="button"
                 onClick={handleAddFolder}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950/70 px-2.5 py-1.5 text-sm text-slate-300 transition hover:border-violet-500 hover:text-white"
+                disabled={!newFolderName.trim() || !!folderError}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950/70 px-2.5 py-1.5 text-sm text-slate-300 transition hover:border-violet-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FolderPlus className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only">Añadir</span>
               </button>
             </div>
+            {folderError && <p className="text-xs text-red-400">{folderError}</p>}
 
             {/* Agregar entrada */}
             <p className="mt-3 text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
@@ -559,15 +593,22 @@ const CategoryView: React.FC<{
             </p>
             <input
               value={newEntryName}
-              onChange={(e) => setNewEntryName(e.target.value)}
+              onChange={(e) => {
+                setNewEntryName(e.target.value);
+                setEntryError(null);
+              }}
               onKeyDown={(e) => e.key === 'Enter' && handleAddEntry()}
               placeholder="Nombre de la ficha"
-              className="w-full rounded-lg border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-200 outline-none focus:border-violet-500"
+              className={`w-full rounded-lg border bg-slate-950 px-2.5 py-1.5 text-sm text-slate-200 outline-none focus:border-violet-500 ${
+                entryError ? 'border-red-500' : 'border-slate-800'
+              }`}
             />
+            {entryError && <p className="text-xs text-red-400">{entryError}</p>}
             <button
               type="button"
               onClick={handleAddEntry}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-violet-500"
+              disabled={!newEntryName.trim() || !!entryError}
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <StickyNote className="h-3.5 w-3.5" />
               Guardar ficha
