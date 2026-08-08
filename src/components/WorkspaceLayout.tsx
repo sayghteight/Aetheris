@@ -16,6 +16,7 @@ import {
   Search,
   Maximize2,
   Minimize2,
+  LogOut,
 } from 'lucide-react';
 
 // Read version from package.json at runtime
@@ -32,7 +33,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   wordCount = 0,
   readTime = 0,
 }) => {
-  const { currentProject } = useProjectStore();
+  const { currentProject, closeProject } = useProjectStore();
   const { activeView } = useNavigationStore();
   const { setActiveView } = useWorkspaceStore();
   const { settings, saveSettings } = useSettingsStore();
@@ -73,6 +74,15 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
+          </button>
+
+          {/* Exit button */}
+          <button
+            onClick={closeProject}
+            className="w-8 h-8 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:text-red-400 hover:bg-[var(--color-bg-hover)] transition-colors duration-150 shrink-0"
+            title="Salir al selector de proyectos"
+          >
+            <LogOut className="w-4 h-4" />
           </button>
 
           {/* Project info */}

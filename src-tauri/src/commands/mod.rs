@@ -1766,15 +1766,68 @@ fn build_export_manuscript(conn: &Connection) -> Result<ExportManuscript, String
     // Build hierarchy: parts -> chapters -> scenes
     let mut parts: Vec<ExportPart> = Vec::new();
 
+    // Helper: recursively collect parts from a node (which could be a folder, part, or chapter)
+    fn collect_parts(node: &ManuscriptNode, all_nodes: &[ManuscriptNode], conn: &Connection) -> Result<Vec<ExportPart>, String> {
+        let mut parts = Vec::new();
+
+        // Direct chapters under this node
+        let chapters: Vec<ExportChapter> = all_nodes
+            .iter()
+            .filter(|n| n.parent_id.as_ref() == Some(&node.id) && n.r#type == "chapter")
+            .map(|chapter| {
+                let scenes = all_nodes
+                    .iter()
+                    .filter(|s| s.parent_id.as_ref() == Some(&chapter.id) && s.r#type == "scene")
+                    .map(|scene| build_scene(scene, conn))
+                    .filter_map(|r| r.ok())
+                    .collect();
+                ExportChapter {
+                    title: chapter.title.clone(),
+                    scenes,
+                }
+            })
+            .collect();
+
+        // If this node is a folder, recurse into child folders
+        let child_parts: Vec<ExportPart> = if node.r#type == "folder" {
+            all_nodes
+                .iter()
+                .filter(|n| n.parent_id.as_ref() == Some(&node.id) && n.r#type == "folder")
+                .flat_map(|child_folder| collect_parts(child_folder, all_nodes, conn).unwrap_or_default())
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+        // If this node has chapters or is a folder with chapters, create a part
+        if !chapters.is_empty() || !child_parts.is_empty() {
+            let part = ExportPart {
+                title: node.title.clone(),
+                chapters,
+            };
+            parts.push(part);
+        }
+
+        parts.extend(child_parts);
+        Ok(parts)
+    }
+
     for node in &nodes {
         match node.r#type.as_str() {
-            "part" => {
-                let part = build_part(&node, &nodes, conn)?;
-                parts.push(part);
+            "part" | "folder" => {
+                // part and folder both create export parts
+                if let Ok(mut p) = collect_parts(&node, &nodes, conn) {
+                    parts.append(&mut p);
+                }
             }
             "chapter" => {
-                // Orphan chapter (no part) - create a default part
-                if node.parent_id.is_none() {
+                // Orphan chapter (no parent or parent is not a part/folder) - create a default part
+                let parent_is_part_or_folder = node.parent_id
+                    .as_ref()
+                    .and_then(|pid| nodes.iter().find(|n| &n.id == pid))
+                    .map(|n| n.r#type == "part" || n.r#type == "folder")
+                    .unwrap_or(false);
+                if !parent_is_part_or_folder {
                     let part = ExportPart {
                         title: "Sin parte".to_string(),
                         chapters: vec![build_chapter(&node, &nodes, conn)?],
@@ -1783,7 +1836,7 @@ fn build_export_manuscript(conn: &Connection) -> Result<ExportManuscript, String
                 }
             }
             "scene" => {
-                // Double orphan - add to a default part
+                // Scene without a valid parent - this is unusual but handle it
                 if node.parent_id.is_none() {
                     let scene = build_scene(&node, conn)?;
                     let chapter = ExportChapter {
@@ -1804,21 +1857,6 @@ fn build_export_manuscript(conn: &Connection) -> Result<ExportManuscript, String
     Ok(ExportManuscript { title, author, parts })
 }
 
-fn build_part(part_node: &ManuscriptNode, all_nodes: &[ManuscriptNode], conn: &Connection) -> Result<ExportPart, String> {
-    let mut chapters: Vec<ExportChapter> = Vec::new();
-
-    for node in all_nodes {
-        if node.parent_id.as_ref() == Some(&part_node.id) && node.r#type == "chapter" {
-            chapters.push(build_chapter(node, all_nodes, conn)?);
-        }
-    }
-
-    Ok(ExportPart {
-        title: part_node.title.clone(),
-        chapters,
-    })
-}
-
 fn build_chapter(chapter_node: &ManuscriptNode, all_nodes: &[ManuscriptNode], conn: &Connection) -> Result<ExportChapter, String> {
     let mut scenes: Vec<ExportScene> = Vec::new();
 
@@ -1836,7 +1874,7 @@ fn build_chapter(chapter_node: &ManuscriptNode, all_nodes: &[ManuscriptNode], co
 
 fn build_scene(scene_node: &ManuscriptNode, conn: &Connection) -> Result<ExportScene, String> {
     let mut stmt = conn
-        .prepare("SELECT plain_text FROM scene_contents WHERE node_id = ?1;")
+        .prepare("SELECT content FROM scene_contents WHERE node_id = ?1;")
         .map_err(|e| e.to_string())?;
 
     let content: String = stmt

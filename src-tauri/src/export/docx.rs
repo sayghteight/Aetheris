@@ -107,7 +107,12 @@ fn create_scene_title(text: &str) -> String {
 }
 
 fn format_paragraphs(content: &str) -> String {
-    let paragraphs: Vec<&str> = content.split("\n\n").filter(|p| !p.trim().is_empty()).collect();
+    // Convertir <br> de HTML en saltos de línea, luego separar
+    let normalized = content
+        .replace("<br>", "\n")
+        .replace("<br/>", "\n")
+        .replace("<br />", "\n");
+    let paragraphs: Vec<&str> = normalized.split("\n\n").filter(|p| !p.trim().is_empty()).collect();
     let mut xml = String::new();
 
     for (i, para) in paragraphs.iter().enumerate() {

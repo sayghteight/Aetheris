@@ -18,9 +18,9 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useProjectStore } from '../../store/projectStore';
-import { useSettingsStore } from '../../store/settingsStore';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useNavigationStore } from '../../store/navigationStore';
+import { TiptapEditor } from '../editor/TiptapEditor';
 
 interface UniverseEntry {
   id: string;
@@ -645,18 +645,14 @@ const CategoryView: React.FC<{
 interface SceneEditorProps {
   sceneId: string;
   onStatsUpdate: (words: number, readTime: number) => void;
-  onSelectionChange?: (selection: { start: number; end: number } | null) => void;
+  onSelectionChange?: (selection: { from: number; to: number } | null) => void;
 }
 
 export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate, onSelectionChange }) => {
-  const { settings } = useSettingsStore();
   const [content, setContent] = useState('');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const saveTimeout = useRef<number | null>(null as any);
-  const lastStats = useRef({ words: 0, readTime: 0 });
-  const [wordCount, setWordCount] = useState(0);
 
+  // Load content on mount
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -671,59 +667,26 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
     return () => { mounted = false; };
   }, [sceneId]);
 
-  const computeStats = (value: string) => {
-    const stripped = value.replace(/<[^>]+>/g, ' ').trim();
-    const words = stripped === '' ? 0 : stripped.split(/\s+/).length;
-    const readTime = Math.ceil(words / 200);
-    return { words, readTime };
-  };
-
-  const updateStats = (value: string) => {
-    const { words, readTime } = computeStats(value);
-    setWordCount(words);
-    if (lastStats.current.words !== words || lastStats.current.readTime !== readTime) {
-      lastStats.current = { words, readTime };
-      onStatsUpdate(words, readTime);
-    }
-  };
-
-  const saveContent = async (newContent: string) => {
-    setSaveStatus('saving');
-    try {
-      const plainText = newContent.replace(/<[^>]+>/g, ' ');
-      await invoke('update_scene_content', { nodeId: sceneId, content: newContent, plainText });
-      setSaveStatus('saved');
-      setLastSavedAt(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
-    } catch (err) {
-      console.error('Auto-save failed', err);
-      setSaveStatus('error');
-    }
-  };
-
-  const scheduleSave = (newContent: string) => {
+  // Handle content change with autosave
+  const handleChange = (newContent: string) => {
     setContent(newContent);
-    updateStats(newContent);
     if (saveTimeout.current) window.clearTimeout(saveTimeout.current);
-    saveTimeout.current = window.setTimeout(() => saveContent(newContent), 700);
+    saveTimeout.current = window.setTimeout(async () => {
+      try {
+        const plainText = newContent.replace(/<[^>]+>/g, ' ');
+        await invoke('update_scene_content', { nodeId: sceneId, content: newContent, plainText });
+      } catch (err) {
+        console.error('Auto-save failed', err);
+      }
+    }, 700);
   };
-
-  const saveLabel =
-    saveStatus === 'saving'
-      ? 'Guardando…'
-      : saveStatus === 'saved'
-        ? `Guardado ${lastSavedAt ?? ''}`
-        : saveStatus === 'error'
-          ? 'Error al guardar'
-          : 'Sin cambios';
 
   return (
-    <RichTextEditor
-      value={content}
-      onChange={scheduleSave}
+    <TiptapEditor
+      content={content}
+      onChange={handleChange}
       placeholder="Comienza a escribir tu escena aquí..."
-      saveLabel={saveLabel}
-      wordCount={wordCount}
-      showWordCount={settings.showWordCount !== false}
+      onStatsUpdate={onStatsUpdate}
       onSelectionChange={onSelectionChange}
     />
   );
