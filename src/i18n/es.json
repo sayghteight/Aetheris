@@ -82,7 +82,11 @@
     "autoCorrect": "Corrección Automática",
     "autoCorrectDesc": "Corrige automáticamente errores comunes de escritura",
     "showWordCount": "Mostrar Conteo de Palabras",
-    "showWordCountDesc": "Muestra el número de palabras en tiempo real"
+    "showWordCountDesc": "Muestra el número de palabras en tiempo real",
+    "centeredWritingMode": "Modo Centrado",
+    "centeredWritingModeDesc": "Mantiene el cursor en una posición cómoda en la pantalla mientras escribes.",
+    "cursorPosition": "Posición del Cursor",
+    "cursorPositionDesc": "Define dónde se mantiene el cursor en la pantalla mientras escribes."
   },
   "manuscript": {
     "title": "Manuscrito",

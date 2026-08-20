@@ -30,6 +30,8 @@ pub struct ProjectSettings {
     pub writing_style: String,
     pub spell_check_languages: Vec<String>,
     pub updated_at: Option<String>,
+    pub centered_writing_mode: bool,
+    pub centered_writing_position: i64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -189,7 +191,7 @@ pub fn get_project_settings(state: State<'_, AppState>) -> Result<ProjectSetting
 
     let mut stmt = conn
         .prepare(
-            "SELECT theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at
+            "SELECT theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at, centered_writing_mode, centered_writing_position
              FROM project_settings WHERE id = 'default' LIMIT 1;",
         )
         .map_err(|e| e.to_string())?;
@@ -207,6 +209,8 @@ pub fn get_project_settings(state: State<'_, AppState>) -> Result<ProjectSetting
                 writing_style: row.get(5)?,
                 spell_check_languages,
                 updated_at: row.get(7)?,
+                centered_writing_mode: row.get(8)?,
+                centered_writing_position: row.get(9)?,
             })
         })
         .unwrap_or_else(|_| ProjectSettings::default());
@@ -225,8 +229,8 @@ pub fn update_project_settings(
     let spell_check_languages_json = serde_json::to_string(&settings.spell_check_languages).unwrap_or_else(|_| "[\"es\",\"en\"]".to_string());
 
     conn.execute(
-        "INSERT INTO project_settings (id, theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at)
-         VALUES ('default', ?1, ?2, ?3, ?4, ?5, ?6, ?7, CURRENT_TIMESTAMP)
+        "INSERT INTO project_settings (id, theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at, centered_writing_mode, centered_writing_position)
+         VALUES ('default', ?1, ?2, ?3, ?4, ?5, ?6, ?7, CURRENT_TIMESTAMP, ?8, ?9)
          ON CONFLICT(id) DO UPDATE SET
             theme = excluded.theme,
             focus_mode = excluded.focus_mode,
@@ -235,7 +239,9 @@ pub fn update_project_settings(
             language = excluded.language,
             writing_style = excluded.writing_style,
             spell_check_languages = excluded.spell_check_languages,
-            updated_at = CURRENT_TIMESTAMP;",
+            updated_at = CURRENT_TIMESTAMP,
+            centered_writing_mode = excluded.centered_writing_mode,
+            centered_writing_position = excluded.centered_writing_position;",
         (
             &settings.theme,
             &settings.focus_mode,
@@ -244,6 +250,8 @@ pub fn update_project_settings(
             &settings.language,
             &settings.writing_style,
             &spell_check_languages_json,
+            settings.centered_writing_mode,
+            settings.centered_writing_position,
         ),
     )
     .map_err(|e| format!("Error guardando configuración: {}", e))?;
@@ -1076,8 +1084,8 @@ pub fn reset_project(state: State<'_, AppState>) -> Result<(), String> {
         [],
     ).map_err(|e| e.to_string())?;
     conn.execute(
-        "INSERT INTO project_settings (id, theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at)
-         VALUES ('default', 'midnight', 'standard', 1, 5, 'es', 'creative', '[\"es\",\"en\"]', CURRENT_TIMESTAMP);",
+        "INSERT INTO project_settings (id, theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at, centered_writing_mode, centered_writing_position)
+         VALUES ('default', 'midnight', 'standard', 1, 5, 'es', 'creative', '[\"es\",\"en\"]', CURRENT_TIMESTAMP, 0, 50);",
         [],
     ).map_err(|e| e.to_string())?;
 
