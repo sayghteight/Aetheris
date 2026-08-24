@@ -23,19 +23,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-// Available languages for spell checking
-const SPELL_CHECK_LANGUAGES = [
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
-  { code: 'en', name: 'English', flag: '🇬🇧' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
-  { code: 'pt', name: 'Português', flag: '🇵🇹' },
-  { code: 'ca', name: 'Català', flag: '🇦🇩' },
-  { code: 'gl', name: 'Galego', flag: '🇪🇸' },
-  { code: 'eu', name: 'Euskara', flag: '🇪🇸' },
-];
-
 export const ProjectSettings: React.FC = () => {
   const { t } = useI18n();
   const { currentProject: project } = useProjectStore();
@@ -63,6 +50,8 @@ export const ProjectSettings: React.FC = () => {
     spellCheck: settings.spellCheck !== false,
     autoCorrect: settings.autoCorrect !== false,
     showWordCount: settings.showWordCount !== false,
+    centeredWritingMode: settings.centeredWritingMode ?? false,
+    centeredWritingPosition: settings.centeredWritingPosition ?? 50,
   });
 
   useEffect(() => {
@@ -87,6 +76,8 @@ export const ProjectSettings: React.FC = () => {
       spellCheck: settings.spellCheck !== false,
       autoCorrect: settings.autoCorrect !== false,
       showWordCount: settings.showWordCount !== false,
+      centeredWritingMode: settings.centeredWritingMode ?? false,
+      centeredWritingPosition: settings.centeredWritingPosition ?? 50,
     });
   }, [settings]);
 
@@ -349,23 +340,35 @@ export const ProjectSettings: React.FC = () => {
                 </select>
               </div>              
               <ToggleOption label={t('editorSettings.showWordCount')} enabled={editorSettings.showWordCount} onChange={(v) => updateEditorSetting('showWordCount', v)} />
-            </div>
+              <ToggleOption label={t('editorSettings.centeredWritingMode')} enabled={editorSettings.centeredWritingMode} onChange={(v) => updateEditorSetting('centeredWritingMode', v)} />
 
-            {editorSettings.spellCheck && (
-              <div className="mt-4 p-4 bg-[var(--color-bg-primary)]/40 border border-[var(--color-border)] rounded-xl">
-                <label className="block text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">{t('editorSettings.spellCheckLanguages')}</label>
-                <div className="flex flex-wrap gap-2">
-                  {SPELL_CHECK_LANGUAGES.map((lang) => {
-                    const isSelected = (settings.spell_check_languages || []).includes(lang.code);
-                    return (
-                      <button key={lang.code} type="button" onClick={() => { const current = settings.spell_check_languages || []; const next = isSelected ? current.filter((c: string) => c !== lang.code) : [...current, lang.code]; saveSettings({ ...settings, spell_check_languages: next }); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isSelected ? 'bg-emerald-600/30 border border-emerald-500 text-emerald-300' : 'bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-text-muted)]'}`}>
-                        {lang.flag} {lang.name}
+              {editorSettings.centeredWritingMode && (
+                <div className="mt-3 p-4 bg-[var(--color-bg-primary)]/40 border border-[var(--color-border)] rounded-xl">
+                  <label className="block text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
+                    {t('editorSettings.cursorPosition')}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {[30, 40, 50, 60].map((pos) => (
+                      <button
+                        key={pos}
+                        type="button"
+                        onClick={() => updateEditorSetting('centeredWritingPosition', pos)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          editorSettings.centeredWritingPosition === pos
+                            ? 'bg-[var(--color-brand)] text-white'
+                            : 'bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-text-muted)]'
+                        }`}
+                      >
+                        {pos}%
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+                    {t('editorSettings.cursorPositionDesc')}
+                  </p>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             <button onClick={handleSaveSettings} className="mt-6 w-full md:w-auto rounded-lg bg-[var(--color-brand-bg)] border border-[var(--color-brand)]/30 px-4 py-2 text-sm font-semibold text-[var(--color-brand)] hover:bg-[var(--color-brand)]/20 transition-colors">{t('common.save')}</button>
           </section>
