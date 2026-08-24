@@ -1,6 +1,16 @@
-use super::ExportManuscript;
+use super::{ExportManuscript, ExportOptions};
+use super::html_to_plain_text;
+
+fn has_content(scene: &super::ExportScene) -> bool {
+    let text = html_to_plain_text(&scene.content);
+    !text.trim().is_empty()
+}
 
 pub fn generate(manuscript: &ExportManuscript) -> String {
+    generate_with_options(manuscript, &ExportOptions::default())
+}
+
+pub fn generate_with_options(manuscript: &ExportManuscript, options: &ExportOptions) -> String {
     let mut html = String::new();
 
     html.push_str(r#"<!DOCTYPE html>
@@ -52,6 +62,20 @@ pub fn generate(manuscript: &ExportManuscript) -> String {
             font-weight: bold;
             margin-bottom: 0.5rem;
         }
+        .synopsis {
+            font-style: italic;
+            color: #666;
+            margin-bottom: 0.75rem;
+            padding-left: 1em;
+        }
+        .author-notes {
+            color: #888;
+            font-size: 0.9em;
+            margin-top: 0.75rem;
+            padding: 0.5em 1em;
+            background: #f5f5f5;
+            border-left: 3px solid #ccc;
+        }
         p { margin-bottom: 1rem; text-indent: 1.5em; }
         p:first-of-type { text-indent: 0; }
         hr { border: none; border-top: 1px solid #ddd; margin: 2rem 0; }
@@ -72,24 +96,64 @@ pub fn generate(manuscript: &ExportManuscript) -> String {
     }
 
     for (pi, part) in manuscript.parts.iter().enumerate() {
+        // Collect chapters with content
+        let chapters_with_content: Vec<_> = part.chapters.iter()
+            .filter(|ch| ch.scenes.iter().any(|s| has_content(s)))
+            .collect();
+
+        if chapters_with_content.is_empty() {
+            continue;
+        }
+
         if pi > 0 {
             html.push_str("    <hr>\n");
         }
-        html.push_str("    <h2>");
-        html.push_str(&escape_html(&part.title));
-        html.push_str("</h2>\n");
 
-        for chapter in &part.chapters {
-            html.push_str("        <h3>");
-            html.push_str(&escape_html(&chapter.title));
-            html.push_str("</h3>\n");
+        if options.include_part_titles {
+            html.push_str("    <h2>");
+            html.push_str(&escape_html(&part.title));
+            html.push_str("</h2>\n");
+        }
 
-            for scene in &chapter.scenes {
+        for chapter in chapters_with_content {
+            if options.include_chapter_titles {
+                html.push_str("        <h3>");
+                html.push_str(&escape_html(&chapter.title));
+                html.push_str("</h3>\n");
+            }
+
+            for scene in chapter.scenes.iter().filter(|s| has_content(s)) {
                 html.push_str("        <div class=\"scene\">\n");
-                html.push_str("            <p class=\"scene-title\">");
-                html.push_str(&escape_html(&scene.title));
-                html.push_str("</p>\n");
+
+                if options.include_scene_titles {
+                    html.push_str("            <p class=\"scene-title\">");
+                    html.push_str(&escape_html(&scene.title));
+                    html.push_str("</p>\n");
+                }
+
+                if options.include_synopsis {
+                    if let Some(ref synopsis) = scene.synopsis {
+                        if !synopsis.trim().is_empty() {
+                            html.push_str("            <p class=\"synopsis\">");
+                            html.push_str(&escape_html(synopsis.trim()));
+                            html.push_str("</p>\n");
+                        }
+                    }
+                }
+
                 html.push_str(&format_scene_content(&scene.content));
+
+                if options.include_author_notes {
+                    if let Some(ref notes) = scene.author_notes {
+                        if !notes.trim().is_empty() {
+                            html.push_str("            <div class=\"author-notes\">\n");
+                            html.push_str("                <strong>Nota del autor:</strong> ");
+                            html.push_str(&escape_html(notes.trim()));
+                            html.push_str("\n            </div>\n");
+                        }
+                    }
+                }
+
                 html.push_str("        </div>\n");
             }
         }
@@ -118,6 +182,8 @@ fn format_scene_content(content: &str) -> String {
     if trimmed.starts_with('<') {
         // Convertir <br> en separadores de párrafo y envolver accordingly
         let with_paragraphs = trimmed
+            .replace("&nbsp;", " ")
+            .replace("\u{00A0}", " ")
             .replace("<br>", "\n")
             .replace("<br/>", "\n")
             .replace("<br />", "\n");

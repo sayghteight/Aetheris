@@ -1,6 +1,12 @@
 use super::ExportManuscript;
+use super::html_to_plain_text;
 use printpdf::*;
 use std::io::BufWriter;
+
+fn has_content(scene: &super::ExportScene) -> bool {
+    let text = html_to_plain_text(&scene.content);
+    !text.trim().is_empty()
+}
 
 pub fn generate(manuscript: &ExportManuscript) -> Vec<u8> {
     let (doc, page1, layer1) = PdfDocument::new(
@@ -10,7 +16,7 @@ pub fn generate(manuscript: &ExportManuscript) -> Vec<u8> {
         "Layer 1",
     );
 
-    let current_layer = doc.get_page(page1).get_layer(layer1);
+    let mut current_layer = doc.get_page(page1).get_layer(layer1);
 
     // Use a built-in font
     let font = doc.add_builtin_font(BuiltinFont::Helvetica).unwrap();
@@ -20,6 +26,13 @@ pub fn generate(manuscript: &ExportManuscript) -> Vec<u8> {
     let left_margin = 20.0;
     let line_height = 5.0;
     let paragraph_spacing = 8.0;
+    let bottom_margin = 20.0;
+    let page_height = 297.0;
+
+    // Helper to add a new page and get the new layer
+    let add_new_page = |doc: &PdfDocumentReference| -> (PdfPageIndex, PdfLayerIndex) {
+        doc.add_page(Mm(210.0), Mm(297.0), "Layer 1")
+    };
 
     // Title
     current_layer.use_text(&manuscript.title, 24.0, Mm(left_margin), Mm(y_position), &font_bold);
@@ -34,32 +47,66 @@ pub fn generate(manuscript: &ExportManuscript) -> Vec<u8> {
     y_position -= 10.0;
 
     for (pi, part) in manuscript.parts.iter().enumerate() {
+        // Collect chapters with content
+        let chapters_with_content: Vec<_> = part.chapters.iter()
+            .filter(|ch| ch.scenes.iter().any(|s| has_content(s)))
+            .collect();
+
+        if chapters_with_content.is_empty() {
+            continue;
+        }
+
         if pi > 0 {
             y_position -= 5.0;
             if y_position < 30.0 {
-                // Would need new page - for now just continue
+                let (new_page, new_layer) = add_new_page(&doc);
+                current_layer = doc.get_page(new_page).get_layer(new_layer);
+                y_position = page_height;
             }
+        }
+
+        // Check if part title fits
+        if y_position < 30.0 {
+            let (new_page, new_layer) = add_new_page(&doc);
+            current_layer = doc.get_page(new_page).get_layer(new_layer);
+            y_position = page_height;
         }
 
         // Part title
         current_layer.use_text(&part.title, 18.0, Mm(left_margin), Mm(y_position), &font_bold);
         y_position -= 8.0;
 
-        for chapter in &part.chapters {
+        for chapter in chapters_with_content {
+            // Check if chapter title fits
+            if y_position < 25.0 {
+                let (new_page, new_layer) = add_new_page(&doc);
+                current_layer = doc.get_page(new_page).get_layer(new_layer);
+                y_position = page_height;
+            }
+
             // Chapter title
             current_layer.use_text(&chapter.title, 14.0, Mm(left_margin), Mm(y_position), &font_bold);
             y_position -= 6.0;
 
-            for scene in &chapter.scenes {
+            for scene in chapter.scenes.iter().filter(|s| has_content(s)) {
+                // Check if scene title fits
+                if y_position < 20.0 {
+                    let (new_page, new_layer) = add_new_page(&doc);
+                    current_layer = doc.get_page(new_page).get_layer(new_layer);
+                    y_position = page_height;
+                }
+
                 // Scene title
                 current_layer.use_text(&scene.title, 11.0, Mm(left_margin + 5.0), Mm(y_position), &font);
                 y_position -= line_height;
 
                 // Scene content - split into lines
-                let lines = wrap_text(&scene.content, 80);
+                let lines = wrap_text(&scene.content, 70);
                 for line in lines {
-                    if y_position < 20.0 {
-                        y_position = 277.0; // Reset for simplicity
+                    if y_position < bottom_margin {
+                        let (new_page, new_layer) = add_new_page(&doc);
+                        current_layer = doc.get_page(new_page).get_layer(new_layer);
+                        y_position = page_height;
                     }
                     current_layer.use_text(line, 10.0, Mm(left_margin + 5.0), Mm(y_position), &font);
                     y_position -= line_height;
@@ -75,10 +122,10 @@ pub fn generate(manuscript: &ExportManuscript) -> Vec<u8> {
 }
 
 fn wrap_text(text: &str, max_chars: usize) -> Vec<String> {
-    // Convertir HTML a texto plano antes de procesar
-    let normalized = html_to_plain_text(text);
+    // Convert HTML to plain text using shared utility
+    let plain = html_to_plain_text(text);
     let mut lines = Vec::new();
-    for para in normalized.split("\n\n") {
+    for para in plain.split("\n\n") {
         let words: Vec<&str> = para.split_whitespace().collect();
         let mut current_line = String::new();
 
@@ -99,29 +146,4 @@ fn wrap_text(text: &str, max_chars: usize) -> Vec<String> {
         }
     }
     lines
-}
-
-/// Convierte HTML de Tiptap a texto plano
-fn html_to_plain_text(html: &str) -> String {
-    let normalized = html
-        .replace("<br>", "\n")
-        .replace("<br/>", "\n")
-        .replace("<br />", "\n")
-        .replace("</p>", "\n\n")
-        .replace("<p>", "");
-
-    let mut result = String::new();
-    let mut in_tag = false;
-    for ch in normalized.chars() {
-        match ch {
-            '<' => in_tag = true,
-            '>' => in_tag = false,
-            _ if !in_tag => result.push(ch),
-            _ => {}
-        }
-    }
-
-    let mut lines: Vec<&str> = result.split('\n').collect();
-    lines.retain(|l| !l.trim().is_empty());
-    lines.join("\n\n")
 }

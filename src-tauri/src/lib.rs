@@ -51,6 +51,7 @@ pub fn run() {
             commands::get_app_settings,
             commands::save_app_settings,
             commands::export_manuscript,
+            commands::export_preview,
             commands::save_exported_file,
             commands::merge_scenes,
             commands::split_scene_at_cursor,

@@ -155,7 +155,9 @@ pub fn initialize_database(conn: &Connection) -> Result<()> {
             language TEXT NOT NULL DEFAULT 'es',
             writing_style TEXT NOT NULL DEFAULT 'creative',
             spell_check_languages TEXT NOT NULL DEFAULT '[\"es\",\"en\"]',
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            centered_writing_mode INTEGER NOT NULL DEFAULT 0,
+            centered_writing_position INTEGER NOT NULL DEFAULT 50
         );",
         [],
     )?;
@@ -198,10 +200,30 @@ pub fn initialize_database(conn: &Connection) -> Result<()> {
         conn.execute("ALTER TABLE project_settings_new RENAME TO project_settings;", [])?;
     }
 
+    // Migración para centered_writing_mode y centered_writing_position
+    let centered_column_count: i32 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('project_settings') WHERE name = 'centered_writing_mode';",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    if centered_column_count == 0 {
+        conn.execute(
+            "ALTER TABLE project_settings ADD COLUMN centered_writing_mode INTEGER NOT NULL DEFAULT 0;",
+            [],
+        )?;
+        conn.execute(
+            "ALTER TABLE project_settings ADD COLUMN centered_writing_position INTEGER NOT NULL DEFAULT 50;",
+            [],
+        )?;
+    }
+
     // AHORA insertar la fila default si no existe (después de la migración)
     conn.execute(
-        "INSERT INTO project_settings (id, theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at)
-         SELECT 'default', 'midnight', 'standard', 1, 5, 'es', 'creative', '[\"es\",\"en\"]', CURRENT_TIMESTAMP
+        "INSERT INTO project_settings (id, theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at, centered_writing_mode, centered_writing_position)
+         SELECT 'default', 'midnight', 'standard', 1, 5, 'es', 'creative', '[\"es\",\"en\"]', CURRENT_TIMESTAMP, 0, 50
          WHERE NOT EXISTS (SELECT 1 FROM project_settings WHERE id = 'default');",
         [],
     )?;
