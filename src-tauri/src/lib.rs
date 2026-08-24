@@ -3,6 +3,7 @@ mod database;
 mod domain;
 mod commands;
 mod export;
+mod git;
 
 use state::AppState;
 
@@ -54,7 +55,8 @@ pub fn run() {
             commands::merge_scenes,
             commands::split_scene_at_cursor,
             commands::split_scene_by_selection,
-            commands::search_all
+            commands::search_all,
+            git::get_git_tags
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
