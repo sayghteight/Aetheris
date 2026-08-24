@@ -3,6 +3,7 @@ import { useProjectStore } from '../store/projectStore';
 import { useNavigationStore, ActiveView } from '../store/navigationStore';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { APP_VERSION } from '../utils/version';
 import { SearchPanel } from '../features/search/SearchPanel';
 import {
   BookOpen,
@@ -18,9 +19,6 @@ import {
   Minimize2,
   LogOut,
 } from 'lucide-react';
-
-// Read version from package.json at runtime
-const APP_VERSION = '0.1.4';
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;

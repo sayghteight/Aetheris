@@ -82,7 +82,11 @@
     "autoCorrect": "Auto-Correct",
     "autoCorrectDesc": "Automatically corrects common writing mistakes",
     "showWordCount": "Show Word Count",
-    "showWordCountDesc": "Displays real-time word count while writing"
+    "showWordCountDesc": "Displays real-time word count while writing",
+    "centeredWritingMode": "Centered Writing Mode",
+    "centeredWritingModeDesc": "Keeps the cursor at a comfortable position on the screen while you write.",
+    "cursorPosition": "Cursor Position",
+    "cursorPositionDesc": "Defines where the cursor stays on screen while you write."
   },
   "manuscript": {
     "title": "Manuscript",

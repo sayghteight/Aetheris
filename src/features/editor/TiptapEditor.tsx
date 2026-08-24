@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -17,6 +17,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useCenteredWriting } from '../../hooks/useCenteredWriting';
 
 interface TiptapEditorProps {
   content: string;
@@ -70,6 +71,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
 }) => {
   const { settings } = useSettingsStore();
   const [wordCount, setWordCount] = useState(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Calculate stats
   const calculateStats = useCallback((text: string) => {
@@ -154,6 +156,20 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
     }
   }, [editor, calculateStats, onStatsUpdate]);
 
+  // Centered writing mode hook
+  useCenteredWriting({
+    editor,
+    enabled: settings.centeredWritingMode ?? false,
+    targetPosition: settings.centeredWritingPosition ?? 50,
+    scrollContainerRef,
+  });
+
+  // Calculate bottom padding for centered writing mode
+  // This ensures the last line can reach the centered cursor position
+  const centeredWritingPadding = settings.centeredWritingMode
+    ? `calc(${100 - (settings.centeredWritingPosition ?? 50)}vh + 20vh)`
+    : '0';
+
   if (!editor) {
     return (
       <div className="flex items-center justify-center h-full text-[var(--color-text-muted)]">
@@ -185,7 +201,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
           onClick={() => editor.chain().focus().toggleUnderline().run()}
           isActive={editor.isActive('underline')}
           title="Subrayado (Ctrl+U)"
-        >
+      >
           <UnderlineIcon className="w-4 h-4" />
         </ToolbarButton>
         <ToolbarButton
@@ -259,11 +275,15 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
       </div>
 
       {/* Editor Content */}
-      <div className="flex-1 overflow-y-auto px-8 py-6">
-        <EditorContent
-          editor={editor}
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-8 py-6">
+        <div
           className="min-h-full"
-        />
+          style={{
+            paddingBottom: centeredWritingPadding,
+          }}
+        >
+          <EditorContent editor={editor} className="min-h-full" />
+        </div>
       </div>
 
       {/* Footer with word count */}

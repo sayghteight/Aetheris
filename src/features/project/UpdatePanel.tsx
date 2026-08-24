@@ -2,7 +2,7 @@ import React from 'react';
 import { Sparkles, GitBranch, Heart } from 'lucide-react';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
-const VERSION = '0.1.4';
+import { VERSION } from '../../utils/version';
 
 export const UpdatePanel: React.FC = () => {
   const openGitHub = async () => {

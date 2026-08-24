@@ -1,59 +1,29 @@
-import React from 'react';
-import { Tag, GitBranch, ArrowUpRight } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Tag, GitBranch, ArrowUpRight, FlaskConical } from 'lucide-react';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { invoke } from '@tauri-apps/api/core';
 
-const VERSION = '0.1.4';
+import { VERSION } from '../../utils/version';
 
-interface ChangelogEntry {
+interface GitCommit {
   hash: string;
   message: string;
-  type: 'feat' | 'fix' | 'refactor' | 'chore' | 'merge';
+  date: string;
 }
 
-const changelog: ChangelogEntry[] = [
-  {
-    hash: '638fb209',
-    message: 'Mejoras en la creación de carpetas y entradas, con validaciones para evitar nombres no válidos.',
-    type: 'merge',
-  },
-  {
-    hash: 'f7849f84',
-    message: 'Ahora se comprueban los nombres al crear carpetas y entradas para evitar errores.',
-    type: 'feat',
-  },
-  {
-    hash: '8a5cbdf6',
-    message: 'Mejoras en las pantallas vacías para mostrar información y orientación más útil.',
-    type: 'merge',
-  },
-  {
-    hash: '0477259d',
-    message: 'Añadidas nuevas ilustraciones y mensajes para mejorar las pantallas sin contenido.',
-    type: 'feat',
-  },
-  {
-    hash: 'd21976b2',
-    message: 'Nuevo editor de texto con mejoras en la escritura y el formato.',
-    type: 'merge',
-  },
-  {
-    hash: '3ae63c31',
-    message: 'Nuevo editor de texto más completo, con mejor formato y compatibilidad al exportar documentos.',
-    type: 'feat',
-  },
-  {
-    hash: '4c293576',
-    message: 'Mejoras en la personalización visual de la aplicación.',
-    type: 'merge',
-  },
-  {
-    hash: '9d90ae58',
-    message: 'Añadidos nuevos temas visuales y mejoras generales en la apariencia de la aplicación.',
-    type: 'feat',
-  },
-];
+interface GitTag {
+  name: string;
+  hash: string;
+  date: string;
+}
 
-const typeColors: Record<ChangelogEntry['type'], string> = {
+interface TagInfo {
+  current_tag: string | null;
+  commits_since_tag: GitCommit[];
+  all_tags: GitTag[];
+}
+
+const typeColors: Record<string, string> = {
   feat: 'text-amber-400 bg-amber-400/10',
   fix: 'text-emerald-400 bg-emerald-400/10',
   refactor: 'text-violet-400 bg-violet-400/10',
@@ -61,7 +31,7 @@ const typeColors: Record<ChangelogEntry['type'], string> = {
   merge: 'text-sky-400 bg-sky-400/10',
 };
 
-const typeLabels: Record<ChangelogEntry['type'], string> = {
+const typeLabels: Record<string, string> = {
   feat: 'Nueva funcionalidad',
   fix: 'Corrección',
   refactor: 'Refactorización',
@@ -69,7 +39,33 @@ const typeLabels: Record<ChangelogEntry['type'], string> = {
   merge: 'Merge',
 };
 
+const detectType = (message: string): string => {
+  const lower = message.toLowerCase();
+  if (lower.startsWith('feat') || lower.includes('add') || lower.includes('nuevo')) return 'feat';
+  if (lower.startsWith('fix')) return 'fix';
+  if (lower.startsWith('refactor') || lower.includes('refactor')) return 'refactor';
+  if (lower.startsWith('merge') || lower.includes('merge')) return 'merge';
+  return 'chore';
+};
+
 export const ChangelogPanel: React.FC = () => {
+  const [tagInfo, setTagInfo] = useState<TagInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadGitInfo = async () => {
+      try {
+        const info = await invoke<TagInfo>('get_git_tags');
+        setTagInfo(info);
+      } catch (err) {
+        console.error('Failed to load git tags:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void loadGitInfo();
+  }, []);
+
   const openGitHub = async () => {
     try {
       await openUrl('https://github.com/sayghteight/culto-guieditor');
@@ -78,6 +74,9 @@ export const ChangelogPanel: React.FC = () => {
     }
   };
 
+  const displayVersion = tagInfo?.current_tag?.replace('app-v', 'v') ?? VERSION;
+  const commits = tagInfo?.commits_since_tag ?? [];
+
   return (
     <div className="max-w-2xl w-full mx-auto pt-6">
       {/* Header */}
@@ -85,10 +84,20 @@ export const ChangelogPanel: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Tag className="w-4 h-4 text-amber-500" />
-            <span className="text-xs uppercase tracking-widest text-amber-500 font-medium">Versión {VERSION}</span>
+            <span className="text-xs uppercase tracking-widest text-amber-500 font-medium">
+              {displayVersion}
+            </span>
+            {tagInfo?.current_tag ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                <FlaskConical className="w-2.5 h-2.5" />
+                {tagInfo.all_tags.length > 1 ? 'Historical' : 'Latest'}
+              </span>
+            ) : null}
           </div>
           <h1 className="text-3xl font-black tracking-tight text-white">Últimos cambios</h1>
-          <p className="text-sm text-slate-500 mt-1">{changelog.length} cambios desde la última release</p>
+          <p className="text-sm text-slate-500 mt-1">
+            {loading ? 'Cargando...' : `${commits.length} cambios desde la última release`}
+          </p>
         </div>
         <button
           onClick={() => void openGitHub()}
@@ -106,27 +115,31 @@ export const ChangelogPanel: React.FC = () => {
         <div className="absolute left-[7px] top-2 bottom-2 w-px bg-slate-800" />
 
         <div className="space-y-1">
-          {changelog.map((entry) => (
-            <div key={entry.hash} className="relative flex gap-4 pl-6 py-2.5 group">
-              {/* Timeline dot */}
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[15px] h-[15px] rounded-full border-2 border-slate-800 bg-slate-950 flex items-center justify-center">
-                <div className="w-1.5 h-1.5 rounded-full bg-slate-600 group-hover:bg-amber-500 transition-colors" />
-              </div>
-
-              {/* Hash */}
-              <span className="text-[10px] font-mono text-slate-600 shrink-0 mt-0.5">{entry.hash}</span>
-
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${typeColors[entry.type]}`}>
-                    {typeLabels[entry.type]}
-                  </span>
+          {commits.map((entry) => {
+            const entryType = detectType(entry.message);
+            return (
+              <div key={entry.hash} className="relative flex gap-4 pl-6 py-2.5 group">
+                {/* Timeline dot */}
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[15px] h-[15px] rounded-full border-2 border-slate-800 bg-slate-950 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-slate-600 group-hover:bg-amber-500 transition-colors" />
                 </div>
-                <p className="text-sm text-slate-300 leading-snug">{entry.message}</p>
+
+                {/* Hash */}
+                <span className="text-[10px] font-mono text-slate-600 shrink-0 mt-0.5">{entry.hash}</span>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${typeColors[entryType]}`}>
+                      {typeLabels[entryType]}
+                    </span>
+                    <span className="text-[10px] text-slate-600">{entry.date}</span>
+                  </div>
+                  <p className="text-sm text-slate-300 leading-snug">{entry.message}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

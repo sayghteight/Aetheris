@@ -30,6 +30,8 @@ pub struct ProjectSettings {
     pub writing_style: String,
     pub spell_check_languages: Vec<String>,
     pub updated_at: Option<String>,
+    pub centered_writing_mode: bool,
+    pub centered_writing_position: i64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -189,7 +191,7 @@ pub fn get_project_settings(state: State<'_, AppState>) -> Result<ProjectSetting
 
     let mut stmt = conn
         .prepare(
-            "SELECT theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at
+            "SELECT theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at, centered_writing_mode, centered_writing_position
              FROM project_settings WHERE id = 'default' LIMIT 1;",
         )
         .map_err(|e| e.to_string())?;
@@ -207,6 +209,8 @@ pub fn get_project_settings(state: State<'_, AppState>) -> Result<ProjectSetting
                 writing_style: row.get(5)?,
                 spell_check_languages,
                 updated_at: row.get(7)?,
+                centered_writing_mode: row.get(8)?,
+                centered_writing_position: row.get(9)?,
             })
         })
         .unwrap_or_else(|_| ProjectSettings::default());
@@ -225,8 +229,8 @@ pub fn update_project_settings(
     let spell_check_languages_json = serde_json::to_string(&settings.spell_check_languages).unwrap_or_else(|_| "[\"es\",\"en\"]".to_string());
 
     conn.execute(
-        "INSERT INTO project_settings (id, theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at)
-         VALUES ('default', ?1, ?2, ?3, ?4, ?5, ?6, ?7, CURRENT_TIMESTAMP)
+        "INSERT INTO project_settings (id, theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at, centered_writing_mode, centered_writing_position)
+         VALUES ('default', ?1, ?2, ?3, ?4, ?5, ?6, ?7, CURRENT_TIMESTAMP, ?8, ?9)
          ON CONFLICT(id) DO UPDATE SET
             theme = excluded.theme,
             focus_mode = excluded.focus_mode,
@@ -235,7 +239,9 @@ pub fn update_project_settings(
             language = excluded.language,
             writing_style = excluded.writing_style,
             spell_check_languages = excluded.spell_check_languages,
-            updated_at = CURRENT_TIMESTAMP;",
+            updated_at = CURRENT_TIMESTAMP,
+            centered_writing_mode = excluded.centered_writing_mode,
+            centered_writing_position = excluded.centered_writing_position;",
         (
             &settings.theme,
             &settings.focus_mode,
@@ -244,6 +250,8 @@ pub fn update_project_settings(
             &settings.language,
             &settings.writing_style,
             &spell_check_languages_json,
+            settings.centered_writing_mode,
+            settings.centered_writing_position,
         ),
     )
     .map_err(|e| format!("Error guardando configuración: {}", e))?;
@@ -1076,8 +1084,8 @@ pub fn reset_project(state: State<'_, AppState>) -> Result<(), String> {
         [],
     ).map_err(|e| e.to_string())?;
     conn.execute(
-        "INSERT INTO project_settings (id, theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at)
-         VALUES ('default', 'midnight', 'standard', 1, 5, 'es', 'creative', '[\"es\",\"en\"]', CURRENT_TIMESTAMP);",
+        "INSERT INTO project_settings (id, theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at, centered_writing_mode, centered_writing_position)
+         VALUES ('default', 'midnight', 'standard', 1, 5, 'es', 'creative', '[\"es\",\"en\"]', CURRENT_TIMESTAMP, 0, 50);",
         [],
     ).map_err(|e| e.to_string())?;
 
@@ -1722,9 +1730,9 @@ pub fn search_all(state: State<'_, AppState>, query: String) -> Result<Vec<Searc
 
 // ─── Export Commands ──────────────────────────────────────────────────────────
 
-use crate::export::{ExportManuscript, ExportPart, ExportChapter, ExportScene, export_as_html, export_as_markdown, export_as_docx, export_as_pdf};
+use crate::export::{ExportManuscript, ExportPart, ExportChapter, ExportScene, ExportOptions, export_as_html, export_as_markdown, export_as_docx, export_as_pdf, export_as_txt, export_preview_as_html, export_preview_as_markdown, export_preview_as_txt};
 
-fn build_export_manuscript(conn: &Connection) -> Result<ExportManuscript, String> {
+fn build_export_manuscript(conn: &Connection, scene_ids: Option<Vec<String>>) -> Result<ExportManuscript, String> {
     use crate::domain::ManuscriptNode;
 
     // Get project metadata
@@ -1767,8 +1775,16 @@ fn build_export_manuscript(conn: &Connection) -> Result<ExportManuscript, String
     let mut parts: Vec<ExportPart> = Vec::new();
 
     // Helper: recursively collect parts from a node (which could be a folder, part, or chapter)
-    fn collect_parts(node: &ManuscriptNode, all_nodes: &[ManuscriptNode], conn: &Connection) -> Result<Vec<ExportPart>, String> {
+    fn collect_parts(node: &ManuscriptNode, all_nodes: &[ManuscriptNode], conn: &Connection, scene_ids: &Option<Vec<String>>) -> Result<Vec<ExportPart>, String> {
         let mut parts = Vec::new();
+
+        // Helper to check if a scene should be included
+        let include_scene = |scene_id: &str| -> bool {
+            match scene_ids {
+                Some(ids) => ids.is_empty() || ids.contains(&scene_id.to_string()),
+                None => true,
+            }
+        };
 
         // Direct chapters under this node
         let chapters: Vec<ExportChapter> = all_nodes
@@ -1777,7 +1793,7 @@ fn build_export_manuscript(conn: &Connection) -> Result<ExportManuscript, String
             .map(|chapter| {
                 let scenes = all_nodes
                     .iter()
-                    .filter(|s| s.parent_id.as_ref() == Some(&chapter.id) && s.r#type == "scene")
+                    .filter(|s| s.parent_id.as_ref() == Some(&chapter.id) && s.r#type == "scene" && include_scene(&s.id))
                     .map(|scene| build_scene(scene, conn))
                     .filter_map(|r| r.ok())
                     .collect();
@@ -1793,7 +1809,7 @@ fn build_export_manuscript(conn: &Connection) -> Result<ExportManuscript, String
             all_nodes
                 .iter()
                 .filter(|n| n.parent_id.as_ref() == Some(&node.id) && n.r#type == "folder")
-                .flat_map(|child_folder| collect_parts(child_folder, all_nodes, conn).unwrap_or_default())
+                .flat_map(|child_folder| collect_parts(child_folder, all_nodes, conn, scene_ids).unwrap_or_default())
                 .collect()
         } else {
             Vec::new()
@@ -1812,11 +1828,19 @@ fn build_export_manuscript(conn: &Connection) -> Result<ExportManuscript, String
         Ok(parts)
     }
 
+    // Helper to check if a scene should be included
+    let include_scene = |scene_id: &str| -> bool {
+        match &scene_ids {
+            Some(ids) => ids.is_empty() || ids.contains(&scene_id.to_string()),
+            None => true,
+        }
+    };
+
     for node in &nodes {
         match node.r#type.as_str() {
             "part" | "folder" => {
                 // part and folder both create export parts
-                if let Ok(mut p) = collect_parts(&node, &nodes, conn) {
+                if let Ok(mut p) = collect_parts(&node, &nodes, conn, &scene_ids) {
                     parts.append(&mut p);
                 }
             }
@@ -1830,14 +1854,14 @@ fn build_export_manuscript(conn: &Connection) -> Result<ExportManuscript, String
                 if !parent_is_part_or_folder {
                     let part = ExportPart {
                         title: "Sin parte".to_string(),
-                        chapters: vec![build_chapter(&node, &nodes, conn)?],
+                        chapters: vec![build_chapter(&node, &nodes, conn, &scene_ids)?],
                     };
                     parts.push(part);
                 }
             }
             "scene" => {
                 // Scene without a valid parent - this is unusual but handle it
-                if node.parent_id.is_none() {
+                if node.parent_id.is_none() && include_scene(&node.id) {
                     let scene = build_scene(&node, conn)?;
                     let chapter = ExportChapter {
                         title: "Sin capítulo".to_string(),
@@ -1857,11 +1881,18 @@ fn build_export_manuscript(conn: &Connection) -> Result<ExportManuscript, String
     Ok(ExportManuscript { title, author, parts })
 }
 
-fn build_chapter(chapter_node: &ManuscriptNode, all_nodes: &[ManuscriptNode], conn: &Connection) -> Result<ExportChapter, String> {
+fn build_chapter(chapter_node: &ManuscriptNode, all_nodes: &[ManuscriptNode], conn: &Connection, scene_ids: &Option<Vec<String>>) -> Result<ExportChapter, String> {
+    let include_scene = |scene_id: &str| -> bool {
+        match scene_ids {
+            Some(ids) => ids.is_empty() || ids.contains(&scene_id.to_string()),
+            None => true,
+        }
+    };
+
     let mut scenes: Vec<ExportScene> = Vec::new();
 
     for node in all_nodes {
-        if node.parent_id.as_ref() == Some(&chapter_node.id) && node.r#type == "scene" {
+        if node.parent_id.as_ref() == Some(&chapter_node.id) && node.r#type == "scene" && include_scene(&node.id) {
             scenes.push(build_scene(node, conn)?);
         }
     }
@@ -1886,22 +1917,39 @@ fn build_scene(scene_node: &ManuscriptNode, conn: &Connection) -> Result<ExportS
         title: scene_node.title.clone(),
         content,
         synopsis: scene_node.synopsis.clone(),
+        author_notes: scene_node.author_notes.clone(),
     })
 }
 
 #[tauri::command]
-pub fn export_manuscript(state: State<'_, AppState>, format: String) -> Result<Vec<u8>, String> {
+pub fn export_manuscript(state: State<'_, AppState>, format: String, scene_ids: Option<Vec<String>>) -> Result<Vec<u8>, String> {
     let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
     let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
 
-    let manuscript = build_export_manuscript(conn)?;
+    let manuscript = build_export_manuscript(conn, scene_ids)?;
 
     match format.as_str() {
         "html" => Ok(export_as_html(&manuscript).into_bytes()),
         "markdown" => Ok(export_as_markdown(&manuscript).into_bytes()),
         "docx" => Ok(export_as_docx(&manuscript)),
         "pdf" => Ok(export_as_pdf(&manuscript)),
+        "txt" => Ok(export_as_txt(&manuscript).into_bytes()),
         _ => Err(format!("Formato no soportado: {}", format)),
+    }
+}
+
+#[tauri::command]
+pub fn export_preview(state: State<'_, AppState>, format: String, scene_ids: Option<Vec<String>>, options: ExportOptions) -> Result<Vec<u8>, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let manuscript = build_export_manuscript(conn, scene_ids)?;
+
+    match format.as_str() {
+        "html" => Ok(export_preview_as_html(&manuscript, &options).into_bytes()),
+        "markdown" => Ok(export_preview_as_markdown(&manuscript, &options).into_bytes()),
+        "txt" => Ok(export_preview_as_txt(&manuscript, &options).into_bytes()),
+        _ => Err(format!("Formato no soportado para preview: {}", format)),
     }
 }
 
