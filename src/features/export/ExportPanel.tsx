@@ -529,8 +529,8 @@ export const ExportPanel: React.FC = () => {
   const sceneIdsToExport = selectAll ? null : selectedSceneIds.size > 0 ? Array.from(selectedSceneIds) : null;
   const exportCount = selectAll ? totalScenes : selectedSceneIds.size;
 
-  const formats: { id: ExportFormat; name: string; desc: string }[] = [
-    { id: 'pdf', name: 'PDF', desc: 'Para imprenta o compartir documentos' },
+  const formats: { id: ExportFormat; name: string; desc: string; badge?: string }[] = [
+    { id: 'pdf', name: 'PDF', desc: 'Para imprenta o compartir documentos', badge: 'Experimental' },
     { id: 'docx', name: 'Word', desc: 'Compatible con Microsoft Word' },
     { id: 'html', name: 'HTML', desc: 'Publicación web o conversión' },
     { id: 'markdown', name: 'Markdown', desc: 'Editores de texto avanzados' },
@@ -601,7 +601,14 @@ export const ExportPanel: React.FC = () => {
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-semibold mb-0.5">{fmt.name}</h3>
+                        <h3 className="text-white font-semibold mb-0.5 flex items-center gap-2">
+                          {fmt.name}
+                          {fmt.badge && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-wide">
+                              {fmt.badge}
+                            </span>
+                          )}
+                        </h3>
                         <p className="text-xs text-slate-500 leading-relaxed">{fmt.desc}</p>
                       </div>
 
