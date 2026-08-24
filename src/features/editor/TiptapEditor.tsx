@@ -185,7 +185,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
           onClick={() => editor.chain().focus().toggleUnderline().run()}
           isActive={editor.isActive('underline')}
           title="Subrayado (Ctrl+U)"
-        >
+      >
           <UnderlineIcon className="w-4 h-4" />
         </ToolbarButton>
         <ToolbarButton

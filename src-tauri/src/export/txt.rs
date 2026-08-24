@@ -11,24 +11,22 @@ pub fn generate(manuscript: &ExportManuscript) -> String {
 }
 
 pub fn generate_with_options(manuscript: &ExportManuscript, options: &ExportOptions) -> String {
-    let mut md = String::new();
+    let mut output = String::new();
 
     // Title
-    md.push_str("# ");
-    md.push_str(&manuscript.title);
-    md.push_str("\n\n");
+    output.push_str(&manuscript.title);
+    output.push('\n');
 
     // Author
     if let Some(author) = &manuscript.author {
-        md.push_str("*");
-        md.push_str(author);
-        md.push_str("*\n\n");
+        output.push_str(&author);
+        output.push('\n');
     }
+    output.push_str(&"\n".repeat(3));
 
-    md.push_str("---\n\n");
-
-    for (pi, part) in manuscript.parts.iter().enumerate() {
-        // Collect chapters with content
+    // Parts, chapters, scenes
+    for part in &manuscript.parts {
+        // Collect chapters/scenes that have content
         let chapters_with_content: Vec<_> = part.chapters.iter()
             .filter(|ch| ch.scenes.iter().any(|s| has_content(s)))
             .collect();
@@ -37,44 +35,39 @@ pub fn generate_with_options(manuscript: &ExportManuscript, options: &ExportOpti
             continue;
         }
 
-        if pi > 0 {
-            md.push_str("\n---\n\n");
-        }
-
-        // Part title
         if options.include_part_titles {
-            md.push_str("## ");
-            md.push_str(&part.title);
-            md.push_str("\n\n");
+            output.push_str(&part.title);
+            output.push_str("\n\n");
         }
 
         for chapter in chapters_with_content {
-            // Chapter title
-            if options.include_chapter_titles {
-                md.push_str("### ");
-                md.push_str(&chapter.title);
-                md.push_str("\n\n");
+            let scenes_with_content: Vec<_> = chapter.scenes.iter()
+                .filter(|s| has_content(s))
+                .collect();
+
+            if scenes_with_content.is_empty() {
+                continue;
             }
 
-            for scene in chapter.scenes.iter().filter(|s| has_content(s)) {
-                // Scene title
-                if options.include_scene_titles {
-                    md.push_str("**");
-                    md.push_str(&scene.title);
-                    md.push_str("**\n\n");
-                }
+            if options.include_chapter_titles {
+                output.push_str(&chapter.title);
+                output.push_str("\n\n");
+            }
 
-                // Scene content — convertir HTML a texto plano
-                let content = html_to_plain_text(&scene.content);
-                md.push_str(&content);
-                md.push_str("\n\n");
+            for scene in scenes_with_content {
+                if options.include_scene_titles {
+                    output.push_str(&scene.title);
+                    output.push('\n');
+                }
+                output.push_str(&html_to_plain_text(&scene.content));
+                output.push_str("\n\n");
 
                 if options.include_synopsis {
                     if let Some(ref synopsis) = scene.synopsis {
                         if !synopsis.trim().is_empty() {
-                            md.push_str("*Synopsis: ");
-                            md.push_str(synopsis.trim());
-                            md.push_str("*\n\n");
+                            output.push_str("[Synopsis: ");
+                            output.push_str(synopsis.trim());
+                            output.push_str("]\n\n");
                         }
                     }
                 }
@@ -82,9 +75,9 @@ pub fn generate_with_options(manuscript: &ExportManuscript, options: &ExportOpti
                 if options.include_author_notes {
                     if let Some(ref notes) = scene.author_notes {
                         if !notes.trim().is_empty() {
-                            md.push_str("> **Nota del autor:** ");
-                            md.push_str(notes.trim());
-                            md.push_str("\n\n");
+                            output.push_str("[Nota del autor: ");
+                            output.push_str(notes.trim());
+                            output.push_str("]\n\n");
                         }
                     }
                 }
@@ -92,5 +85,5 @@ pub fn generate_with_options(manuscript: &ExportManuscript, options: &ExportOpti
         }
     }
 
-    md
+    output
 }

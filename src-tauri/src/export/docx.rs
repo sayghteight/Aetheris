@@ -1,4 +1,5 @@
 use super::ExportManuscript;
+use super::html_to_plain_text;
 use std::io::Write;
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
@@ -107,12 +108,9 @@ fn create_scene_title(text: &str) -> String {
 }
 
 fn format_paragraphs(content: &str) -> String {
-    // Convertir <br> de HTML en saltos de línea, luego separar
-    let normalized = content
-        .replace("<br>", "\n")
-        .replace("<br/>", "\n")
-        .replace("<br />", "\n");
-    let paragraphs: Vec<&str> = normalized.split("\n\n").filter(|p| !p.trim().is_empty()).collect();
+    // Strip HTML tags and normalize line breaks
+    let plain = html_to_plain_text(content);
+    let paragraphs: Vec<&str> = plain.split("\n\n").filter(|p| !p.trim().is_empty()).collect();
     let mut xml = String::new();
 
     for (i, para) in paragraphs.iter().enumerate() {
