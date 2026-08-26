@@ -247,6 +247,43 @@ pub fn initialize_database(conn: &Connection) -> Result<()> {
         [],
     )?;
 
+    // Tabla de configuración de backups
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS backup_settings (
+            id TEXT PRIMARY KEY DEFAULT 'default',
+            enabled INTEGER NOT NULL DEFAULT 1,
+            folder_path TEXT,
+            max_backups INTEGER NOT NULL DEFAULT 25,
+            incremental INTEGER NOT NULL DEFAULT 0,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+        [],
+    )?;
+
+    // Migración: agregar columna incremental si no existe (antes del INSERT)
+    let has_incremental: i32 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('backup_settings') WHERE name = 'incremental';",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    if has_incremental == 0 {
+        conn.execute(
+            "ALTER TABLE backup_settings ADD COLUMN incremental INTEGER NOT NULL DEFAULT 0;",
+            [],
+        )?;
+    }
+
+    // Insertar settings por defecto si no existe
+    conn.execute(
+        "INSERT INTO backup_settings (id, enabled, max_backups, incremental)
+         SELECT 'default', 1, 25, 0
+         WHERE NOT EXISTS (SELECT 1 FROM backup_settings WHERE id = 'default');",
+        [],
+    )?;
+
     // Migración 1 → 2: agregar columnas de metadatos a manuscript_nodes
     let has_synopsis: i32 = conn
         .query_row(

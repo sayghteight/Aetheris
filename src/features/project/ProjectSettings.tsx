@@ -7,6 +7,7 @@ import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useShortcutsStore, SHORTCUT_DEFINITIONS, ShortcutAction } from '../../store/shortcutsStore';
 import { useI18n } from '../../i18n';
 import { ShortcutRecorder } from '../../components/ShortcutRecorder';
+import { BackupPanel } from '../backup/BackupPanel';
 import {
   BookOpen,
   HardDrive,
@@ -128,12 +129,13 @@ export const ProjectSettings: React.FC = () => {
     </span>
   );
 
-  const [activeTab, setActiveTab] = useState<'project' | 'editor' | 'shortcuts'>('project');
+  const [activeTab, setActiveTab] = useState<'project' | 'editor' | 'shortcuts' | 'backups'>('project');
 
   const tabs = [
     { id: 'project' as const, label: t('setup.title') || 'Proyecto', icon: BookOpen },
     { id: 'editor' as const, label: t('editorSettings.title'), icon: Type },
     { id: 'shortcuts' as const, label: t('settings.keyboardShortcuts'), icon: Keyboard },
+    { id: 'backups' as const, label: t('backup.title') || 'Backups', icon: HardDrive },
   ];
 
   return (
@@ -441,6 +443,11 @@ export const ProjectSettings: React.FC = () => {
           </button>
         </section>
         </>
+      )}
+
+      {/* ─── Backups Tab ─── */}
+      {activeTab === 'backups' && (
+        <BackupPanel />
       )}
     </div>
   );

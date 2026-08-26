@@ -4,6 +4,7 @@ mod domain;
 mod commands;
 mod export;
 mod git;
+mod backup;
 
 use state::AppState;
 
@@ -57,7 +58,19 @@ pub fn run() {
             commands::split_scene_at_cursor,
             commands::split_scene_by_selection,
             commands::search_all,
-            git::get_git_tags
+            git::get_git_tags,
+            backup::get_backup_settings_cmd,
+            backup::update_backup_settings_cmd,
+            backup::create_backup_cmd,
+            backup::create_auto_backup_cmd,
+            backup::get_backups_cmd,
+            backup::delete_backup_cmd,
+            backup::restore_backup_cmd,
+            backup::verify_backup_cmd,
+            backup::detect_old_backups_cmd,
+            backup::migrate_old_backups_cmd,
+            backup::pick_backup_folder_cmd,
+            backup::open_backup_folder_cmd
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

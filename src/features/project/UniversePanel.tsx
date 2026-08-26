@@ -18,6 +18,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useProjectStore } from '../../store/projectStore';
+import { useBackupStore } from '../../store/backupStore';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useNavigationStore } from '../../store/navigationStore';
 import { TiptapEditor } from '../editor/TiptapEditor';
@@ -688,6 +689,8 @@ interface SceneEditorProps {
 export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate, onSelectionChange }) => {
   const [content, setContent] = useState('');
   const saveTimeout = useRef<number | null>(null as any);
+  const { activePath } = useProjectStore();
+  const { createAutoBackup } = useBackupStore();
 
   // Load content on mount
   useEffect(() => {
@@ -704,7 +707,7 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
     return () => { mounted = false; };
   }, [sceneId]);
 
-  // Handle content change with autosave
+  // Handle content change with autosave and auto-backup
   const handleChange = (newContent: string) => {
     setContent(newContent);
     if (saveTimeout.current) window.clearTimeout(saveTimeout.current);
@@ -712,6 +715,10 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
       try {
         const plainText = newContent.replace(/<[^>]+>/g, ' ');
         await invoke('update_scene_content', { nodeId: sceneId, content: newContent, plainText });
+        // Trigger auto-backup if enabled
+        if (activePath) {
+          createAutoBackup(activePath);
+        }
       } catch (err) {
         console.error('Auto-save failed', err);
       }

@@ -55,22 +55,8 @@ pub struct UniverseCategory {
     pub entries: Vec<UniverseEntry>,
 }
 
-fn backup_project_file(path: &Path) -> Result<Option<PathBuf>, String> {
-    if !path.exists() {
-        return Ok(None);
-    }
-
-    let mut backup_path = path.with_extension("aer.bak");
-    let mut index = 1;
-    while backup_path.exists() {
-        backup_path = path.with_extension(format!("aer.bak.{}", index));
-        index += 1;
-    }
-
-    fs::copy(path, &backup_path)
-        .map(|_| Some(backup_path))
-        .map_err(|e| format!("No se pudo crear una copia de seguridad del proyecto: {}", e))
-}
+// Old backup function kept for reference - DO NOT USE
+// Use backup::create_backup_cmd instead
 
 #[tauri::command]
 pub fn create_project(
@@ -86,10 +72,6 @@ pub fn create_project(
     // Validar extensión
     if file_path.extension().map_or(true, |ext| ext != "aer") {
         return Err("La extensión del archivo debe ser .aer".to_string());
-    }
-
-    if file_path.exists() {
-        let _backup_path = backup_project_file(file_path)?;
     }
 
     // Conectar/Crear base de datos
@@ -139,10 +121,6 @@ pub fn open_project(
 
     if file_path.extension().map_or(true, |ext| ext != "aer") {
         return Err("El archivo no tiene extensión .aer válida".to_string());
-    }
-
-    if file_path.exists() {
-        let _backup_path = backup_project_file(file_path)?;
     }
 
     let conn = Connection::open(file_path)
