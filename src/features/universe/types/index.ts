@@ -59,6 +59,7 @@ export interface UniverseEntry {
   icon?: string;
   coverImageId?: string;
   layout: LayoutType;
+  columnWidths?: [number, number] | [number, number, number]; // percentages
   isFeatured: boolean;
   tags: string[];
   metadata: Record<string, unknown>;

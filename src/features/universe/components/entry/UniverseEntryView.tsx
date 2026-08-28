@@ -16,9 +16,11 @@ import {
   FileText,
   ExternalLink,
   Loader2,
+  BookOpen,
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { useUniverseStore } from '../../store/universeStore';
+import { useManuscriptStore } from '../../../../store/manuscriptStore';
 import { useI18n } from '../../../../i18n';
 import { BlockEditor } from '../editor/BlockEditor';
 import type { UniverseEntry, LayoutType, EntryType, UniverseBlock } from '../../types';
@@ -55,6 +57,8 @@ interface EntryHeaderProps {
   onDelete: () => void;
   onToggleFeatured: () => void;
   isEditing: boolean;
+  editedBriefDescription: string;
+  onBriefDescriptionChange: (value: string) => void;
 }
 
 const EntryHeader: React.FC<EntryHeaderProps> = ({
@@ -64,7 +68,10 @@ const EntryHeader: React.FC<EntryHeaderProps> = ({
   onDelete,
   onToggleFeatured,
   isEditing,
+  editedBriefDescription,
+  onBriefDescriptionChange,
 }) => {
+  const { t } = useI18n();
   const Icon = typeIcons[entry.entryType] || FileText;
   const color = getEntryTypeColor(entry.entryType);
 
@@ -149,9 +156,20 @@ const EntryHeader: React.FC<EntryHeaderProps> = ({
       </div>
 
       {/* Brief Description */}
-      {entry.briefDescription && (
-        <p className="mt-4 text-sm text-slate-400">{entry.briefDescription}</p>
-      )}
+      {isEditing ? (
+        <textarea
+          value={editedBriefDescription}
+          onChange={(e) => onBriefDescriptionChange(e.target.value)}
+          placeholder={t('universe.wizard.descriptionPlaceholder')}
+          rows={2}
+          className="mt-4 w-full rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-600 outline-none transition focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 resize-none"
+        />
+      ) : editedBriefDescription ? (
+        <div
+          className="mt-4 text-sm text-slate-400 prose prose-invert prose-sm max-w-none"
+          dangerouslySetInnerHTML={{ __html: editedBriefDescription }}
+        />
+      ) : null}
 
       {/* Tags */}
       {entry.tags && entry.tags.length > 0 && (
@@ -197,10 +215,14 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
 
   const [isEditing, setIsEditing] = React.useState(false);
   const [layout, setLayout] = React.useState<LayoutType>('1-col');
+  const [columnWidths, setColumnWidths] = React.useState<[number, number] | [number, number, number] | undefined>(undefined);
+  const [editedBriefDescription, setEditedBriefDescription] = React.useState('');
 
   React.useEffect(() => {
     if (entry) {
       setLayout(entry.layout);
+      setColumnWidths(entry.columnWidths);
+      setEditedBriefDescription(entry.briefDescription || '');
     }
   }, [entry?.id]);
 
@@ -221,7 +243,11 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
     );
   }
 
-  const handleEdit = () => setIsEditing(true);
+  const handleEdit = () => {
+    setEditedBriefDescription(entry.briefDescription || '');
+    setIsEditing(true);
+  };
+
   const handleBackToView = () => setIsEditing(false);
 
   const handleDelete = async () => {
@@ -240,6 +266,8 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
       {
         ...entry,
         layout,
+        columnWidths,
+        briefDescription: editedBriefDescription,
         updatedAt: new Date().toISOString(),
       },
       updatedBlocks
@@ -265,6 +293,8 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
         onDelete={handleDelete}
         onToggleFeatured={handleToggleFeatured}
         isEditing={isEditing}
+        editedBriefDescription={editedBriefDescription}
+        onBriefDescriptionChange={setEditedBriefDescription}
       />
 
       {/* Block Editor / Viewer */}
@@ -273,7 +303,11 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
           <BlockEditor
             entryId={entryId}
             layout={layout}
+            columnWidths={columnWidths}
             onLayoutChange={setLayout}
+            onColumnWidthsChange={(widths) => {
+              setColumnWidths(widths ?? undefined);
+            }}
             isEditing={true}
           />
         ) : (
@@ -286,6 +320,11 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
                   : layout === '2-col'
                   ? 'grid grid-cols-2 gap-6'
                   : 'grid grid-cols-3 gap-6'
+              }
+              style={
+                layout !== '1-col' && columnWidths
+                  ? { gridTemplateColumns: columnWidths.map(w => `${w}%`).join(' ') }
+                  : undefined
               }
             >
               {[0, 1, 2].map((colIdx) => {
@@ -446,6 +485,9 @@ const GalleryView: React.FC<{ assetIds: string[]; layout: 'grid' | 'masonry' | '
 // ─── Read Mode Block ───────────────────────────────────────────────────────────
 
 const ReadModeBlock: React.FC<{ block: UniverseBlock }> = ({ block }) => {
+  const { t } = useI18n();
+  const { entries } = useUniverseStore();
+  const { nodes: manuscriptNodes } = useManuscriptStore();
   const content = block.content;
 
   switch (block.blockType) {
@@ -517,38 +559,55 @@ const ReadModeBlock: React.FC<{ block: UniverseBlock }> = ({ block }) => {
     }
 
     case 'entry-reference': {
-      const { entryId } = content as { type: 'entry-reference'; entryId: string };
-      const { entries } = useUniverseStore();
-      const referencedEntry = entries.find((e) => e.id === entryId);
+      // Support both old format (entryId) and new format (referenceType + referenceId)
+      const oldContent = content as { type: 'entry-reference'; entryId?: string; referenceType?: string; referenceId?: string };
+      const referenceType = oldContent.referenceType as 'entry' | 'chapter' || 'entry';
+      const referenceId = oldContent.referenceId || oldContent.entryId || '';
 
-      if (!referencedEntry) {
+      if (!referenceId) {
         return (
           <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-center text-sm text-red-400">
-            {t('universe.entryView.referencedEntryNotFound')}
+            {t('universe.blocks.noReference')}
           </div>
         );
       }
 
-      const Icon = typeIcons[referencedEntry.entryType] || FileText;
-      const color = getEntryTypeColor(referencedEntry.entryType);
+      const isChapter = referenceType === 'chapter';
+      const referencedEntry = !isChapter ? entries.find((e) => e.id === referenceId) : null;
+      const referencedChapter = isChapter ? manuscriptNodes.find((n) => n.id === referenceId) : null;
+
+      if (!referencedEntry && !referencedChapter) {
+        return (
+          <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-center text-sm text-red-400">
+            {t('universe.entryView.referenceNotFound')}
+          </div>
+        );
+      }
+
+      const displayName = isChapter ? referencedChapter?.title : referencedEntry?.name;
+      const Icon = isChapter ? BookOpen : (typeIcons[referencedEntry!.entryType] || FileText);
+      const color = isChapter ? '#f59e0b' : getEntryTypeColor(referencedEntry!.entryType);
+      const displaySubtype = isChapter
+        ? (referencedChapter?.type === 'chapter' ? t('universe.blocks.chapter') : t('universe.blocks.scene'))
+        : referencedEntry?.entryType;
 
       return (
-        <div className="mb-4 flex items-center gap-3 rounded-lg border border-slate-700/50 bg-slate-800/30 p-4">
+        <div
+          className="mb-4 flex items-center gap-3 rounded-lg border p-4"
+          style={{ borderColor: `${color}40`, backgroundColor: `${color}10` }}
+        >
           <div
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border"
-            style={{
-              borderColor: `${color}40`,
-              backgroundColor: `${color}10`,
-            }}
+            style={{ borderColor: `${color}40`, backgroundColor: `${color}15` }}
           >
             <Icon className="h-4 w-4" color={color} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-200">
-              {referencedEntry.name}
+            <p className="truncate text-sm font-medium" style={{ color }}>
+              {displayName}
             </p>
             <p className="truncate text-xs text-slate-500">
-              {referencedEntry.entryType}
+              {displaySubtype}
             </p>
           </div>
         </div>

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   Plus,
-  GripVertical,
+  Trash2,
 } from 'lucide-react';
 import { useUniverseStore } from '../../store/universeStore';
 import type { UniverseBlock, LayoutType, BlockType, BlockContent } from '../../types';
@@ -18,19 +18,106 @@ import {
   EntryReferenceBlock,
 } from '../blocks';
 
+// ─── Resize Handle ────────────────────────────────────────────────────────────
+
+interface ResizeHandleProps {
+  onResize: (newWidths: [number, number] | [number, number, number]) => void;
+  widths: [number, number] | [number, number, number];
+  index: number; // which divider (0 = between col0 and col1, 1 = between col1 and col2)
+}
+
+const ResizeHandle: React.FC<ResizeHandleProps> = ({ onResize, widths, index }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+
+    const startX = e.clientX;
+    const startWidths = [...widths];
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const container = containerRef.current?.parentElement;
+      if (!container) return;
+
+      const containerWidth = container.getBoundingClientRect().width;
+      const deltaPercent = (deltaX / containerWidth) * 100;
+
+      const newWidths = [...startWidths] as [number, ...number[]];
+
+      if (index === 0) {
+        // First divider: resize first two columns
+        const minWidth = 15;
+        const newFirst = Math.max(minWidth, Math.min(70, startWidths[0] + deltaPercent));
+        const newSecond = Math.max(minWidth, Math.min(70, startWidths[1] - deltaPercent));
+        newWidths[0] = newFirst;
+        newWidths[1] = newSecond;
+      } else if (index === 1) {
+        // Second divider: resize last two columns
+        const minWidth = 15;
+        const newSecond = Math.max(minWidth, Math.min(70, startWidths[1] + deltaPercent));
+        const newThird = Math.max(minWidth, Math.min(70, startWidths[2] - deltaPercent));
+        newWidths[1] = newSecond;
+        newWidths[2] = newThird;
+      }
+
+      onResize(newWidths as [number, number] | [number, number, number]);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [widths, index, onResize]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative flex items-center justify-center w-3 cursor-col-resize group"
+      onMouseDown={handleMouseDown}
+    >
+      <div
+        className={`h-full w-0.5 rounded-full transition-all ${
+          isDragging
+            ? 'bg-violet-500'
+            : 'bg-slate-600 group-hover:bg-violet-500'
+        }`}
+      />
+    </div>
+  );
+};
+
 // ─── Block Toolbar ─────────────────────────────────────────────────────────────
 
 interface BlockToolbarProps {
   onDelete: () => void;
+  isDragging?: boolean;
 }
 
-const BlockToolbar: React.FC<BlockToolbarProps> = () => {
+const BlockToolbar: React.FC<BlockToolbarProps> = ({ onDelete, isDragging }) => {
   return (
-    <div className="absolute -left-1 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className={`absolute -left-1 top-1/2 z-10 flex -translate-y-1/2 gap-0.5 transition-opacity ${isDragging ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
       {/* Drag Handle */}
       <div className="flex h-6 w-5 cursor-grab items-center justify-center rounded-l-md bg-violet-600/80 text-white/80">
         <GripVertical className="h-3.5 w-3.5" />
       </div>
+      {/* Delete Button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        className="flex h-6 w-5 cursor-pointer items-center justify-center rounded-l-md bg-red-600/80 text-white/80 hover:bg-red-500 transition-colors"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 };
@@ -59,8 +146,8 @@ const blockTypes: Array<{ type: BlockType; label: string; icon: string }> = [
 const AddBlockMenu: React.FC<AddBlockMenuProps> = ({ columnIndex: _columnIndex, onAdd, onClose }) => {
   return (
     <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm">
-      <div className="w-64 rounded-xl border border-slate-700/80 bg-slate-900/95 p-2 shadow-xl">
-        <div className="mb-1 px-2 py-1 text-xs font-medium text-slate-500">
+      <div className="w-64 rounded-xl border border-slate-700/80 bg-slate-900/95 p-2 shadow-xl max-h-80 overflow-y-auto">
+        <div className="mb-1 px-2 py-1 text-xs font-medium text-slate-500 sticky top-0 bg-slate-900/95">
           Añadir bloque
         </div>
         <div className="space-y-0.5">
@@ -99,6 +186,7 @@ interface ColumnContainerProps {
   onAddBlock: (columnIndex: 0 | 1 | 2, blockType: BlockType) => void;
   onUpdateBlock: (blockId: string, content: BlockContent) => void;
   onDeleteBlock: (blockId: string) => void;
+  onMoveBlock: (blockId: string, targetBlockId: string, position: 'before' | 'after') => void;
   selectedBlockId: string | null;
   onSelectBlock: (blockId: string | null) => void;
   layout: LayoutType;
@@ -111,6 +199,7 @@ const ColumnContainer: React.FC<ColumnContainerProps> = ({
   onAddBlock,
   onUpdateBlock,
   onDeleteBlock,
+  onMoveBlock,
   selectedBlockId,
   onSelectBlock,
   layout,
@@ -140,11 +229,19 @@ const ColumnContainer: React.FC<ColumnContainerProps> = ({
             }`}
             onClick={() => onSelectBlock(block.id)}
           >
-            {/* Block Toolbar */}
+            {/* Delete Button */}
             {isEditing && (
-              <BlockToolbar
-                onDelete={() => onDeleteBlock(block.id)}
-              />
+              <div className="absolute -right-1 top-1 z-10 flex gap-0.5 transition-opacity opacity-0 group-hover:opacity-100">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteBlock(block.id);
+                  }}
+                  className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md bg-red-600/80 text-white/80 hover:bg-red-500 transition-colors"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
             )}
 
             {/* Block Content */}
@@ -227,13 +324,21 @@ const BlockContent: React.FC<BlockContentProps> = ({ block, onUpdate, isEditing 
 interface LayoutSelectorProps {
   layout: LayoutType;
   onChange: (layout: LayoutType) => void;
+  onColumnWidthsReset?: () => void;
 }
 
-const LayoutSelector: React.FC<LayoutSelectorProps> = ({ layout, onChange }) => {
+const LayoutSelector: React.FC<LayoutSelectorProps> = ({ layout, onChange, onColumnWidthsReset }) => {
+  const handleChange = (newLayout: LayoutType) => {
+    onChange(newLayout);
+    if (onColumnWidthsReset) {
+      onColumnWidthsReset();
+    }
+  };
+
   return (
     <div className="flex items-center gap-1 rounded-lg border border-slate-700/50 bg-slate-800/30 p-1">
       <button
-        onClick={() => onChange('1-col')}
+        onClick={() => handleChange('1-col')}
         className={`flex h-7 w-7 items-center justify-center rounded transition ${
           layout === '1-col' ? 'bg-violet-600/30 text-violet-300' : 'text-slate-500 hover:text-slate-300'
         }`}
@@ -242,7 +347,7 @@ const LayoutSelector: React.FC<LayoutSelectorProps> = ({ layout, onChange }) => 
         <div className="h-4 w-3 rounded-sm bg-current" />
       </button>
       <button
-        onClick={() => onChange('2-col')}
+        onClick={() => handleChange('2-col')}
         className={`flex h-7 w-7 items-center justify-center rounded transition ${
           layout === '2-col' ? 'bg-violet-600/30 text-violet-300' : 'text-slate-500 hover:text-slate-300'
         }`}
@@ -254,7 +359,7 @@ const LayoutSelector: React.FC<LayoutSelectorProps> = ({ layout, onChange }) => 
         </div>
       </button>
       <button
-        onClick={() => onChange('3-col')}
+        onClick={() => handleChange('3-col')}
         className={`flex h-7 w-7 items-center justify-center rounded transition ${
           layout === '3-col' ? 'bg-violet-600/30 text-violet-300' : 'text-slate-500 hover:text-slate-300'
         }`}
@@ -275,14 +380,18 @@ const LayoutSelector: React.FC<LayoutSelectorProps> = ({ layout, onChange }) => 
 interface BlockEditorProps {
   entryId: string;
   layout: LayoutType;
+  columnWidths?: [number, number] | [number, number, number];
   onLayoutChange: (layout: LayoutType) => void;
+  onColumnWidthsChange?: (widths: [number, number] | [number, number, number]) => void;
   isEditing: boolean;
 }
 
 export const BlockEditor: React.FC<BlockEditorProps> = ({
   entryId,
   layout,
+  columnWidths,
   onLayoutChange,
+  onColumnWidthsChange,
   isEditing,
 }) => {
   const {
@@ -321,6 +430,34 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     }
   };
 
+  const handleMoveBlock = (blockId: string, targetBlockId: string, position: 'before' | 'after') => {
+    // Find indices
+    const blockIndex = entryBlocks.findIndex(b => b.id === blockId);
+    const targetIndex = entryBlocks.findIndex(b => b.id === targetBlockId);
+
+    if (blockIndex === -1 || targetIndex === -1) return;
+
+    // Create new array
+    const newBlocks = [...entryBlocks];
+    const [removed] = newBlocks.splice(blockIndex, 1);
+
+    // Calculate new index
+    let newIndex = newBlocks.findIndex(b => b.id === targetBlockId);
+    if (position === 'after') {
+      newIndex = newIndex + 1;
+    }
+
+    newBlocks.splice(newIndex, 0, removed);
+
+    // Update order values
+    newBlocks.forEach((b, i) => {
+      b.blockOrder = i;
+    });
+
+    // Update local state only (no backend call until save)
+    setEntryBlocks(newBlocks);
+  };
+
   const handleSave = async () => {
     if (entry) {
       await updateEntry(entry, entryBlocks);
@@ -332,7 +469,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       {/* Editor Toolbar */}
       {isEditing && (
         <div className="flex items-center justify-between border-b border-slate-800/60 bg-slate-900/50 px-4 py-3">
-          <LayoutSelector layout={layout} onChange={onLayoutChange} />
+          <LayoutSelector layout={layout} onChange={onLayoutChange} onColumnWidthsReset={() => onColumnWidthsChange?.(undefined as any)} />
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500">
               {entryBlocks.length} bloques
@@ -349,25 +486,23 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
 
       {/* Columns */}
       <div
-        className={`flex-1 gap-4 p-4 ${
-          layout === '1-col'
-            ? 'grid-cols-1'
-            : layout === '2-col'
-            ? 'grid grid-cols-2'
-            : 'grid grid-cols-3'
-        }`}
+        className="flex-1 gap-1 p-4"
         style={{
-          display: layout === '1-col' ? 'block' : 'grid',
+          display: layout === '1-col' ? 'block' : 'flex',
         }}
       >
         {/* Column 0 */}
-        <div className={layout === '1-col' ? '' : ''}>
+        <div
+          className="flex flex-col"
+          style={layout !== '1-col' && columnWidths ? { width: `${columnWidths[0]}%` } : undefined}
+        >
           <ColumnContainer
             columnIndex={0}
             blocks={getBlocksByColumn(0)}
             onAddBlock={handleAddBlock}
             onUpdateBlock={handleUpdateBlock}
             onDeleteBlock={handleDeleteBlock}
+            onMoveBlock={handleMoveBlock}
             selectedBlockId={selectedBlockId}
             onSelectBlock={setSelectedBlockId}
             layout={layout}
@@ -375,15 +510,28 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
           />
         </div>
 
+        {/* Resize Handle 0 (between col 0 and 1) */}
+        {layout !== '1-col' && isEditing && onColumnWidthsChange && (
+          <ResizeHandle
+            widths={columnWidths || (layout === '2-col' ? [50, 50] : [33, 33, 34])}
+            index={0}
+            onResize={(w) => onColumnWidthsChange?.(w)}
+          />
+        )}
+
         {/* Column 1 */}
         {layout !== '1-col' && (
-          <div>
+          <div
+            className="flex flex-col"
+            style={columnWidths ? { width: `${columnWidths[1]}%` } : undefined}
+          >
             <ColumnContainer
               columnIndex={1}
               blocks={getBlocksByColumn(1)}
               onAddBlock={handleAddBlock}
               onUpdateBlock={handleUpdateBlock}
               onDeleteBlock={handleDeleteBlock}
+              onMoveBlock={handleMoveBlock}
               selectedBlockId={selectedBlockId}
               onSelectBlock={setSelectedBlockId}
               layout={layout}
@@ -392,15 +540,28 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
           </div>
         )}
 
+        {/* Resize Handle 1 (between col 1 and 2) */}
+        {layout === '3-col' && isEditing && onColumnWidthsChange && (
+          <ResizeHandle
+            widths={columnWidths || [33, 33, 34]}
+            index={1}
+            onResize={(w) => onColumnWidthsChange?.(w)}
+          />
+        )}
+
         {/* Column 2 */}
         {layout === '3-col' && (
-          <div>
+          <div
+            className="flex flex-col"
+            style={columnWidths ? { width: `${columnWidths[2]}%` } : undefined}
+          >
             <ColumnContainer
               columnIndex={2}
               blocks={getBlocksByColumn(2)}
               onAddBlock={handleAddBlock}
               onUpdateBlock={handleUpdateBlock}
               onDeleteBlock={handleDeleteBlock}
+              onMoveBlock={handleMoveBlock}
               selectedBlockId={selectedBlockId}
               onSelectBlock={setSelectedBlockId}
               layout={layout}

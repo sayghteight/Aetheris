@@ -257,6 +257,7 @@
       "cancel": "Cancel",
       "saveChanges": "Save changes",
       "referencedEntryNotFound": "Referenced entry not found",
+      "referenceNotFound": "Reference not found",
       "blockType": "Block type:",
       "areYouSureDelete": "Are you sure you want to delete"
     },
@@ -276,8 +277,17 @@
       "clickToUpload": "Click to upload image",
       "noImages": "No images",
       "noReference": "No reference",
-      "entryReference": "Entry reference",
-      "noEntriesFound": "No entries found"
+      "entryReference": "Reference",
+      "noEntriesFound": "No entries found",
+      "entries": "Entries",
+      "chaptersScenes": "Chapters/Scenes",
+      "noChaptersScenesFound": "No chapters or scenes found",
+      "changeReference": "Change reference...",
+      "selectReference": "Select reference...",
+      "searchEntryPlaceholder": "Search entry...",
+      "searchChapterPlaceholder": "Search chapter or scene...",
+      "chapter": "Chapter",
+      "scene": "Scene"
     }
   },
   "settings": {

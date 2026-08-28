@@ -126,9 +126,10 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
                     )}
                   </div>
                   {entry.briefDescription && (
-                    <p className="line-clamp-2 text-xs text-slate-400">
-                      {entry.briefDescription}
-                    </p>
+                    <div
+                      className="line-clamp-2 text-xs text-slate-400 prose prose-invert prose-xs max-w-none"
+                      dangerouslySetInnerHTML={{ __html: entry.briefDescription }}
+                    />
                   )}
                   <div className="mt-auto flex flex-wrap gap-1 pt-2">
                     {entry.tags.slice(0, 3).map((tag) => (
