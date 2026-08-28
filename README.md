@@ -87,23 +87,23 @@ Available in English and Spanish
 
 ## 📥 Downloads
 
-### Latest Release: v0.1.4 (August 8, 2026)
+### Latest Release: v0.1.5 (August 25, 2026)
 
 #### Windows
-- [Aetheria_0.1.4_x64-setup.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.4/Aetheria_0.1.4_x64-setup.exe) — Windows Installer
+- [Aetheria_0.1.5_x64-setup.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_x64-setup.exe) — Windows Installer
 
 #### macOS
-- [Aetheria_0.1.4_aarch64.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.4/Aetheria_0.1.4_aarch64.dmg) — Apple Silicon
-- [Aetheria_0.1.4_aarch64.app.tar.gz](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.4/Aetheria_0.1.4_aarch64.app.tar.gz) — Apple Silicon (tarball)
+- [Aetheria_0.1.5_aarch64.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_aarch64.dmg) — Apple Silicon
+- [Aetheria_0.1.5_aarch64.app.tar.gz](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_aarch64.app.tar.gz) — Apple Silicon (tarball)
 
 #### Linux
-- [Aetheria_0.1.4_amd64.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.4/Aetheria_0.1.4_amd64.AppImage) — Universal Linux executable
-- [Aetheria_0.1.4_amd64.deb](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.4/Aetheria_0.1.4_amd64.deb) — Debian/Ubuntu
-- [Aetheria-0.1.4-1.x86_64.rpm](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.4/Aetheria-0.1.4-1.x86_64.rpm) — Fedora/RHEL
+- [Aetheria_0.1.5_amd64.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_amd64.AppImage) — Universal Linux executable
+- [Aetheria_0.1.5_amd64.deb](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_amd64.deb) — Debian/Ubuntu
+- [Aetheria-0.1.5-1.x86_64.rpm](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria-0.1.5-1.x86_64.rpm) — Fedora/RHEL
 
 #### Source Code
-- [Aetheria_0.1.4.tar.gz](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.4/Aetheria_0.1.4_aarch64.app.tar.gz) — Source archive
-- [app-v0.1.4.zip](https://github.com/sayghteight/Aetheris/archive/refs/tags/app-v0.1.4.zip) — ZIP archive
+- [Aetheria_0.1.5.tar.gz](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_aarch64.app.tar.gz) — Source archive
+- [app-v0.1.5.zip](https://github.com/sayghteight/Aetheris/archive/refs/tags/app-v0.1.5.zip) — ZIP archive
 
 ---
 
@@ -111,6 +111,7 @@ Available in English and Spanish
 
 | Version | Release Date | Windows | macOS | Linux |
 |---------|--------------|---------|-------|-------|
+| [v0.1.4](https://github.com/sayghteight/Aetheris/releases/tag/app-v0.1.4) | Aug 8, 2026 | [.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.4/Aetheria_0.1.4_x64-setup.exe) | [.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.4/Aetheria_0.1.4_aarch64.dmg) | [.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.4/Aetheria_0.1.4_amd64.AppImage) |
 | [v0.1.3](https://github.com/sayghteight/Aetheris/releases/tag/app-v0.1.3) | Aug 3, 2026 | [.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.3/Aetheria_0.1.3_x64-setup.exe) | [.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.3/Aetheria_0.1.3_aarch64.dmg) | [.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.3/Aetheria_0.1.3_amd64.AppImage) |
 | [v0.1.2](https://github.com/sayghteight/Aetheris/releases/tag/app-v0.1.2) | Jul 28, 2026 | [.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.2/Aetheria_0.1.2_x64-setup.exe) | [.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.2/Aetheria_0.1.2_aarch64.dmg) | [.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.2/Aetheria_0.1.2_amd64.AppImage) |
 | [v0.1.1](https://github.com/sayghteight/Aetheris/releases/tag/app-v0.1.1) | Jul 25, 2026 | [.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.1/Aetheria_0.1.1_x64-setup.exe) | [.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.1/Aetheria_0.1.1_aarch64.dmg) | [.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.1/Aetheria_0.1.1_amd64.AppImage) |

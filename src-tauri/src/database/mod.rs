@@ -478,6 +478,7 @@ fn migrate_legacy_universe_if_needed(conn: &Connection) -> Result<(), String> {
             id: String,
             name: String,
             description: String,
+            
             entries: Vec<LegacyEntry>,
         }
 
