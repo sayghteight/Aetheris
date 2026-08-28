@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   PencilLine,
   Trash2,
@@ -15,11 +15,21 @@ import {
   Lightbulb,
   FileText,
   ExternalLink,
+  Loader2,
 } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
 import { useUniverseStore } from '../../store/universeStore';
 import { BlockEditor } from '../editor/BlockEditor';
 import type { UniverseEntry, LayoutType, EntryType, UniverseBlock } from '../../types';
 import { getEntryTypeColor } from '../../types';
+
+interface ProjectAsset {
+  id: string;
+  filename: string;
+  mime_type: string;
+  data: number[];
+  created_at: string;
+}
 
 // ─── Type Icons Mapping ────────────────────────────────────────────────────────
 
@@ -356,6 +366,80 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
   );
 };
 
+// ─── Gallery View (loads assets from DB) ───────────────────────────────────────
+
+const GalleryView: React.FC<{ assetIds: string[]; layout: 'grid' | 'masonry' | 'carousel' }> = ({ assetIds, layout }) => {
+  const [imageUrls, setImageUrls] = useState<Map<string, string>>(new Map());
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadAssets = async () => {
+      setIsLoading(true);
+      const newUrls = new Map<string, string>();
+
+      for (const assetId of assetIds) {
+        try {
+          const asset = await invoke<ProjectAsset | null>('get_asset', { id: assetId });
+          if (asset && asset.data) {
+            const uint8Array = new Uint8Array(asset.data);
+            const blob = new Blob([uint8Array], { type: asset.mime_type });
+            newUrls.set(assetId, URL.createObjectURL(blob));
+          }
+        } catch (e) {
+          console.error('Error loading asset:', assetId, e);
+        }
+      }
+
+      setImageUrls(newUrls);
+      setIsLoading(false);
+    };
+
+    loadAssets();
+  }, [assetIds.join(',')]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/30 py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+      </div>
+    );
+  }
+
+  if (layout === 'carousel') {
+    return (
+      <div className="mb-4">
+        <div className="flex overflow-x-auto gap-2 pb-2">
+          {assetIds.map((id, idx) => (
+            imageUrls.has(id) && (
+              <img
+                key={idx}
+                src={imageUrls.get(id)}
+                alt={`Imagen ${idx + 1}`}
+                className="h-32 w-auto rounded-lg shrink-0 object-cover"
+              />
+            )
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`mb-4 grid gap-2 ${layout === 'masonry' ? 'columns-2' : 'grid-cols-3'}`}>
+      {assetIds.map((id, idx) => (
+        imageUrls.has(id) && (
+          <img
+            key={idx}
+            src={imageUrls.get(id)}
+            alt={`Imagen ${idx + 1}`}
+            className="rounded-lg w-full"
+          />
+        )
+      ))}
+    </div>
+  );
+};
+
 // ─── Read Mode Block ───────────────────────────────────────────────────────────
 
 const ReadModeBlock: React.FC<{ block: UniverseBlock }> = ({ block }) => {
@@ -434,9 +518,6 @@ const ReadModeBlock: React.FC<{ block: UniverseBlock }> = ({ block }) => {
       const { entries } = useUniverseStore();
       const referencedEntry = entries.find((e) => e.id === entryId);
 
-      console.log('Referenced Entry:', referencedEntry);
-      console.log('Referenced Entry ID:', entryId);
-    
       if (!referencedEntry) {
         return (
           <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-center text-sm text-red-400">
@@ -472,23 +553,11 @@ const ReadModeBlock: React.FC<{ block: UniverseBlock }> = ({ block }) => {
     }
 
     case 'gallery': {
-      console.log('Rendering entry-reference block:', block);
-      console.log('Block content:', content);
-      const { images } = content as { type: 'gallery'; images: Array<{ id: string; url: string; caption?: string }> };
-      if (!images || images.length === 0) return null;
+      const { assetIds, layout } = content as { type: 'gallery'; assetIds: string[]; layout?: 'grid' | 'masonry' | 'carousel' };
+      if (!assetIds || assetIds.length === 0) return null;
+
       return (
-        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {images.map((img) => (
-            <div key={img.id} className="relative overflow-hidden rounded-lg border border-slate-700/50 bg-slate-800/30">
-              <img src={img.url} alt={img.caption || 'Gallery Image'} className="h-full w-full object-cover" />
-              {img.caption && (
-                <div className="absolute bottom-0 left-0 right-0 bg-slate-900/70 px-2 py-1 text-xs text-slate-300">
-                  {img.caption}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <GalleryView assetIds={assetIds} layout={layout || 'grid'} />
       );
     }
 

@@ -18,6 +18,7 @@ pub fn run() {
         .manage(AppState::new())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             greet,
@@ -67,7 +68,11 @@ pub fn run() {
             commands::split_scene_at_cursor,
             commands::split_scene_by_selection,
             commands::search_all,
-            git::get_git_tags
+            git::get_git_tags,
+            commands::upload_asset,
+            commands::get_asset,
+            commands::get_all_assets,
+            commands::delete_asset
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -2662,6 +2662,108 @@ pub fn delete_universe_relation(state: State<'_, AppState>, id: String) -> Resul
     Ok(())
 }
 
+// ─── Asset Commands ─────────────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ProjectAsset {
+    pub id: String,
+    pub filename: String,
+    pub mime_type: String,
+    pub data: Vec<u8>,
+    pub created_at: String,
+}
+
+#[tauri::command]
+pub fn upload_asset(
+    state: State<'_, AppState>,
+    filename: String,
+    mime_type: String,
+    data: Vec<u8>,
+) -> Result<ProjectAsset, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let id = Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    conn.execute(
+        "INSERT INTO project_assets (id, filename, mime_type, data, created_at) VALUES (?1, ?2, ?3, ?4, ?5);",
+        (&id, &filename, &mime_type, &data, &now),
+    )
+    .map_err(|e| format!("Error guardando asset: {}", e))?;
+
+    Ok(ProjectAsset {
+        id,
+        filename,
+        mime_type,
+        data,
+        created_at: now,
+    })
+}
+
+#[tauri::command]
+pub fn get_asset(state: State<'_, AppState>, id: String) -> Result<Option<ProjectAsset>, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, filename, mime_type, data, created_at FROM project_assets WHERE id = ?1;")
+        .map_err(|e| e.to_string())?;
+
+    let result = stmt.query_row([&id], |row| {
+        Ok(ProjectAsset {
+            id: row.get(0)?,
+            filename: row.get(1)?,
+            mime_type: row.get(2)?,
+            data: row.get(3)?,
+            created_at: row.get(4)?,
+        })
+    });
+
+    match result {
+        Ok(asset) => Ok(Some(asset)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(format!("Error consultando asset: {}", e)),
+    }
+}
+
+#[tauri::command]
+pub fn get_all_assets(state: State<'_, AppState>) -> Result<Vec<ProjectAsset>, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, filename, mime_type, data, created_at FROM project_assets ORDER BY created_at DESC;")
+        .map_err(|e| e.to_string())?;
+
+    let assets = stmt
+        .query_map([], |row| {
+            Ok(ProjectAsset {
+                id: row.get(0)?,
+                filename: row.get(1)?,
+                mime_type: row.get(2)?,
+                data: row.get(3)?,
+                created_at: row.get(4)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(assets)
+}
+
+#[tauri::command]
+pub fn delete_asset(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    conn.execute("DELETE FROM project_assets WHERE id = ?1;", [&id])
+        .map_err(|e| format!("Error eliminando asset: {}", e))?;
+
+    Ok(())
+}
+
 #[tauri::command]
 pub fn search_universe(state: State<'_, AppState>, query: String) -> Result<Vec<WikiEntry>, String> {
     let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
