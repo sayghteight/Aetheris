@@ -1,6 +1,7 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
 import type { UniverseBlock, BlockContent } from '../../types';
+import { useI18n } from '../../../../i18n';
 
 interface ListBlockProps {
   block: UniverseBlock;
@@ -9,6 +10,7 @@ interface ListBlockProps {
 }
 
 export const ListBlock: React.FC<ListBlockProps> = ({ block, onUpdate, isEditing }) => {
+  const { t } = useI18n();
   const content = block.content as {
     type: 'list';
     style: 'bullet' | 'numbered' | 'checklist';
@@ -40,7 +42,7 @@ export const ListBlock: React.FC<ListBlockProps> = ({ block, onUpdate, isEditing
   };
 
   if (!isEditing) {
-    if (items.length === 0) return <p className="text-sm text-slate-500">Sin elementos</p>;
+    if (items.length === 0) return <p className="text-sm text-slate-500">{t('universe.blocks.noElements')}</p>;
 
     return (
       <ul className={`space-y-1 ${content.style === 'numbered' ? 'list-decimal pl-5' : 'list-disc pl-5'}`}>
@@ -49,7 +51,7 @@ export const ListBlock: React.FC<ListBlockProps> = ({ block, onUpdate, isEditing
             key={item.id}
             className={`text-sm ${item.checked ? 'text-slate-500 line-through' : 'text-slate-300'}`}
           >
-            {item.text || <span className="text-slate-600">Elemento vacío</span>}
+            {item.text || <span className="text-slate-600">{t('universe.blocks.emptyElement')}</span>}
           </li>
         ))}
       </ul>

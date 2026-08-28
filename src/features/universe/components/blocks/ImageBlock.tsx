@@ -3,6 +3,7 @@ import { Image as ImageIcon, Upload, X, Loader2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import type { UniverseBlock, BlockContent } from '../../types';
+import { useI18n } from '../../../../i18n';
 
 interface ProjectAsset {
   id: string;
@@ -19,6 +20,7 @@ interface ImageBlockProps {
 }
 
 export const ImageBlock: React.FC<ImageBlockProps> = ({ block, onUpdate, isEditing }) => {
+  const { t } = useI18n();
   const content = block.content as {
     type: 'image';
     assetId: string;
@@ -127,7 +129,7 @@ export const ImageBlock: React.FC<ImageBlockProps> = ({ block, onUpdate, isEditi
         <div className="flex items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/30 py-8 text-center">
           <div className="text-slate-500">
             <ImageIcon className="mx-auto h-8 w-8 mb-2 opacity-50" />
-            <p className="text-sm">Sin imagen</p>
+            <p className="text-sm">{t('universe.blocks.noImage')}</p>
           </div>
         </div>
       );
@@ -160,7 +162,7 @@ export const ImageBlock: React.FC<ImageBlockProps> = ({ block, onUpdate, isEditi
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <ImageIcon className="h-5 w-5 text-slate-500" />
-        <span className="text-sm text-slate-400">Bloque de imagen</span>
+        <span className="text-sm text-slate-400">{t('universe.blocks.imageBlock')}</span>
       </div>
 
       {/* Image preview / upload area */}
@@ -202,7 +204,7 @@ export const ImageBlock: React.FC<ImageBlockProps> = ({ block, onUpdate, isEditi
             ) : (
               <>
                 <Upload className="h-8 w-8 mb-2" />
-                <span className="text-sm">Click para subir imagen</span>
+                <span className="text-sm">{t('universe.blocks.clickToUpload')}</span>
               </>
             )}
           </button>

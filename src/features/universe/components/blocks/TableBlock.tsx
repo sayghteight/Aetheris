@@ -1,6 +1,7 @@
 import React from 'react';
 import { Table as TableIcon } from 'lucide-react';
 import type { UniverseBlock, BlockContent } from '../../types';
+import { useI18n } from '../../../../i18n';
 
 interface TableBlockProps {
   block: UniverseBlock;
@@ -9,6 +10,7 @@ interface TableBlockProps {
 }
 
 export const TableBlock: React.FC<TableBlockProps> = ({ block, onUpdate, isEditing }) => {
+  const { t } = useI18n();
   const content = block.content as {
     type: 'table';
     headers: string[];
@@ -21,7 +23,7 @@ export const TableBlock: React.FC<TableBlockProps> = ({ block, onUpdate, isEditi
         <div className="flex items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/30 py-8 text-center">
           <div className="text-slate-500">
             <TableIcon className="mx-auto h-8 w-8 mb-2 opacity-50" />
-            <p className="text-sm">Sin datos</p>
+            <p className="text-sm">{t('universe.blocks.noData')}</p>
           </div>
         </div>
       );
@@ -100,7 +102,7 @@ export const TableBlock: React.FC<TableBlockProps> = ({ block, onUpdate, isEditi
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <TableIcon className="h-5 w-5 text-slate-500" />
-          <span className="text-sm text-slate-400">Tabla</span>
+          <span className="text-sm text-slate-400">{t('universe.blocks.table')}</span>
         </div>
         <div className="flex gap-2">
           <button onClick={addColumn} className="text-xs text-violet-400 hover:text-violet-300">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'lucide-react';
 import type { UniverseBlock, BlockContent } from '../../types';
+import { useI18n } from '../../../../i18n';
 
 interface RelatedLinksBlockProps {
   block: UniverseBlock;
@@ -9,6 +10,7 @@ interface RelatedLinksBlockProps {
 }
 
 export const RelatedLinksBlock: React.FC<RelatedLinksBlockProps> = ({ block, onUpdate, isEditing }) => {
+  const { t } = useI18n();
   const content = block.content as {
     type: 'related-links';
     links: Array<{ entryId?: string; url?: string; label: string }>;
@@ -20,7 +22,7 @@ export const RelatedLinksBlock: React.FC<RelatedLinksBlockProps> = ({ block, onU
         <div className="flex items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/30 py-8 text-center">
           <div className="text-slate-500">
             <Link className="mx-auto h-8 w-8 mb-2 opacity-50" />
-            <p className="text-sm">Sin enlaces</p>
+            <p className="text-sm">{t('universe.blocks.noLinks')}</p>
           </div>
         </div>
       );
@@ -63,7 +65,7 @@ export const RelatedLinksBlock: React.FC<RelatedLinksBlockProps> = ({ block, onU
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Link className="h-5 w-5 text-slate-500" />
-        <span className="text-sm text-slate-400">Enlaces relacionados</span>
+        <span className="text-sm text-slate-400">{t('universe.blocks.relatedLinks')}</span>
       </div>
       <div className="space-y-2">
         {content.links.map((link, idx) => (

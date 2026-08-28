@@ -1,5 +1,6 @@
 import React from 'react';
 import type { UniverseBlock, BlockContent } from '../../types';
+import { useI18n } from '../../../../i18n';
 
 interface KeyInfoBlockProps {
   block: UniverseBlock;
@@ -8,12 +9,13 @@ interface KeyInfoBlockProps {
 }
 
 export const KeyInfoBlock: React.FC<KeyInfoBlockProps> = ({ block, onUpdate, isEditing }) => {
+  const { t } = useI18n();
   const content = block.content as { type: 'key-info'; fields: Array<{ label: string; value: string; icon?: string }> };
   const fields = content.fields || [];
 
   if (!isEditing) {
     if (fields.length === 0) {
-      return <p className="text-sm text-slate-500">Sin información</p>;
+      return <p className="text-sm text-slate-500">{t('universe.blocks.noInfo')}</p>;
     }
     return (
       <div className="grid gap-2">
@@ -48,16 +50,16 @@ export const KeyInfoBlock: React.FC<KeyInfoBlockProps> = ({ block, onUpdate, isE
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-500">Información clave</span>
+        <span className="text-xs font-medium text-slate-500">{t('universe.blocks.keyInfo')}</span>
         <button
           onClick={addField}
           className="text-xs text-violet-400 hover:text-violet-300"
         >
-          + Añadir campo
+          + {t('universe.blocks.addFields')}
         </button>
       </div>
       {fields.length === 0 ? (
-        <p className="text-sm text-slate-500">Añade campos de información</p>
+        <p className="text-sm text-slate-500">{t('universe.blocks.addFields')}</p>
       ) : (
         fields.map((field, idx) => (
           <div key={idx} className="flex items-center gap-2">

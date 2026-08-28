@@ -3,6 +3,7 @@ import { Images, Upload, Loader2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import type { UniverseBlock, BlockContent } from '../../types';
+import { useI18n } from '../../../../i18n';
 
 interface ProjectAsset {
   id: string;
@@ -19,6 +20,7 @@ interface GalleryBlockProps {
 }
 
 export const GalleryBlock: React.FC<GalleryBlockProps> = ({ block, onUpdate, isEditing }) => {
+  const { t } = useI18n();
   const content = block.content as {
     type: 'gallery';
     assetIds: string[];
@@ -140,7 +142,7 @@ export const GalleryBlock: React.FC<GalleryBlockProps> = ({ block, onUpdate, isE
         <div className="flex items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/30 py-8 text-center">
           <div className="text-slate-500">
             <Images className="mx-auto h-8 w-8 mb-2 opacity-50" />
-            <p className="text-sm">Sin imágenes</p>
+            <p className="text-sm">{t('universe.blocks.noImages')}</p>
           </div>
         </div>
       );

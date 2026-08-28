@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { useUniverseStore } from '../../store/universeStore';
+import { useI18n } from '../../../../i18n';
 import { BlockEditor } from '../editor/BlockEditor';
 import type { UniverseEntry, LayoutType, EntryType, UniverseBlock } from '../../types';
 import { getEntryTypeColor } from '../../types';
@@ -124,14 +125,14 @@ const EntryHeader: React.FC<EntryHeaderProps> = ({
                 ? 'border-amber-500/50 bg-amber-500/20 text-amber-400'
                 : 'border-slate-700/50 bg-slate-800/30 text-slate-400 hover:border-slate-600 hover:text-slate-200'
             }`}
-            title={entry.isFeatured ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+            title={entry.isFeatured ? t('universe.entryView.removeFromFavorites') : t('universe.entryView.addToFavorites')}
           >
             <Star className={`h-4 w-4 ${entry.isFeatured ? 'fill-amber-500' : ''}`} />
           </button>
           <button
             onClick={onDelete}
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/30 text-slate-400 transition hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-400"
-            title="Eliminar entrada"
+            title={t('universe.entryView.deleteEntry')}
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -141,7 +142,7 @@ const EntryHeader: React.FC<EntryHeaderProps> = ({
               className="flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-500"
             >
               <PencilLine className="h-4 w-4" />
-              Editar
+              {t('universe.entryView.edit')}
             </button>
           )}
         </div>
@@ -180,6 +181,7 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
   entryId,
   onBack,
 }) => {
+  const { t, language } = useI18n();
   const {
     entries,
     blocks,
@@ -188,6 +190,7 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
     updateEntry,
     deleteEntry,
   } = useUniverseStore();
+  const isSpanish = language === 'es';
 
   const entry = entries.find((e) => e.id === entryId);
   const entryBlocks = blocks.get(entryId) || [];
@@ -206,12 +209,12 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
           <FileText className="mx-auto h-12 w-12 text-slate-700" />
-          <p className="mt-4 text-slate-400">Entrada no encontrada</p>
+          <p className="mt-4 text-slate-400">{t('universe.entryView.entryNotFound')}</p>
           <button
             onClick={onBack}
             className="mt-4 text-sm text-violet-400 hover:text-violet-300"
           >
-            Volver al índice
+            {t('universe.entryView.backToIndex')}
           </button>
         </div>
       </div>
@@ -222,7 +225,7 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
   const handleBackToView = () => setIsEditing(false);
 
   const handleDelete = async () => {
-    if (window.confirm(`¿Estás seguro de que quieres eliminar "${entry.name}"?`)) {
+    if (window.confirm(`${t('universe.entryView.areYouSureDelete')} "${entry.name}"?`)) {
       await deleteEntry(entry.id);
       onBack();
     }
@@ -306,7 +309,7 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
             {relatedEntries.length > 0 && (
               <div className="mt-8 border-t border-slate-800/60 pt-6">
                 <h3 className="mb-4 text-sm font-medium text-slate-400">
-                  Entradas relacionadas
+                  {t('universe.entryView.relatedEntries')}
                 </h3>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {relatedEntries.map((related) => {
@@ -331,7 +334,7 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
                             {related.name}
                           </p>
                           <p className="truncate text-xs text-slate-500">
-                            {entryTypes.find((t) => t.id === related.entryType)?.nameEs}
+                            {entryTypes.find((t) => t.id === related.entryType)?.[isSpanish ? 'nameEs' : 'nameEn']}
                           </p>
                         </div>
                         <ExternalLink className="h-4 w-4 text-slate-600" />
@@ -352,13 +355,13 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
             onClick={handleBackToView}
             className="text-sm text-slate-400 hover:text-slate-200"
           >
-            Cancelar
+            {t('universe.entryView.cancel')}
           </button>
           <button
             onClick={() => handleSave(entryBlocks)}
             className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-500"
           >
-            Guardar cambios
+            {t('universe.entryView.saveChanges')}
           </button>
         </div>
       )}
@@ -521,7 +524,7 @@ const ReadModeBlock: React.FC<{ block: UniverseBlock }> = ({ block }) => {
       if (!referencedEntry) {
         return (
           <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-center text-sm text-red-400">
-            Entrada referenciada no encontrada
+            {t('universe.entryView.referencedEntryNotFound')}
           </div>
         );
       }
@@ -564,7 +567,7 @@ const ReadModeBlock: React.FC<{ block: UniverseBlock }> = ({ block }) => {
     default:
       return (
         <div className="mb-4 rounded-lg border border-slate-700/50 bg-slate-800/30 p-4 text-center text-sm text-slate-500">
-          Bloque tipo: {block.blockType}
+          {t('universe.entryView.blockType')} {block.blockType}
         </div>
       );
   }

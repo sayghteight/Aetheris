@@ -1,5 +1,6 @@
 import React from 'react';
 import type { UniverseBlock, BlockContent } from '../../types';
+import { useI18n } from '../../../../i18n';
 
 interface RichTextBlockProps {
   block: UniverseBlock;
@@ -8,6 +9,7 @@ interface RichTextBlockProps {
 }
 
 export const RichTextBlock: React.FC<RichTextBlockProps> = ({ block, onUpdate, isEditing }) => {
+  const { t } = useI18n();
   const content = block.content as { type: 'rich-text'; html: string };
 
   const handleInput: React.ReactEventHandler<HTMLDivElement> = (e) => {
@@ -21,7 +23,7 @@ export const RichTextBlock: React.FC<RichTextBlockProps> = ({ block, onUpdate, i
     return (
       <div
         className="prose prose-invert prose-sm max-w-none"
-        dangerouslySetInnerHTML={{ __html: content.html || '<p class="text-slate-500">Sin contenido</p>' }}
+        dangerouslySetInnerHTML={{ __html: content.html || `<p class="text-slate-500">${t('universe.blocks.noContent')}</p>` }}
       />
     );
   }
@@ -32,7 +34,7 @@ export const RichTextBlock: React.FC<RichTextBlockProps> = ({ block, onUpdate, i
       suppressContentEditableWarning
       onInput={handleInput}
       className="min-h-[60px] text-sm leading-relaxed text-slate-300 outline-none"
-      data-placeholder="Escribe aquí..."
+      data-placeholder={t('editor.dialogue')}
       dangerouslySetInnerHTML={{ __html: content.html }}
     />
   );

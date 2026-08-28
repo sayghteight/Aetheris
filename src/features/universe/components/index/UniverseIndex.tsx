@@ -8,6 +8,7 @@ import {
   FolderPlus,
 } from 'lucide-react';
 import { useUniverseStore } from '../../store/universeStore';
+import { useI18n } from '../../../../i18n';
 import type { UniverseCategory } from '../../types';
 
 // ─── UniverseIndex ─────────────────────────────────────────────────────────────
@@ -21,7 +22,9 @@ export const UniverseIndex: React.FC<UniverseIndexProps> = ({
   onSelectCategory,
   onCreateEntry,
 }) => {
+  const { t, language } = useI18n();
   const { categories, entries, isLoading, loadUniverse, createCategory } = useUniverseStore();
+  const isSpanish = language === 'es';
 
   const [searchInput, setSearchInput] = useState('');
   const [showNewCategory, setShowNewCategory] = useState(false);
@@ -76,12 +79,12 @@ export const UniverseIndex: React.FC<UniverseIndexProps> = ({
                 <Compass className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-violet-400">Universo</p>
+                <p className="text-xs uppercase tracking-[0.3em] text-violet-400">{t('universe.title')}</p>
                 <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-white">
-                  Construye tu mundo
+                  {t('universe.index.title')}
                 </h1>
                 <p className="mt-2 max-w-xl text-sm text-slate-400">
-                  Explora las categorías de tu enciclopedia narrativa.
+                  {t('universe.index.subtitle')}
                 </p>
               </div>
             </div>
@@ -90,7 +93,7 @@ export const UniverseIndex: React.FC<UniverseIndexProps> = ({
               className="flex items-center gap-2 rounded-xl border border-violet-500/50 bg-violet-600/20 px-4 py-2.5 text-sm font-medium text-violet-200 transition hover:border-violet-400 hover:bg-violet-600/30"
             >
               <Plus className="h-4 w-4" />
-              Nueva entrada
+              {t('universe.index.newEntry')}
             </button>
           </div>
 
@@ -101,7 +104,7 @@ export const UniverseIndex: React.FC<UniverseIndexProps> = ({
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Buscar categorías..."
+              placeholder={t('universe.index.searchCategories')}
               className="w-full rounded-xl border border-slate-700/50 bg-slate-900/80 py-3 pl-12 pr-4 text-sm text-slate-200 placeholder-slate-500 outline-none transition focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30"
             />
           </div>
@@ -110,13 +113,13 @@ export const UniverseIndex: React.FC<UniverseIndexProps> = ({
         {/* Categories Grid */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-medium text-slate-300">Categorías</h2>
+            <h2 className="text-sm font-medium text-slate-300">{t('universe.index.categories')}</h2>
             <button
               onClick={() => setShowNewCategory(!showNewCategory)}
               className="flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-800/40 px-3 py-1.5 text-xs text-slate-400 transition hover:border-slate-600 hover:bg-slate-800"
             >
               <FolderPlus className="h-3.5 w-3.5" />
-              Nueva categoría
+              {t('universe.index.newCategory')}
             </button>
           </div>
 
@@ -128,7 +131,7 @@ export const UniverseIndex: React.FC<UniverseIndexProps> = ({
                   type="text"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="Nombre de la categoría"
+                  placeholder={t('universe.index.categoryNamePlaceholder')}
                   className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-violet-500"
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateCategory()}
                 />
@@ -136,7 +139,7 @@ export const UniverseIndex: React.FC<UniverseIndexProps> = ({
                   type="text"
                   value={newCategoryDesc}
                   onChange={(e) => setNewCategoryDesc(e.target.value)}
-                  placeholder="Descripción (opcional)"
+                  placeholder={t('universe.index.descriptionOptional')}
                   className="flex-[2] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-violet-500"
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateCategory()}
                 />
@@ -145,7 +148,7 @@ export const UniverseIndex: React.FC<UniverseIndexProps> = ({
                   disabled={!newCategoryName.trim()}
                   className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-500 disabled:opacity-50"
                 >
-                  Crear
+                  {t('universe.index.create')}
                 </button>
                 <button
                   onClick={() => {
@@ -155,7 +158,7 @@ export const UniverseIndex: React.FC<UniverseIndexProps> = ({
                   }}
                   className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-400 transition hover:bg-slate-800"
                 >
-                  Cancelar
+                  {t('universe.index.cancel')}
                 </button>
               </div>
             </div>
@@ -166,7 +169,7 @@ export const UniverseIndex: React.FC<UniverseIndexProps> = ({
             <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-800/60 bg-slate-900/20 py-16 text-center">
               <Compass className="h-12 w-12 text-slate-700" />
               <p className="mt-4 text-slate-400">
-                {searchInput ? 'No se encontraron categorías' : 'No hay categorías todavía'}
+                {searchInput ? t('universe.index.noCategoriesFound') : t('universe.index.noCategoriesYet')}
               </p>
             </div>
           ) : (
@@ -197,10 +200,10 @@ export const UniverseIndex: React.FC<UniverseIndexProps> = ({
                         <ChevronRight className="h-4 w-4 text-slate-600 group-hover:text-slate-400 transition" />
                       </div>
                       <p className="mt-1 text-xs text-slate-500 line-clamp-2">
-                        {category.description || 'Sin descripción'}
+                        {category.description || t('universe.index.noDescription')}
                       </p>
                       <p className="mt-2 text-xs font-medium" style={{ color: color }}>
-                        {count} {count === 1 ? 'entrada' : 'entradas'}
+                        {count} {isSpanish ? (count === 1 ? 'entrada' : 'entradas') : t('universe.index.entries', { count })}
                       </p>
                     </div>
                   </button>

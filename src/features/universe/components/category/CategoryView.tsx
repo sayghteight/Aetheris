@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { ArrowLeft, Plus, FileText, Star } from 'lucide-react';
 import { useUniverseStore } from '../../store/universeStore';
+import { useI18n } from '../../../../i18n';
 import type { EntryType } from '../../types';
 import { getEntryTypeColor } from '../../types';
 
@@ -29,7 +30,9 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
   onBack,
   onCreateEntry,
 }) => {
+  const { t, language } = useI18n();
   const { entries, categories, entryTypes } = useUniverseStore();
+  const isSpanish = language === 'es';
 
   const category = useMemo(
     () => categories.find(c => c.id === categoryId),
@@ -44,7 +47,7 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
   if (!category) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-slate-400">Categoría no encontrada</p>
+        <p className="text-slate-400">{t('universe.categoryView.categoryNotFound')}</p>
       </div>
     );
   }
@@ -59,7 +62,7 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
             className="flex items-center gap-2 rounded-xl border border-slate-700/50 bg-slate-800/40 px-4 py-2 text-sm text-slate-300 transition hover:border-slate-600 hover:bg-slate-800"
           >
             <ArrowLeft className="h-4 w-4" />
-            Volver
+            {t('universe.categoryView.back')}
           </button>
           <div>
             <h1 className="text-2xl font-bold text-white">{category.name}</h1>
@@ -72,7 +75,7 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
             className="ml-auto flex items-center gap-2 rounded-xl border border-violet-500/50 bg-violet-600/20 px-4 py-2 text-sm font-medium text-violet-200 transition hover:border-violet-400 hover:bg-violet-600/30"
           >
             <Plus className="h-4 w-4" />
-            Nueva entrada
+            {t('universe.categoryView.newEntry')}
           </button>
         </div>
 
@@ -80,13 +83,13 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
         {categoryEntries.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-800/60 bg-slate-900/20 py-16 text-center">
             <FileText className="h-12 w-12 text-slate-700" />
-            <p className="mt-4 text-slate-400">No hay entradas en esta categoría</p>
+            <p className="mt-4 text-slate-400">{t('universe.categoryView.noEntriesInCategory')}</p>
             <button
               onClick={onCreateEntry}
               className="mt-4 flex items-center gap-2 rounded-lg bg-violet-600/20 px-4 py-2 text-sm text-violet-300 transition hover:bg-violet-600/30"
             >
               <Plus className="h-4 w-4" />
-              Crear primera entrada
+              {t('universe.categoryView.createFirstEntry')}
             </button>
           </div>
         ) : (
@@ -94,7 +97,7 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
             {categoryEntries.map((entry) => {
               const Icon = typeIcons[entry.entryType] || FileText;
               const color = getEntryTypeColor(entry.entryType);
-              const typeName = entryTypes.find(t => t.id === entry.entryType)?.nameEs || entry.entryType;
+              const typeName = entryTypes.find(t => t.id === entry.entryType)?.[isSpanish ? 'nameEs' : 'nameEn'] || entry.entryType;
 
               return (
                 <button

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { FileText, Search, X } from 'lucide-react';
 import type { UniverseBlock, BlockContent, UniverseEntry } from '../../types';
 import { useUniverseStore } from '../../store/universeStore';
+import { useI18n } from '../../../../i18n';
 
 interface EntryReferenceBlockProps {
   block: UniverseBlock;
@@ -10,6 +11,7 @@ interface EntryReferenceBlockProps {
 }
 
 export const EntryReferenceBlock: React.FC<EntryReferenceBlockProps> = ({ block, onUpdate, isEditing }) => {
+  const { t } = useI18n();
   const content = block.content as {
     type: 'entry-reference';
     entryId: string;
@@ -61,7 +63,7 @@ export const EntryReferenceBlock: React.FC<EntryReferenceBlockProps> = ({ block,
         <div className="flex items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/30 py-8 text-center">
           <div className="text-slate-500">
             <FileText className="mx-auto h-8 w-8 mb-2 opacity-50" />
-            <p className="text-sm">Sin referencia</p>
+            <p className="text-sm">{t('universe.blocks.noReference')}</p>
           </div>
         </div>
       );
@@ -116,7 +118,7 @@ export const EntryReferenceBlock: React.FC<EntryReferenceBlockProps> = ({ block,
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <FileText className="h-5 w-5 text-slate-500" />
-        <span className="text-sm text-slate-400">Referencia a entrada</span>
+        <span className="text-sm text-slate-400">{t('universe.blocks.entryReference')}</span>
       </div>
 
       {/* Selected Entry Display */}
@@ -187,7 +189,7 @@ export const EntryReferenceBlock: React.FC<EntryReferenceBlockProps> = ({ block,
 
           <div className="max-h-48 overflow-y-auto space-y-1">
             {filteredEntries.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-2">No se encontraron entradas</p>
+              <p className="text-xs text-slate-500 text-center py-2">{t('universe.blocks.noEntriesFound')}</p>
             ) : (
               filteredEntries.map((entry) => (
                 <button

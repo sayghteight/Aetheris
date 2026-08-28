@@ -15,6 +15,7 @@ import {
   Check,
 } from 'lucide-react';
 import { useUniverseStore } from '../../store/universeStore';
+import { useI18n } from '../../../../i18n';
 import type { EntryType, LayoutType, EntryWizardData } from '../../types';
 import { getEntryTypeColor } from '../../types';
 
@@ -23,25 +24,26 @@ import { getEntryTypeColor } from '../../types';
 const entryTypeConfig: Array<{
   id: EntryType;
   nameEs: string;
+  nameEn: string;
   icon: React.ComponentType<{ className?: string; color?: string }>;
 }> = [
-  { id: 'character', nameEs: 'Personaje', icon: User },
-  { id: 'location', nameEs: 'Lugar', icon: MapPin },
-  { id: 'faction', nameEs: 'Facción', icon: Users },
-  { id: 'kingdom', nameEs: 'Reino', icon: Crown },
-  { id: 'creature', nameEs: 'Criatura', icon: PawPrint },
-  { id: 'item', nameEs: 'Objeto', icon: Gem },
-  { id: 'event', nameEs: 'Evento', icon: Calendar },
-  { id: 'concept', nameEs: 'Concepto', icon: Lightbulb },
-  { id: 'other', nameEs: 'Otro', icon: FileText },
+  { id: 'character', nameEs: 'Personaje', nameEn: 'Character', icon: User },
+  { id: 'location', nameEs: 'Lugar', nameEn: 'Location', icon: MapPin },
+  { id: 'faction', nameEs: 'Facción', nameEn: 'Faction', icon: Users },
+  { id: 'kingdom', nameEs: 'Reino', nameEn: 'Kingdom', icon: Crown },
+  { id: 'creature', nameEs: 'Criatura', nameEn: 'Creature', icon: PawPrint },
+  { id: 'item', nameEs: 'Objeto', nameEn: 'Item', icon: Gem },
+  { id: 'event', nameEs: 'Evento', nameEn: 'Event', icon: Calendar },
+  { id: 'concept', nameEs: 'Concepto', nameEn: 'Concept', icon: Lightbulb },
+  { id: 'other', nameEs: 'Otro', nameEn: 'Other', icon: FileText },
 ];
 
 // ─── Layout Options ────────────────────────────────────────────────────────────
 
-const layoutOptions: Array<{ id: LayoutType; label: string; cols: number }> = [
-  { id: '1-col', label: 'Una columna', cols: 1 },
-  { id: '2-col', label: 'Dos columnas', cols: 2 },
-  { id: '3-col', label: 'Tres columnas', cols: 3 },
+const layoutOptions: Array<{ id: LayoutType; labelEs: string; labelEn: string; cols: number }> = [
+  { id: '1-col', labelEs: 'Una columna', labelEn: 'One column', cols: 1 },
+  { id: '2-col', labelEs: 'Dos columnas', labelEn: 'Two columns', cols: 2 },
+  { id: '3-col', labelEs: 'Tres columnas', labelEn: 'Three columns', cols: 3 },
 ];
 
 // ─── EntryWizard ───────────────────────────────────────────────────────────────
@@ -59,7 +61,9 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
   onCreated,
   preselectedCategoryId,
 }) => {
+  const { t, language } = useI18n();
   const { categories, createEntry } = useUniverseStore();
+  const isSpanish = language === 'es';
   const [step, setStep] = useState(1);
 
   // Form state
@@ -126,7 +130,7 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
       onCreated(entry.id);
     } catch (error) {
       console.error('Error creating entry:', error);
-      alert('Error al crear la entrada: ' + (error as Error).message);
+      alert(t('universe.wizard.errorCreatingEntry') + ': ' + (error as Error).message);
     } finally {
       setIsCreating(false);
     }
@@ -147,8 +151,8 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800/60 bg-slate-900/50 px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-white">Nueva entrada</h2>
-            <p className="text-xs text-slate-500">Paso {step} de 3</p>
+            <h2 className="text-lg font-semibold text-white">{t('universe.wizard.title')}</h2>
+            <p className="text-xs text-slate-500">{t('universe.wizard.step', { step, max: 3 })}</p>
           </div>
           <button
             onClick={handleClose}
@@ -173,13 +177,13 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Nombre de la entrada *
+                  {t('universe.wizard.nameRequired')}
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ej: Kaelen Voss"
+                  placeholder={t('universe.wizard.namePlaceholder')}
                   className="w-full rounded-xl border border-slate-700/50 bg-slate-800/50 px-4 py-3 text-sm text-slate-200 placeholder-slate-600 outline-none transition focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30"
                   autoFocus
                 />
@@ -187,7 +191,7 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Tipo de entrada
+                  {t('universe.wizard.entryType')}
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {entryTypeConfig.map((type) => {
@@ -213,7 +217,7 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
                         >
                           <Icon className="h-5 w-5" color={color} />
                         </div>
-                        <span className="text-xs font-medium text-slate-300">{type.nameEs}</span>
+                        <span className="text-xs font-medium text-slate-300">{isSpanish ? type.nameEs : type.nameEn}</span>
                       </button>
                     );
                   })}
@@ -222,12 +226,12 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Descripción breve
+                  {t('universe.wizard.description')}
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Una breve descripción de la entrada..."
+                  placeholder={t('universe.wizard.descriptionPlaceholder')}
                   rows={3}
                   className="w-full rounded-xl border border-slate-700/50 bg-slate-800/50 px-4 py-3 text-sm text-slate-200 placeholder-slate-600 outline-none transition focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 resize-none"
                 />
@@ -236,14 +240,14 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
               {!preselectedCategoryId && (
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Categoría *
+                    {t('universe.wizard.categoryRequired')}
                   </label>
                   <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
                     className="w-full rounded-xl border border-slate-700/50 bg-slate-800/50 px-4 py-3 text-sm text-slate-200 outline-none transition focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30"
                   >
-                    <option value="">Selecciona una categoría</option>
+                    <option value="">{t('universe.wizard.selectCategory')}</option>
                     {categories.map((cat) => (
                       <option key={cat.id} value={cat.id}>
                         {cat.name}
@@ -255,7 +259,7 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
               {preselectedCategoryId && (
                 <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-4">
                   <p className="text-sm text-slate-400">
-                    Categoría: <span className="text-slate-200">{categories.find(c => c.id === preselectedCategoryId)?.name}</span>
+                    {t('universe.wizard.categoryLabel')} <span className="text-slate-200">{categories.find(c => c.id === preselectedCategoryId)?.name}</span>
                   </p>
                 </div>
               )}
@@ -266,9 +270,9 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
           {step === 2 && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-sm font-medium text-slate-300 mb-1">Diseño de página</h3>
+                <h3 className="text-sm font-medium text-slate-300 mb-1">{t('universe.wizard.pageDesign')}</h3>
                 <p className="text-xs text-slate-500 mb-4">
-                  Elige cómo quieres estructurar visualmente esta entrada
+                  {t('universe.wizard.pageDesignSubtitle')}
                 </p>
               </div>
 
@@ -297,13 +301,13 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
                       ))}
                     </div>
                     <div>
-                      <p className="font-medium text-slate-200">{layout.label}</p>
+                      <p className="font-medium text-slate-200">{isSpanish ? layout.labelEs : layout.labelEn}</p>
                       <p className="text-xs text-slate-500">
                         {layout.cols === 1
-                          ? 'Para entradas narrativas y textuales'
+                          ? t('universe.wizard.layout1ColDesc')
                           : layout.cols === 2
-                          ? 'Para entradas con información estructurada'
-                          : 'Para entradas densas tipo wiki'}
+                          ? t('universe.wizard.layout2ColDesc')
+                          : t('universe.wizard.layout3ColDesc')}
                       </p>
                     </div>
                     {selectedLayout === layout.id && (
@@ -318,14 +322,11 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
               </div>
 
               <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-4">
-                <h4 className="text-xs font-medium text-slate-400 mb-2">Consejo</h4>
+                <h4 className="text-xs font-medium text-slate-400 mb-2">{t('universe.wizard.tip')}</h4>
                 <p className="text-xs text-slate-500">
-                  {selectedLayout === '1-col' &&
-                    'El diseño de una columna es ideal para biografías, historias de reinos, conceptos y cronologías narrativas.'}
-                  {selectedLayout === '2-col' &&
-                    'Dos columnas permite separar información básica (retrato, datos) del contenido principal (historia, personalidad).'}
-                  {selectedLayout === '3-col' &&
-                    'Tres columnas es perfecto para entradas densas con información general, contenido principal y datos relacionados.'}
+                  {selectedLayout === '1-col' && t('universe.wizard.tip1Col')}
+                  {selectedLayout === '2-col' && t('universe.wizard.tip2Col')}
+                  {selectedLayout === '3-col' && t('universe.wizard.tip3Col')}
                 </p>
               </div>
             </div>
@@ -349,9 +350,11 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
                     )}
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-white">{name || 'Sin nombre'}</h3>
+                    <h3 className="text-lg font-semibold text-white">{name || t('universe.wizard.untitled')}</h3>
                     <p className="text-sm text-slate-400">
-                      {entryTypeConfig.find((t) => t.id === selectedType)?.nameEs} •{' '}
+                      {isSpanish
+                        ? entryTypeConfig.find((t) => t.id === selectedType)?.nameEs
+                        : entryTypeConfig.find((t) => t.id === selectedType)?.nameEn} •{' '}
                       {categories.find((c) => c.id === selectedCategory)?.name}
                     </p>
                   </div>
@@ -360,17 +363,18 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
                   <p className="mt-4 text-sm text-slate-400">{description}</p>
                 )}
                 <div className="mt-4 flex items-center gap-2">
-                  <span className="text-xs text-slate-500">Layout:</span>
+                  <span className="text-xs text-slate-500">{t('universe.wizard.layout')}:</span>
                   <span className="text-xs font-medium text-slate-300">
-                    {layoutOptions.find((l) => l.id === selectedLayout)?.label}
+                    {isSpanish
+                      ? layoutOptions.find((l) => l.id === selectedLayout)?.labelEs
+                      : layoutOptions.find((l) => l.id === selectedLayout)?.labelEn}
                   </span>
                 </div>
               </div>
 
               <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
                 <p className="text-xs text-amber-300">
-                  Al crear la entrada, se añadirá automáticamente un bloque de texto rico para
-                  que puedas comenzar a escribir.
+                  {t('universe.wizard.autoTextBlockAdvice')}
                 </p>
               </div>
             </div>
@@ -385,7 +389,7 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
             className="flex items-center gap-1 rounded-lg px-4 py-2 text-sm text-slate-400 transition hover:text-slate-200 disabled:opacity-40 disabled:hover:text-slate-400"
           >
             <ChevronLeft className="h-4 w-4" />
-            Anterior
+            {t('universe.wizard.back')}
           </button>
 
           {step < 3 ? (
@@ -394,7 +398,7 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
               disabled={step === 1 ? !canProceedStep1 : !canProceedStep2}
               className="flex items-center gap-1 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-violet-500 disabled:opacity-40 disabled:hover:bg-violet-600"
             >
-              Siguiente
+              {t('universe.wizard.next')}
               <ChevronRight className="h-4 w-4" />
             </button>
           ) : (
@@ -406,12 +410,12 @@ export const EntryWizard: React.FC<EntryWizardProps> = ({
               {isCreating ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Creando...
+                  {t('universe.wizard.creating')}
                 </>
               ) : (
                 <>
                   <Check className="h-4 w-4" />
-                  Crear entrada
+                  {t('universe.wizard.createEntry')}
                 </>
               )}
             </button>
