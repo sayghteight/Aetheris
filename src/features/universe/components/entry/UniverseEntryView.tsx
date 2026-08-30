@@ -304,7 +304,16 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
             entryId={entryId}
             layout={layout}
             columnWidths={columnWidths}
-            onLayoutChange={setLayout}
+            onLayoutChange={(newLayout) => {
+              setLayout(newLayout);
+              // Reset columnWidths to match the new layout
+              if (newLayout === '1-col') {
+                setColumnWidths(undefined);
+              } else if (newLayout === '2-col') {
+                setColumnWidths([10, 10]);
+              }
+              // For 3-col, columnWidths will be kept or use the stored value
+            }}
             onColumnWidthsChange={(widths) => {
               setColumnWidths(widths ?? undefined);
             }}

@@ -36,6 +36,8 @@ const ResizeHandle: React.FC<ResizeHandleProps> = ({ onResize, widths, index }) 
     setIsDragging(true);
 
     const startX = e.clientX;
+    // Clone only the widths we actually need based on layout
+    const numCols = widths.length;
     const startWidths = [...widths];
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
@@ -46,25 +48,36 @@ const ResizeHandle: React.FC<ResizeHandleProps> = ({ onResize, widths, index }) 
       const containerWidth = container.getBoundingClientRect().width;
       const deltaPercent = (deltaX / containerWidth) * 100;
 
+      // Create new widths array based on current layout
       const newWidths = [...startWidths] as [number, ...number[]];
 
       if (index === 0) {
-        // First divider: resize first two columns
-        const minWidth = 15;
-        const newFirst = Math.max(minWidth, Math.min(70, startWidths[0] + deltaPercent));
-        const newSecond = Math.max(minWidth, Math.min(70, startWidths[1] - deltaPercent));
+        // First divider: resize columns 0 and 1
+        const minWidthFirst = 15;
+        // In 2-col mode, second column min is 30%; in 3-col, use regular 15%
+        const minWidthSecond = numCols === 2 ? 30 : 15;
+        const w0 = startWidths[0];
+        const w1 = numCols > 1 ? startWidths[1] : 100;
+        const newFirst = Math.max(minWidthFirst, Math.min(70, w0 + deltaPercent));
+        const newSecond = Math.max(minWidthSecond, Math.min(70, w1 - deltaPercent));
         newWidths[0] = newFirst;
         newWidths[1] = newSecond;
-      } else if (index === 1) {
-        // Second divider: resize last two columns
+      } else if (index === 1 && numCols > 2) {
+        // Second divider: resize columns 1 and 2 (only valid in 3-col)
         const minWidth = 15;
-        const newSecond = Math.max(minWidth, Math.min(70, startWidths[1] + deltaPercent));
-        const newThird = Math.max(minWidth, Math.min(70, startWidths[2] - deltaPercent));
+        const w1 = startWidths[1];
+        const w2 = startWidths[2];
+        const newSecond = Math.max(minWidth, Math.min(70, w1 + deltaPercent));
+        const newThird = Math.max(minWidth, Math.min(70, w2 - deltaPercent));
         newWidths[1] = newSecond;
         newWidths[2] = newThird;
       }
 
-      onResize(newWidths as [number, number] | [number, number, number]);
+      // Only pass back the widths that match the current layout
+      const resultWidths = numCols === 2
+        ? ([newWidths[0], newWidths[1]] as [number, number])
+        : newWidths;
+      onResize(resultWidths as [number, number] | [number, number, number]);
     };
 
     const handleMouseUp = () => {
@@ -513,7 +526,9 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
         {/* Resize Handle 0 (between col 0 and 1) */}
         {layout !== '1-col' && isEditing && onColumnWidthsChange && (
           <ResizeHandle
-            widths={columnWidths || (layout === '2-col' ? [50, 50] : [33, 33, 34])}
+            widths={layout === '2-col'
+              ? [(columnWidths?.[0] ?? 50), (columnWidths?.[1] ?? 50)]
+              : (columnWidths || [33, 33, 34])}
             index={0}
             onResize={(w) => onColumnWidthsChange?.(w)}
           />
