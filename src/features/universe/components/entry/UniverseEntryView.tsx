@@ -645,7 +645,6 @@ const ReadModeBlock: React.FC<{ block: UniverseBlock }> = ({ block }) => {
       const { links } = content as { type: 'related-links'; links: Array<{ id: string; label: string; url: string }> };
       if (!links || links.length === 0) return null;
 
-      console.log('Rendering related links:', links);
       
       return (
         <div className="mb-4 rounded-lg border border-slate-700/50 bg-slate-800/30 p-4">
