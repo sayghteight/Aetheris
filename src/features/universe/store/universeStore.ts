@@ -339,7 +339,9 @@ export const useUniverseStore = create<UniverseState>((set, get) => ({
 
     // Update local state immediately (optimistic)
     const newBlocks = new Map(blocks);
-    newBlocks.set(entryId, [...entryBlocks, newBlock]);
+    const updatedEntryBlocks = [...entryBlocks, newBlock];
+    newBlocks.set(entryId, updatedEntryBlocks);
+    console.log('[addBlock] entryId:', entryId, 'columnIndex:', columnIndex, 'new blockOrder:', order, 'total blocks:', updatedEntryBlocks.length);
     set({ blocks: newBlocks });
 
     return newBlock;

@@ -632,6 +632,42 @@ const ReadModeBlock: React.FC<{ block: UniverseBlock }> = ({ block }) => {
       );
     }
 
+    case 'image': {
+      const { assetId } = content as { type: 'image'; assetId: string; caption?: string; alt?: string; size?: 'small' | 'medium' | 'large' };
+      if (!assetId) return null;
+
+      return (
+        <GalleryView assetIds={[assetId]} layout="grid" />
+      );
+    }
+
+    case 'related-links': {
+      const { links } = content as { type: 'related-links'; links: Array<{ id: string; label: string; url: string }> };
+      if (!links || links.length === 0) return null;
+
+      console.log('Rendering related links:', links);
+      
+      return (
+        <div className="mb-4 rounded-lg border border-slate-700/50 bg-slate-800/30 p-4">
+          <h4 className="mb-2 text-sm font-medium text-slate-400">{t('universe.blocks.relatedLinks')}</h4>
+          <ul className="space-y-1">
+            {links.map((link) => (
+              <li key={link.id}>
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-violet-400 hover:text-violet-300"
+                >
+                  {link.label || link.url}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+    
     default:
       return (
         <div className="mb-4 rounded-lg border border-slate-700/50 bg-slate-800/30 p-4 text-center text-sm text-slate-500">

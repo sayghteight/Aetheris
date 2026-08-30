@@ -423,13 +423,17 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
 
   // Group blocks by column
   const getBlocksByColumn = (colIndex: 0 | 1 | 2) => {
-    return entryBlocks
+    const filtered = entryBlocks
       .filter((b) => b.columnIndex === colIndex)
       .sort((a, b) => a.blockOrder - b.blockOrder);
+    console.log('[getBlocksByColumn] colIndex:', colIndex, 'blocks:', filtered.map(b => ({ id: b.id, order: b.blockOrder, type: b.blockType })));
+    return filtered;
   };
 
   const handleAddBlock = async (columnIndex: 0 | 1 | 2, blockType: BlockType) => {
+    console.log('[handleAddBlock] before addBlock, entryBlocks count:', entryBlocks.length);
     await addBlock(entryId, columnIndex, blockType);
+    console.log('[handleAddBlock] after addBlock, should have re-rendered');
   };
 
   const handleUpdateBlock = async (blockId: string, content: BlockContent) => {
