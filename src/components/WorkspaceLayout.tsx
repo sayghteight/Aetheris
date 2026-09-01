@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useProjectStore } from '../store/projectStore';
-import { useNavigationStore, ActiveView } from '../store/navigationStore';
-import { useWorkspaceStore } from '../store/workspaceStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { openMainViewTab } from '../store/tabStore';
 import { APP_VERSION } from '../utils/version';
 import { SearchPanel } from '../features/search/SearchPanel';
 import {
@@ -20,20 +19,23 @@ import {
   LogOut,
 } from 'lucide-react';
 
+// Type for navigation views that can be opened as tabs
+type MainViewTabType = 'manuscript' | 'universe' | 'timeline' | 'calendars' | 'settings' | 'about' | 'versioning' | 'import' | 'export';
+
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
   wordCount?: number;
   readTime?: number;
+  tabBar?: React.ReactNode;
 }
 
 export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   children,
   wordCount = 0,
   readTime = 0,
+  tabBar,
 }) => {
   const { currentProject, closeProject } = useProjectStore();
-  const { activeView } = useNavigationStore();
-  const { setActiveView } = useWorkspaceStore();
   const { settings, saveSettings } = useSettingsStore();
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -65,7 +67,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         <div className="flex items-center gap-3 min-w-0">
           {/* Back button */}
           <button
-            onClick={() => setActiveView('manuscript')}
+            onClick={() => openMainViewTab('manuscript')}
             className="w-8 h-8 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] transition-colors duration-150 shrink-0"
             title="Volver al manuscrito"
           >
@@ -161,29 +163,20 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
           {/* Navigation items */}
           <div className="flex flex-col gap-0.5 px-2">
-            {[
-              { view: 'manuscript' as ActiveView, icon: BookOpen, label: 'Manuscrito' },
-              { view: 'universe' as ActiveView, icon: Compass, label: 'Universo' },
-              { view: 'timeline' as ActiveView, icon: Calendar, label: 'Línea Temporal' },
-              { view: 'calendars' as ActiveView, icon: Globe, label: 'Calendarios' },
-            ].map((item) => {
+            {([
+              { view: 'manuscript', icon: BookOpen, label: 'Manuscrito' },
+              { view: 'universe', icon: Compass, label: 'Universo' },
+              { view: 'timeline', icon: Calendar, label: 'Línea Temporal' },
+              { view: 'calendars', icon: Globe, label: 'Calendarios' },
+            ] as { view: MainViewTabType; icon: React.ComponentType<{ className?: string }>; label: string }[]).map((item) => {
               const Icon = item.icon;
-              const isActive = activeView === item.view;
               return (
                 <button
                   key={item.view}
-                  onClick={() => setActiveView(item.view)}
-                  className={`group relative flex items-center gap-2.5 pl-3 pr-2 py-2 rounded text-left transition-all duration-150 ${
-                    isActive
-                      ? 'text-amber-200'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
-                  }`}
+                  onClick={() => openMainViewTab(item.view)}
+                  className="group relative flex items-center gap-2.5 pl-3 pr-2 py-2 rounded text-left transition-all duration-150 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                 >
-                  {/* Active indicator - left border accent */}
-                  {isActive && (
-                    <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-[var(--color-accent)] rounded-full" />
-                  )}
-                  <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-text-secondary)]'}`} />
+                  <Icon className="w-4 h-4 shrink-0 transition-colors text-[var(--color-text-muted)] group-hover:text-[var(--color-text-secondary)]" />
                   <span className="text-xs font-medium flex-1 tracking-wide">{item.label}</span>
                 </button>
               );
@@ -195,26 +188,18 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-widest font-medium">Herramientas</span>
           </div>
           <div className="flex flex-col gap-0.5 px-2">
-            {[
-              { view: 'import' as ActiveView, icon: FileUp, label: 'Importar' },
-              { view: 'export' as ActiveView, icon: FileDown, label: 'Exportar' },
-            ].map((item) => {
+            {([
+              { view: 'import' as MainViewTabType, icon: FileUp, label: 'Importar' },
+              { view: 'export' as MainViewTabType, icon: FileDown, label: 'Exportar' },
+            ] as { view: MainViewTabType; icon: React.ComponentType<{ className?: string }>; label: string }[]).map((item) => {
               const Icon = item.icon;
-              const isActive = activeView === item.view;
               return (
                 <button
                   key={item.view}
-                  onClick={() => setActiveView(item.view)}
-                  className={`group relative flex items-center gap-2.5 pl-3 pr-2 py-2 rounded text-left transition-all duration-150 ${
-                    isActive
-                      ? 'text-amber-200'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
-                  }`}
+                  onClick={() => openMainViewTab(item.view)}
+                  className="group relative flex items-center gap-2.5 pl-3 pr-2 py-2 rounded text-left transition-all duration-150 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                 >
-                  {isActive && (
-                    <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-[var(--color-accent)] rounded-full" />
-                  )}
-                  <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-text-secondary)]'}`} />
+                  <Icon className="w-4 h-4 shrink-0 transition-colors text-[var(--color-text-muted)] group-hover:text-[var(--color-text-secondary)]" />
                   <span className="text-xs font-medium flex-1 tracking-wide">{item.label}</span>
                 </button>
               );
@@ -227,26 +212,18 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           </div>
 
           <div className="flex flex-col gap-0.5 px-2">
-            {[
-              { view: 'settings' as ActiveView, icon: Settings, label: 'Ajustes' },
-              { view: 'about' as ActiveView, icon: FileUp, label: 'Acerca de' },
-            ].map((item) => {
+            {([
+              { view: 'settings' as MainViewTabType, icon: Settings, label: 'Ajustes' },
+              { view: 'about' as MainViewTabType, icon: FileUp, label: 'Acerca de' },
+            ] as { view: MainViewTabType; icon: React.ComponentType<{ className?: string }>; label: string }[]).map((item) => {
               const Icon = item.icon;
-              const isActive = activeView === item.view;
               return (
                 <button
                   key={item.view}
-                  onClick={() => setActiveView(item.view)}
-                  className={`group relative flex items-center gap-2.5 pl-3 pr-2 py-2 rounded text-left transition-all duration-150 ${
-                    isActive
-                      ? 'text-amber-200'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
-                  }`}
+                  onClick={() => openMainViewTab(item.view)}
+                  className="group relative flex items-center gap-2.5 pl-3 pr-2 py-2 rounded text-left transition-all duration-150 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                 >
-                  {isActive && (
-                    <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-[var(--color-accent)] rounded-full" />
-                  )}
-                  <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-text-secondary)]'}`} />
+                  <Icon className="w-4 h-4 shrink-0 transition-colors text-[var(--color-text-muted)] group-hover:text-[var(--color-text-secondary)]" />
                   <span className="text-xs font-medium flex-1 tracking-wide">{item.label}</span>
                 </button>
               );
@@ -260,7 +237,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           {/* Version */}
           <div className="pb-4 text-center">
             <button
-              onClick={() => setActiveView('versioning')}
+              onClick={() => openMainViewTab('versioning')}
               className="text-xs text-[var(--color-text-muted)] font-mono hover:text-[var(--color-accent)] transition-colors cursor-pointer"
             >
               v{APP_VERSION}
@@ -270,6 +247,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
         {/* Central Work Area */}
         <main className="flex-1 flex flex-col min-h-0 bg-[var(--color-bg-primary)] overflow-hidden">
+          {tabBar}
           {children}
         </main>
       </div>

@@ -2820,3 +2820,60 @@ pub fn search_universe(state: State<'_, AppState>, query: String) -> Result<Vec<
     Ok(entries)
 }
 
+// ─── Tab State Commands ─────────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct TabData {
+    pub id: String,
+    pub tab_type: String,
+    pub title: String,
+    pub icon: Option<String>,
+    pub resource_id: Option<String>,
+    pub is_modified: bool,
+    pub state: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct RecentlyClosedTab {
+    pub tab: TabData,
+    pub closed_at: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct TabState {
+    pub tabs: Vec<TabData>,
+    pub active_tab_id: Option<String>,
+    pub recently_closed_tabs: Vec<RecentlyClosedTab>,
+}
+
+#[tauri::command]
+pub fn get_tab_state() -> Result<TabState, String> {
+    let config_dir = get_config_dir()?;
+    let file_path = config_dir.join("tab_state.json");
+
+    if !file_path.exists() {
+        return Ok(TabState {
+            tabs: vec![],
+            active_tab_id: None,
+            recently_closed_tabs: vec![],
+        });
+    }
+
+    let content = fs::read_to_string(&file_path)
+        .map_err(|e| format!("Error reading tab state: {}", e))?;
+
+    serde_json::from_str(&content)
+        .map_err(|e| format!("Error parsing tab state: {}", e))
+}
+
+#[tauri::command]
+pub fn save_tab_state(data: TabState) -> Result<(), String> {
+    let config_dir = get_config_dir()?;
+    let file_path = config_dir.join("tab_state.json");
+
+    let content = serde_json::to_string_pretty(&data)
+        .map_err(|e| format!("Error serializing tab state: {}", e))?;
+
+    fs::write(&file_path, content)
+        .map_err(|e| format!("Error saving tab state: {}", e))
+}
