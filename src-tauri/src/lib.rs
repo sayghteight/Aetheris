@@ -72,7 +72,9 @@ pub fn run() {
             commands::upload_asset,
             commands::get_asset,
             commands::get_all_assets,
-            commands::delete_asset
+            commands::delete_asset,
+            commands::get_tab_state,
+            commands::save_tab_state
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
