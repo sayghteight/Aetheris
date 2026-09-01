@@ -12,7 +12,7 @@ const translations: Record<string, Translations> = {
 interface I18nContextType {
   language: string;
   setLanguage: (lang: string) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 const I18nContext = createContext<I18nContextType | null>(null);
@@ -31,7 +31,7 @@ export const I18nProvider: React.FC<I18nProviderProps> = ({ children, initialLan
     }
   }, []);
 
-  const t = useCallback((key: string): string => {
+  const t = useCallback((key: string, params?: Record<string, string | number>): string => {
     const keys = key.split('.');
     let value: any = translations[language];
 
@@ -52,7 +52,16 @@ export const I18nProvider: React.FC<I18nProviderProps> = ({ children, initialLan
       }
     }
 
-    return typeof value === 'string' ? value : key;
+    let result = typeof value === 'string' ? value : key;
+
+    // Replace template placeholders like {{step}} with actual values
+    if (params) {
+      for (const [paramKey, paramValue] of Object.entries(params)) {
+        result = result.replace(new RegExp(`\\{\\{${paramKey}\\}\\}`, 'g'), String(paramValue));
+      }
+    }
+
+    return result;
   }, [language]);
 
   return (

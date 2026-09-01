@@ -18,6 +18,7 @@ pub fn run() {
         .manage(AppState::new())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             greet,
@@ -25,8 +26,18 @@ pub fn run() {
             commands::open_project,
             commands::get_project_settings,
             commands::update_project_settings,
+            commands::get_universe,
             commands::get_universe_data,
             commands::save_universe_data,
+            commands::create_universe_entry,
+            commands::update_universe_entry,
+            commands::delete_universe_entry,
+            commands::create_universe_category,
+            commands::update_universe_category,
+            commands::delete_universe_category,
+            commands::create_universe_relation,
+            commands::delete_universe_relation,
+            commands::search_universe,
             commands::update_project_metadata,
             commands::close_project,
             commands::get_manuscript_nodes,
@@ -57,7 +68,11 @@ pub fn run() {
             commands::split_scene_at_cursor,
             commands::split_scene_by_selection,
             commands::search_all,
-            git::get_git_tags
+            git::get_git_tags,
+            commands::upload_asset,
+            commands::get_asset,
+            commands::get_all_assets,
+            commands::delete_asset
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

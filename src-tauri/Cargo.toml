@@ -1,6 +1,6 @@
 [package]
 name = "aetheria-app"
-version = "0.1.5"
+version = "0.1.6"
 description = "A Tauri App"
 authors = ["Sayghteight"]
 edition = "2021"
@@ -26,6 +26,7 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 uuid = { version = "1.10", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
 tauri-plugin-updater = "2"
 dirs = "5"
 zip = "2"

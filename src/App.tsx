@@ -10,7 +10,7 @@ import { ManuscriptView } from './features/manuscript/ManuscriptView';
 import { ProjectSettings } from './features/project/ProjectSettings';
 import { UpdatePanel } from './features/project/UpdatePanel';
 import { ChangelogPanel } from './features/project/ChangelogPanel';
-import { UniversePanel } from './features/project/UniversePanel';
+import { UniversePanel } from './features/universe/UniversePanel';
 import { WordImportPanel } from './features/import/WordImportPanel';
 import { ExportPanel } from './features/export/ExportPanel';
 import { TimelinePanel } from './features/project/TimelinePanel';
