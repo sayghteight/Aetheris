@@ -290,6 +290,33 @@
       "scene": "Escena"
     }
   },
+  "characterTracking": {
+    "title": "Seguimiento de Personajes",
+    "subtitle": "Rastrea las apariciones de personajes en tu manuscrito",
+    "rebuild": "Reconstruir",
+    "searchPlaceholder": "Buscar personajes...",
+    "insights": "Perspectivas de Escritura",
+    "characters": "Personajes",
+    "chapterDistribution": "Distribución por Capítulos",
+    "appearances": "apariciones",
+    "firstAppearance": "Primera Aparición",
+    "lastAppearance": "Última Aparición",
+    "scenes": "Escenas",
+    "noCharactersFound": "No se encontraron personajes",
+    "noCharactersHint": "Crea personajes en el Universo para rastrearlos aquí",
+    "chapters": "Capítulos",
+    "notAppearedYet": "no ha aparecido todavía",
+    "notAppearedFor": "no ha aparecido en",
+    "chaptersAgo": "capítulos",
+    "wasIntroduced": "fue introducido hace",
+    "chapterAgo": "capítulo",
+    "appearsIn": "aparece en",
+    "ofManuscriptChapters": "de los capítulos del manuscrito",
+    "status": "Estado del Personaje",
+    "statusAlive": "Vivo",
+    "statusDead": "Muerto",
+    "statusMissing": "Desaparecido"
+  },
   "settings": {
     "title": "Configuración",
     "subtitle": "Ajusta la aplicación según tus preferencias.",

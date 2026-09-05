@@ -10,6 +10,7 @@ import { CalendarsPanel } from '../../features/project/CalendarsPanel';
 import { WordImportPanel } from '../../features/import/WordImportPanel';
 import { ExportPanel } from '../../features/export/ExportPanel';
 import { UniverseEntryView } from '../../features/universe/components/entry/UniverseEntryView';
+import { CharacterTrackingView } from '../../features/characterTracking/CharacterTrackingView';
 
 interface TabContentProps {
   wordCount?: number;
@@ -53,6 +54,8 @@ export const TabContent: React.FC<TabContentProps> = ({
         return <WordImportPanel />;
       case 'export':
         return <ExportPanel />;
+      case 'character-tracking':
+        return <CharacterTrackingView />;
       default:
         return (
           <div className="flex items-center justify-center h-full text-[var(--color-text-muted)]">

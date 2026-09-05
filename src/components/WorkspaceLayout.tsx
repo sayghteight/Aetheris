@@ -17,10 +17,11 @@ import {
   Maximize2,
   Minimize2,
   LogOut,
+  Users,
 } from 'lucide-react';
 
 // Type for navigation views that can be opened as tabs
-type MainViewTabType = 'manuscript' | 'universe' | 'timeline' | 'calendars' | 'settings' | 'about' | 'versioning' | 'import' | 'export';
+type MainViewTabType = 'manuscript' | 'universe' | 'timeline' | 'calendars' | 'settings' | 'about' | 'versioning' | 'import' | 'export' | 'character-tracking';
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
@@ -166,6 +167,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             {([
               { view: 'manuscript', icon: BookOpen, label: 'Manuscrito' },
               { view: 'universe', icon: Compass, label: 'Universo' },
+              { view: 'character-tracking', icon: Users, label: 'Character Tracking' },
               { view: 'timeline', icon: Calendar, label: 'Línea Temporal' },
               { view: 'calendars', icon: Globe, label: 'Calendarios' },
             ] as { view: MainViewTabType; icon: React.ComponentType<{ className?: string }>; label: string }[]).map((item) => {
