@@ -1542,6 +1542,110 @@ pub struct SearchResult {
     pub category_id: Option<String>,  // category identifier for universe navigation
 }
 
+// Helper: extract plain text snippet from JSON block content
+fn extract_snippet_from_content(content_json: &str, query: &str) -> String {
+    // Try to parse as JSON and extract text
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(content_json) {
+        let texts = extract_text_from_json(&value);
+        let all_text = texts.join(" ");
+        if !all_text.is_empty() && all_text.to_lowercase().contains(&query.to_lowercase()) {
+            let query_lower = query.to_lowercase();
+            if let Some(pos) = all_text.to_lowercase().find(&query_lower) {
+                // Get char indices instead of byte indices
+                let chars: Vec<char> = all_text.chars().collect();
+                let start = pos.saturating_sub(40).min(chars.len());
+                let end = (pos + query.len() + 60).min(chars.len());
+                let snippet: String = chars[start..end].iter().collect();
+                let prefix = if start > 0 { "…" } else { "" };
+                let suffix = if end < chars.len() { "…" } else { "" };
+                return format!("{}{}{}", prefix, snippet, suffix);
+            }
+        }
+        // Truncate to 150 chars safely
+        let chars: Vec<char> = all_text.chars().collect();
+        if chars.len() > 150 {
+            return format!("{}…", chars[..150].iter().collect::<String>());
+        }
+        if !all_text.is_empty() {
+            return all_text;
+        }
+    }
+    // Fallback: treat as plain text, but first clean any HTML
+    let cleaned = strip_html_tags(content_json);
+    let chars: Vec<char> = cleaned.chars().collect();
+    if chars.len() > 150 {
+        format!("{}…", chars[..150].iter().collect::<String>())
+    } else {
+        cleaned
+    }
+}
+
+// Strip HTML tags from text
+fn strip_html_tags(html: &str) -> String {
+    let mut result = String::new();
+    let mut in_tag = false;
+    for c in html.chars() {
+        match c {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ => {
+                if !in_tag {
+                    result.push(c);
+                }
+            }
+        }
+    }
+    result.trim().to_string()
+}
+
+// Helper: recursively extract text from JSON values
+fn extract_text_from_json(value: &serde_json::Value) -> Vec<String> {
+    let mut texts = Vec::new();
+    match value {
+        serde_json::Value::String(s) => {
+            if !s.trim().is_empty() {
+                texts.push(s.trim().to_string());
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for item in arr {
+                texts.extend(extract_text_from_json(item));
+            }
+        }
+        serde_json::Value::Object(obj) => {
+            // Check common text fields
+            let text_keys = ["text", "html", "content", "value", "attribution"];
+            for key in text_keys {
+                if let Some(v) = obj.get(key) {
+                    texts.extend(extract_text_from_json(v));
+                }
+            }
+            // Also check children for nested structures
+            if let Some(children) = obj.get("children") {
+                texts.extend(extract_text_from_json(children));
+            }
+        }
+        _ => {}
+    }
+    texts
+}
+
+// Escape special FTS5 characters for safe querying
+fn escape_fts_query(query: &str) -> String {
+    query
+        .replace('"', " ")
+        .replace('*', " ")
+        .replace('(', " ")
+        .replace(')', " ")
+        .replace(':', " ")
+        .replace('^', " ")
+        .replace('-', " ")
+        .replace('+', " ")
+        .replace("  ", " ")
+        .trim()
+        .to_string()
+}
+
 // Get parent chapter title for a scene
 fn get_scene_parent_title(conn: &Connection, scene_id: &str) -> Option<String> {
     let parent_id: Option<String> = conn
@@ -1576,56 +1680,145 @@ pub fn search_all(state: State<'_, AppState>, query: String) -> Result<Vec<Searc
     let mut all_results: Vec<SearchResult> = Vec::new();
 
     // ── Search manuscripts (FTS5) ─────────────────────────────────────────────
-    let escaped_query = query
-        .replace('"', "\"\"")
-        .replace('*', " ");
-    let fts_query = format!("\"{}\"", escaped_query);
+    // Escape special FTS5 characters and wrap in quotes for phrase search
+    let fts_query = format!("\"{}\"", escape_fts_query(&query));
 
-    if let Ok(mut stmt) = conn.prepare(
-        "SELECT id, title, bm25(fts_index) as rank
-         FROM fts_index
-         WHERE fts_index MATCH ?1 AND type = 'scene'
-         ORDER BY rank
-         LIMIT 50;",
+    // Only try FTS search if the query is valid
+    if !fts_query.is_empty() && fts_query.len() > 2 {
+        if let Ok(mut stmt) = conn.prepare(
+            "SELECT id, title, bm25(fts_index) as rank
+             FROM fts_index
+             WHERE fts_index MATCH ?1 AND type = 'scene'
+             ORDER BY rank
+             LIMIT 50;",
+        ) {
+            let rows: Vec<(String, String, f64)> = stmt
+                .query_map([&fts_query], |row| {
+                    Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+                })
+                .map_err(|e| e.to_string())
+                .ok()
+                .map(|m| m.filter_map(|r| r.ok()).collect::<Vec<_>>())
+                .unwrap_or_default();
+
+            for (scene_id, title, rank) in rows {
+                let snippet = conn
+                    .query_row(
+                        "SELECT snippet(fts_index, 2, '<mark>', '</mark>', '…', 30) FROM fts_index WHERE id = ?1 AND type = 'scene';",
+                        [&scene_id],
+                        |row| row.get::<_, String>(0),
+                    )
+                    .unwrap_or_else(|_| title.clone());
+
+                let chapter_title = get_scene_parent_title(conn, &scene_id);
+                let full_snippet = if let Some(ch) = chapter_title {
+                    format!("{} › {}", ch, snippet)
+                } else {
+                    snippet
+                };
+
+                all_results.push(SearchResult {
+                    id: scene_id,
+                    title,
+                    snippet: full_snippet,
+                    rank,
+                    result_type: "scene".to_string(),
+                    category: None,
+                    category_id: None,
+                });
+            }
+        }
+    }
+
+    // ── Search universe (new tables + legacy JSON) ───────────────────────────
+
+    // Search in new universe tables first
+    let search_pattern = format!("%{}%", query.to_lowercase());
+
+    if let Ok(mut universe_stmt) = conn.prepare(
+        "SELECT e.id, e.name, e.entry_type, e.brief_description, c.name as category_name, c.id as category_id
+         FROM universe_entries e
+         LEFT JOIN universe_categories c ON e.category_id = c.id
+         WHERE LOWER(e.name) LIKE ?1 OR LOWER(e.brief_description) LIKE ?1
+         ORDER BY e.name ASC
+         LIMIT 30;",
     ) {
-        let rows: Vec<(String, String, f64)> = stmt
-            .query_map([&fts_query], |row| {
-                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+        let universe_rows: Vec<(String, String, String, Option<String>, Option<String>, Option<String>)> = universe_stmt
+            .query_map([&search_pattern], |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                    row.get(5)?,
+                ))
             })
-            .map_err(|e| e.to_string())
             .ok()
-            .map(|m| m.filter_map(|r| r.ok()).collect::<Vec<_>>())
+            .map(|m| m.filter_map(|r| r.ok()).collect())
             .unwrap_or_default();
 
-        for (scene_id, title, rank) in rows {
-            let snippet = conn
-                .query_row(
-                    "SELECT snippet(fts_index, 2, '<mark>', '</mark>', '…', 30) FROM fts_index WHERE id = ?1 AND type = 'scene';",
-                    [&scene_id],
-                    |row| row.get::<_, String>(0),
-                )
-                .unwrap_or_else(|_| title.clone());
-
-            let chapter_title = get_scene_parent_title(conn, &scene_id);
-            let full_snippet = if let Some(ch) = chapter_title {
-                format!("{} › {}", ch, snippet)
+        for (id, name, _entry_type, brief_desc, cat_name, cat_id) in universe_rows {
+            let snippet = brief_desc.unwrap_or_default();
+            let chars: Vec<char> = snippet.chars().collect();
+            let final_snippet = if chars.len() > 150 {
+                format!("{}…", chars[..150].iter().collect::<String>())
             } else {
                 snippet
             };
 
             all_results.push(SearchResult {
-                id: scene_id,
-                title,
-                snippet: full_snippet,
-                rank,
-                result_type: "scene".to_string(),
-                category: None,
-                category_id: None,
+                id,
+                title: name,
+                snippet: final_snippet,
+                rank: 0.0,
+                result_type: "universe".to_string(),
+                category: cat_name,
+                category_id: cat_id,
             });
         }
     }
 
-    // ── Search universe (universe_state JSON) ─────────────────────────────────
+    // Also search in universe blocks content for richer results
+    if let Ok(mut blocks_stmt) = conn.prepare(
+        "SELECT e.id, e.name, c.name as category_name, c.id as category_id, b.content
+         FROM universe_entries e
+         LEFT JOIN universe_categories c ON e.category_id = c.id
+         LEFT JOIN universe_blocks b ON e.id = b.entry_id
+         WHERE b.content LIKE ?1 AND LOWER(e.name) NOT LIKE ?1
+         ORDER BY e.name ASC
+         LIMIT 20;",
+    ) {
+        let block_rows: Vec<(String, String, Option<String>, Option<String>, String)> = blocks_stmt
+            .query_map([&search_pattern], |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                ))
+            })
+            .ok()
+            .map(|m| m.filter_map(|r| r.ok()).collect())
+            .unwrap_or_default();
+
+        for (id, name, cat_name, cat_id, content) in block_rows {
+            // Try to extract a snippet from the JSON content
+            let snippet = extract_snippet_from_content(&content, &query);
+            all_results.push(SearchResult {
+                id,
+                title: name,
+                snippet,
+                rank: 1.0,
+                result_type: "universe".to_string(),
+                category: cat_name,
+                category_id: cat_id,
+            });
+        }
+    }
+
+    // Search legacy universe_state JSON (for data not yet migrated)
     let universe_payload: Option<String> = conn
         .query_row(
             "SELECT data FROM universe_state WHERE id = 'default' LIMIT 1;",
@@ -1635,86 +1828,68 @@ pub fn search_all(state: State<'_, AppState>, query: String) -> Result<Vec<Searc
         .ok();
 
     if let Some(payload) = universe_payload {
-        #[derive(Deserialize)]
-        struct UniverseEntry {
-            id: String,
-            name: String,
-            #[serde(rename = "type")]
-            entry_type: Option<String>,
-            content: Option<String>,
-        }
-        #[derive(Deserialize)]
-        struct UniverseCategory {
-            #[allow(dead_code)]
-            id: String,
-            name: String,
-            entries: Vec<UniverseEntry>,
-        }
-
-        if let Ok(categories) = serde_json::from_str::<Vec<UniverseCategory>>(&payload) {
+        // Use serde_json::Value for flexible parsing of potentially malformed legacy data
+        if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&payload) {
             let query_lower = query.to_lowercase();
 
-            for category in categories {
-                for entry in category.entries {
-                    let name_match = entry.name.to_lowercase().contains(&query_lower);
-                    let content_match = entry.content.as_ref()
-                        .map(|c| c.to_lowercase().contains(&query_lower))
-                        .unwrap_or(false);
+            // Handle both array format and object format
+            let categories_array = if json_value.is_array() {
+                json_value.as_array().cloned().unwrap_or_default()
+            } else if let Some(arr) = json_value.get("categories").and_then(|v| v.as_array()) {
+                arr.clone()
+            } else if let Some(arr) = json_value.get("entries").and_then(|v| v.as_array()) {
+                arr.clone()
+            } else {
+                Vec::new()
+            };
 
-                    if name_match || content_match {
-                        let snippet = entry.content.as_ref().map(|c| {
-                            if c.len() > 120 {
-                                if let Some(pos) = c.to_lowercase().find(&query_lower) {
-                                    let start = pos.saturating_sub(40);
-                                    let end = (pos + query.len() + 40).min(c.len());
-                                    let prefix = if start > 0 { "…" } else { "" };
-                                    let suffix = if end < c.len() { "…" } else { "" };
-                                    format!("{}{}{}", prefix, &c[start..end], suffix)
+            for category_val in categories_array {
+                let cat_name = category_val.get("name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Sin categoría")
+                    .to_string();
+                let cat_id = category_val.get("id")
+                    .and_then(|v| v.as_str())
+                    .map(String::from);
+
+                let entries_array = category_val.get("entries")
+                    .and_then(|v| v.as_array())
+                    .cloned()
+                    .unwrap_or_default();
+
+                for entry_val in entries_array {
+                    let entry_name = entry_val.get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+
+                    if entry_name.to_lowercase().contains(&query_lower) {
+                        let content_val = entry_val.get("content");
+                        let snippet = content_val
+                            .and_then(|v| v.as_str())
+                            .map(|s| {
+                                let chars: Vec<char> = s.chars().collect();
+                                if chars.len() > 150 {
+                                    format!("{}…", chars[..150].iter().collect::<String>())
                                 } else {
-                                    format!("{}…", &c[..120])
+                                    s.to_string()
                                 }
-                            } else {
-                                c.clone()
-                            }
-                        }).unwrap_or_default();
+                            })
+                            .unwrap_or_default();
 
-                        let rank = if name_match { 0.0 } else { 2.0 };
-
-                        // Strip HTML tags from snippet for clean text display
-                        let mut in_tag = false;
-                        let mut plain_chars: Vec<char> = Vec::new();
-                        for c in snippet.chars() {
-                            if c == '<' {
-                                in_tag = true;
-                            } else if c == '>' {
-                                in_tag = false;
-                            } else if !in_tag {
-                                plain_chars.push(c);
-                            }
-                        }
-                        let plain_text: String = plain_chars.into_iter().collect();
-                        // Collapse multiple spaces/tabs but preserve newlines, then truncate
-                        let final_snippet = plain_text
-                            .replace("\t", " ")
-                            .replace("  ", " ")  // collapse double spaces
-                            .lines()
-                            .take(3)  // max 3 lines
-                            .collect::<Vec<_>>()
-                            .join("\n");
-                        let final_snippet = if final_snippet.len() > 150 {
-                            format!("{}…", &final_snippet[..150.min(final_snippet.len())])
-                        } else {
-                            final_snippet
-                        };
+                        let entry_id = entry_val.get("id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown")
+                            .to_string();
 
                         all_results.push(SearchResult {
-                            id: entry.id,
-                            title: entry.name.clone(),
-                            snippet: final_snippet,
-                            rank,
+                            id: entry_id,
+                            title: entry_name,
+                            snippet,
+                            rank: 0.5,
                             result_type: "universe".to_string(),
-                            category: Some(category.name.clone()),
-                            category_id: Some(category.id.clone()),
+                            category: Some(cat_name.clone()),
+                            category_id: cat_id.clone(),
                         });
                     }
                 }
@@ -1960,3 +2135,745 @@ pub fn save_exported_file(path: String, data: Vec<u8>) -> Result<(), String> {
     Ok(())
 }
 
+// ─── Universe Wiki Commands ──────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiCategory {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+    pub sortOrder: i32,
+    pub createdAt: String,
+    pub updatedAt: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiEntryType {
+    pub id: String,
+    pub nameEs: String,
+    pub nameEn: String,
+    pub icon: String,
+    pub color: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiEntry {
+    pub id: String,
+    pub categoryId: String,
+    pub entryType: String,
+    pub name: String,
+    pub briefDescription: Option<String>,
+    pub icon: Option<String>,
+    pub coverImageId: Option<String>,
+    pub layout: String,
+    pub isFeatured: bool,
+    pub tags: Vec<String>,
+    pub metadata: serde_json::Value,
+    pub createdAt: String,
+    pub updatedAt: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiBlock {
+    pub id: String,
+    pub entryId: String,
+    pub columnIndex: i32,
+    pub blockOrder: i32,
+    pub blockType: String,
+    pub content: serde_json::Value,
+    pub createdAt: String,
+    pub updatedAt: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiRelation {
+    pub id: String,
+    pub sourceEntryId: String,
+    pub targetEntryId: String,
+    pub relationType: String,
+    pub description: Option<String>,
+    pub createdAt: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiData {
+    pub categories: Vec<WikiCategory>,
+    pub entryTypes: Vec<WikiEntryType>,
+    pub entries: Vec<WikiEntry>,
+    pub blocks: Vec<WikiBlock>,
+    pub relations: Vec<WikiRelation>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiEntryWithBlocks {
+    pub entry: WikiEntry,
+    pub blocks: Vec<WikiBlock>,
+    pub relations: Vec<WikiRelation>,
+}
+
+#[tauri::command]
+pub fn get_universe(state: State<'_, AppState>) -> Result<WikiData, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    // Get categories
+    let mut cat_stmt = conn
+        .prepare("SELECT id, name, description, icon, color, sort_order, created_at, updated_at FROM universe_categories ORDER BY sort_order ASC;")
+        .map_err(|e| e.to_string())?;
+
+    let categories: Vec<WikiCategory> = cat_stmt
+        .query_map([], |row| {
+            Ok(WikiCategory {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                description: row.get(2)?,
+                icon: row.get(3)?,
+                color: row.get(4)?,
+                sortOrder: row.get(5)?,
+                createdAt: row.get(6)?,
+                updatedAt: row.get(7)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    // Get entry types
+    let mut type_stmt = conn
+        .prepare("SELECT id, name_es, name_en, icon, color FROM universe_entry_types;")
+        .map_err(|e| e.to_string())?;
+
+    let entry_types: Vec<WikiEntryType> = type_stmt
+        .query_map([], |row| {
+            Ok(WikiEntryType {
+                id: row.get(0)?,
+                nameEs: row.get(1)?,
+                nameEn: row.get(2)?,
+                icon: row.get(3)?,
+                color: row.get(4)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    // Get entries
+    let mut entry_stmt = conn
+        .prepare("SELECT id, category_id, entry_type, name, brief_description, icon, cover_image_id, layout, is_featured, tags, metadata, created_at, updated_at FROM universe_entries ORDER BY name ASC;")
+        .map_err(|e| e.to_string())?;
+
+    let entries: Vec<WikiEntry> = entry_stmt
+        .query_map([], |row| {
+            let tags_str: Option<String> = row.get(9)?;
+            let tags: Vec<String> = tags_str
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or_default();
+            let metadata_str: Option<String> = row.get(10)?;
+            let metadata: serde_json::Value = metadata_str
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or(serde_json::Value::Null);
+
+            Ok(WikiEntry {
+                id: row.get(0)?,
+                categoryId: row.get(1)?,
+                entryType: row.get(2)?,
+                name: row.get(3)?,
+                briefDescription: row.get(4)?,
+                icon: row.get(5)?,
+                coverImageId: row.get(6)?,
+                layout: row.get(7)?,
+                isFeatured: row.get(8)?,
+                tags,
+                metadata,
+                createdAt: row.get(11)?,
+                updatedAt: row.get(12)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    // Get blocks
+    let mut block_stmt = conn
+        .prepare("SELECT id, entry_id, column_index, block_order, block_type, content, created_at, updated_at FROM universe_blocks ORDER BY block_order ASC;")
+        .map_err(|e| e.to_string())?;
+
+    let blocks: Vec<WikiBlock> = block_stmt
+        .query_map([], |row| {
+            let content_str: String = row.get(5)?;
+            let content: serde_json::Value = serde_json::from_str(&content_str)
+                .unwrap_or(serde_json::Value::Null);
+
+            Ok(WikiBlock {
+                id: row.get(0)?,
+                entryId: row.get(1)?,
+                columnIndex: row.get(2)?,
+                blockOrder: row.get(3)?,
+                blockType: row.get(4)?,
+                content,
+                createdAt: row.get(6)?,
+                updatedAt: row.get(7)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    // Get relations
+    let mut rel_stmt = conn
+        .prepare("SELECT id, source_entry_id, target_entry_id, relation_type, description, created_at FROM universe_relations;")
+        .map_err(|e| e.to_string())?;
+
+    let relations: Vec<WikiRelation> = rel_stmt
+        .query_map([], |row| {
+            Ok(WikiRelation {
+                id: row.get(0)?,
+                sourceEntryId: row.get(1)?,
+                targetEntryId: row.get(2)?,
+                relationType: row.get(3)?,
+                description: row.get(4)?,
+                createdAt: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(WikiData {
+        categories,
+        entryTypes: entry_types,
+        entries,
+        blocks,
+        relations,
+    })
+}
+
+#[tauri::command]
+pub fn create_universe_entry(
+    state: State<'_, AppState>,
+    entry: WikiEntry,
+    blocks: Vec<WikiBlock>,
+) -> Result<WikiEntryWithBlocks, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let tags_json = serde_json::to_string(&entry.tags).unwrap_or_else(|_| "[]".to_string());
+    let metadata_json = serde_json::to_string(&entry.metadata).unwrap_or_else(|_| "{}".to_string());
+
+    conn.execute(
+        "INSERT INTO universe_entries (id, category_id, entry_type, name, brief_description, icon, cover_image_id, layout, is_featured, tags, metadata, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);",
+        (
+            &entry.id,
+            &entry.categoryId,
+            &entry.entryType,
+            &entry.name,
+            &entry.briefDescription,
+            &entry.icon,
+            &entry.coverImageId,
+            &entry.layout,
+            entry.isFeatured,
+            &tags_json,
+            &metadata_json,
+            &now,
+            &now,
+        ),
+    )
+    .map_err(|e| format!("Error creando entrada: {}", e))?;
+
+    let mut created_blocks = Vec::new();
+    for mut block in blocks {
+        block.id = Uuid::new_v4().to_string();
+        let content_json = serde_json::to_string(&block.content).unwrap_or_else(|_| "{}".to_string());
+
+        conn.execute(
+            "INSERT INTO universe_blocks (id, entry_id, column_index, block_order, block_type, content, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8);",
+            (
+                &block.id,
+                &entry.id,
+                block.columnIndex,
+                block.blockOrder,
+                &block.blockType,
+                &content_json,
+                &now,
+                &now,
+            ),
+        )
+        .map_err(|e| format!("Error creando bloque: {}", e))?;
+
+        block.createdAt = now.clone();
+        block.updatedAt = now.clone();
+        created_blocks.push(block);
+    }
+
+    Ok(WikiEntryWithBlocks {
+        entry: WikiEntry {
+            createdAt: now.clone(),
+            updatedAt: now,
+            ..entry
+        },
+        blocks: created_blocks,
+        relations: vec![],
+    })
+}
+
+#[tauri::command]
+pub fn update_universe_entry(
+    state: State<'_, AppState>,
+    entry: WikiEntry,
+    blocks: Vec<WikiBlock>,
+) -> Result<WikiEntryWithBlocks, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let tags_json = serde_json::to_string(&entry.tags).unwrap_or_else(|_| "[]".to_string());
+    let metadata_json = serde_json::to_string(&entry.metadata).unwrap_or_else(|_| "{}".to_string());
+
+    conn.execute(
+        "UPDATE universe_entries SET category_id = ?2, entry_type = ?3, name = ?4, brief_description = ?5, icon = ?6, cover_image_id = ?7, layout = ?8, is_featured = ?9, tags = ?10, metadata = ?11, updated_at = ?12 WHERE id = ?1;",
+        (
+            &entry.id,
+            &entry.categoryId,
+            &entry.entryType,
+            &entry.name,
+            &entry.briefDescription,
+            &entry.icon,
+            &entry.coverImageId,
+            &entry.layout,
+            entry.isFeatured,
+            &tags_json,
+            &metadata_json,
+            &now,
+        ),
+    )
+    .map_err(|e| format!("Error actualizando entrada: {}", e))?;
+
+    // Delete existing blocks and recreate
+    conn.execute("DELETE FROM universe_blocks WHERE entry_id = ?1;", [&entry.id])
+        .map_err(|e| format!("Error eliminando bloques: {}", e))?;
+
+    let mut created_blocks = Vec::new();
+    for mut block in blocks {
+        block.id = Uuid::new_v4().to_string();
+        let content_json = serde_json::to_string(&block.content).unwrap_or_else(|_| "{}".to_string());
+
+        conn.execute(
+            "INSERT INTO universe_blocks (id, entry_id, column_index, block_order, block_type, content, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8);",
+            (
+                &block.id,
+                &entry.id,
+                block.columnIndex,
+                block.blockOrder,
+                &block.blockType,
+                &content_json,
+                &now,
+                &now,
+            ),
+        )
+        .map_err(|e| format!("Error creando bloque: {}", e))?;
+
+        block.createdAt = now.clone();
+        block.updatedAt = now.clone();
+        created_blocks.push(block);
+    }
+
+    // Get relations for this entry
+    let mut rel_stmt = conn
+        .prepare("SELECT id, source_entry_id, target_entry_id, relation_type, description, created_at FROM universe_relations WHERE source_entry_id = ?1 OR target_entry_id = ?1;")
+        .map_err(|e| e.to_string())?;
+
+    let relations: Vec<WikiRelation> = rel_stmt
+        .query_map([&entry.id], |row| {
+            Ok(WikiRelation {
+                id: row.get(0)?,
+                sourceEntryId: row.get(1)?,
+                targetEntryId: row.get(2)?,
+                relationType: row.get(3)?,
+                description: row.get(4)?,
+                createdAt: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(WikiEntryWithBlocks {
+        entry: WikiEntry {
+            updatedAt: now,
+            ..entry
+        },
+        blocks: created_blocks,
+        relations,
+    })
+}
+
+#[tauri::command]
+pub fn delete_universe_entry(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    // Blocks and relations are deleted via CASCADE
+    conn.execute("DELETE FROM universe_entries WHERE id = ?1;", [&id])
+        .map_err(|e| format!("Error eliminando entrada: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn create_universe_category(
+    state: State<'_, AppState>,
+    name: String,
+    description: Option<String>,
+    icon: Option<String>,
+    color: Option<String>,
+) -> Result<WikiCategory, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let id = Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    let sort_order: i32 = conn
+        .query_row("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM universe_categories;", [], |row| row.get(0))
+        .unwrap_or(0);
+
+    conn.execute(
+        "INSERT INTO universe_categories (id, name, description, icon, color, sort_order, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8);",
+        (&id, &name, &description, &icon, &color, sort_order, &now, &now),
+    )
+    .map_err(|e| format!("Error creando categoría: {}", e))?;
+
+    Ok(WikiCategory {
+        id,
+        name,
+        description,
+        icon,
+        color,
+        sortOrder: sort_order,
+        createdAt: now.clone(),
+        updatedAt: now,
+    })
+}
+
+#[tauri::command]
+pub fn update_universe_category(
+    state: State<'_, AppState>,
+    id: String,
+    name: String,
+    description: Option<String>,
+    icon: Option<String>,
+    color: Option<String>,
+) -> Result<WikiCategory, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let now = chrono::Utc::now().to_rfc3339();
+
+    conn.execute(
+        "UPDATE universe_categories SET name = ?2, description = ?3, icon = ?4, color = ?5, updated_at = ?6 WHERE id = ?1;",
+        (&id, &name, &description, &icon, &color, &now),
+    )
+    .map_err(|e| format!("Error actualizando categoría: {}", e))?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, name, description, icon, color, sort_order, created_at, updated_at FROM universe_categories WHERE id = ?1;")
+        .map_err(|e| e.to_string())?;
+
+    stmt.query_row([&id], |row| {
+        Ok(WikiCategory {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            description: row.get(2)?,
+            icon: row.get(3)?,
+            color: row.get(4)?,
+            sortOrder: row.get(5)?,
+            createdAt: row.get(6)?,
+            updatedAt: row.get(7)?,
+        })
+    })
+    .map_err(|e| format!("Categoría no encontrada: {}", e))
+}
+
+#[tauri::command]
+pub fn delete_universe_category(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    // Entries are deleted via CASCADE
+    conn.execute("DELETE FROM universe_categories WHERE id = ?1;", [&id])
+        .map_err(|e| format!("Error eliminando categoría: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn create_universe_relation(
+    state: State<'_, AppState>,
+    source_entry_id: String,
+    target_entry_id: String,
+    relation_type: String,
+    description: Option<String>,
+) -> Result<WikiRelation, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let id = Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    conn.execute(
+        "INSERT INTO universe_relations (id, source_entry_id, target_entry_id, relation_type, description, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6);",
+        (&id, &source_entry_id, &target_entry_id, &relation_type, &description, &now),
+    )
+    .map_err(|e| format!("Error creando relación: {}", e))?;
+
+    Ok(WikiRelation {
+        id,
+        sourceEntryId: source_entry_id,
+        targetEntryId: target_entry_id,
+        relationType: relation_type,
+        description,
+        createdAt: now,
+    })
+}
+
+#[tauri::command]
+pub fn delete_universe_relation(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    conn.execute("DELETE FROM universe_relations WHERE id = ?1;", [&id])
+        .map_err(|e| format!("Error eliminando relación: {}", e))?;
+
+    Ok(())
+}
+
+// ─── Asset Commands ─────────────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ProjectAsset {
+    pub id: String,
+    pub filename: String,
+    pub mime_type: String,
+    pub data: Vec<u8>,
+    pub created_at: String,
+}
+
+#[tauri::command]
+pub fn upload_asset(
+    state: State<'_, AppState>,
+    filename: String,
+    mime_type: String,
+    data: Vec<u8>,
+) -> Result<ProjectAsset, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let id = Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    conn.execute(
+        "INSERT INTO project_assets (id, filename, mime_type, data, created_at) VALUES (?1, ?2, ?3, ?4, ?5);",
+        (&id, &filename, &mime_type, &data, &now),
+    )
+    .map_err(|e| format!("Error guardando asset: {}", e))?;
+
+    Ok(ProjectAsset {
+        id,
+        filename,
+        mime_type,
+        data,
+        created_at: now,
+    })
+}
+
+#[tauri::command]
+pub fn get_asset(state: State<'_, AppState>, id: String) -> Result<Option<ProjectAsset>, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, filename, mime_type, data, created_at FROM project_assets WHERE id = ?1;")
+        .map_err(|e| e.to_string())?;
+
+    let result = stmt.query_row([&id], |row| {
+        Ok(ProjectAsset {
+            id: row.get(0)?,
+            filename: row.get(1)?,
+            mime_type: row.get(2)?,
+            data: row.get(3)?,
+            created_at: row.get(4)?,
+        })
+    });
+
+    match result {
+        Ok(asset) => Ok(Some(asset)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(format!("Error consultando asset: {}", e)),
+    }
+}
+
+#[tauri::command]
+pub fn get_all_assets(state: State<'_, AppState>) -> Result<Vec<ProjectAsset>, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, filename, mime_type, data, created_at FROM project_assets ORDER BY created_at DESC;")
+        .map_err(|e| e.to_string())?;
+
+    let assets = stmt
+        .query_map([], |row| {
+            Ok(ProjectAsset {
+                id: row.get(0)?,
+                filename: row.get(1)?,
+                mime_type: row.get(2)?,
+                data: row.get(3)?,
+                created_at: row.get(4)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(assets)
+}
+
+#[tauri::command]
+pub fn delete_asset(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    conn.execute("DELETE FROM project_assets WHERE id = ?1;", [&id])
+        .map_err(|e| format!("Error eliminando asset: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn search_universe(state: State<'_, AppState>, query: String) -> Result<Vec<WikiEntry>, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    if query.trim().is_empty() {
+        return Ok(vec![]);
+    }
+
+    let search_pattern = format!("%{}%", query.to_lowercase());
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT DISTINCT e.id, e.category_id, e.entry_type, e.name, e.brief_description, e.icon, e.cover_image_id, e.layout, e.is_featured, e.tags, e.metadata, e.created_at, e.updated_at
+             FROM universe_entries e
+             LEFT JOIN universe_blocks b ON e.id = b.entry_id
+             WHERE LOWER(e.name) LIKE ?1 OR LOWER(e.brief_description) LIKE ?1 OR LOWER(b.content) LIKE ?1
+             ORDER BY e.name ASC
+             LIMIT 50;",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let entries: Vec<WikiEntry> = stmt
+        .query_map([&search_pattern], |row| {
+            let tags_str: Option<String> = row.get(9)?;
+            let tags: Vec<String> = tags_str
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or_default();
+            let metadata_str: Option<String> = row.get(10)?;
+            let metadata: serde_json::Value = metadata_str
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or(serde_json::Value::Null);
+
+            Ok(WikiEntry {
+                id: row.get(0)?,
+                categoryId: row.get(1)?,
+                entryType: row.get(2)?,
+                name: row.get(3)?,
+                briefDescription: row.get(4)?,
+                icon: row.get(5)?,
+                coverImageId: row.get(6)?,
+                layout: row.get(7)?,
+                isFeatured: row.get(8)?,
+                tags,
+                metadata,
+                createdAt: row.get(11)?,
+                updatedAt: row.get(12)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(entries)
+}
+
+// ─── Tab State Commands ─────────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct TabData {
+    pub id: String,
+    pub tab_type: String,
+    pub title: String,
+    pub icon: Option<String>,
+    pub resource_id: Option<String>,
+    pub is_modified: bool,
+    pub state: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct RecentlyClosedTab {
+    pub tab: TabData,
+    pub closed_at: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct TabState {
+    pub tabs: Vec<TabData>,
+    pub active_tab_id: Option<String>,
+    pub recently_closed_tabs: Vec<RecentlyClosedTab>,
+}
+
+#[tauri::command]
+pub fn get_tab_state() -> Result<TabState, String> {
+    let config_dir = get_config_dir()?;
+    let file_path = config_dir.join("tab_state.json");
+
+    if !file_path.exists() {
+        return Ok(TabState {
+            tabs: vec![],
+            active_tab_id: None,
+            recently_closed_tabs: vec![],
+        });
+    }
+
+    let content = fs::read_to_string(&file_path)
+        .map_err(|e| format!("Error reading tab state: {}", e))?;
+
+    serde_json::from_str(&content)
+        .map_err(|e| format!("Error parsing tab state: {}", e))
+}
+
+#[tauri::command]
+pub fn save_tab_state(data: TabState) -> Result<(), String> {
+    let config_dir = get_config_dir()?;
+    let file_path = config_dir.join("tab_state.json");
+
+    let content = serde_json::to_string_pretty(&data)
+        .map_err(|e| format!("Error serializing tab state: {}", e))?;
+
+    fs::write(&file_path, content)
+        .map_err(|e| format!("Error saving tab state: {}", e))
+}

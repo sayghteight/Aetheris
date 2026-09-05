@@ -1,25 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useProjectStore } from './store/projectStore';
-import { useNavigationStore } from './store/navigationStore';
 import { useSettingsStore } from './store/settingsStore';
 import { useWorkspaceStore } from './store/workspaceStore';
+import { useTabStore } from './store/tabStore';
 import { useI18n } from './i18n';
 import { ProjectSetup } from './features/project/ProjectSetup';
 import { WorkspaceLayout } from './components/WorkspaceLayout';
-import { ManuscriptView } from './features/manuscript/ManuscriptView';
-import { ProjectSettings } from './features/project/ProjectSettings';
-import { UpdatePanel } from './features/project/UpdatePanel';
-import { ChangelogPanel } from './features/project/ChangelogPanel';
-import { UniversePanel } from './features/project/UniversePanel';
-import { WordImportPanel } from './features/import/WordImportPanel';
-import { ExportPanel } from './features/export/ExportPanel';
-import { TimelinePanel } from './features/project/TimelinePanel';
-import { CalendarsPanel } from './features/project/CalendarsPanel';
+import { TabBar } from './components/tab-bar';
+import { TabContent } from './components/tab-bar/TabContent';
 import { UpdateDialog } from './components/UpdateDialog';
 
 const App: React.FC = () => {
   const { isOpen } = useProjectStore();
-  const { activeView } = useNavigationStore();
   const { settings, loadSettings, isLoaded } = useSettingsStore();
   const { language, setLanguage } = useI18n();
   const [wordCount, setWordCount] = useState(0);
@@ -58,6 +50,22 @@ const App: React.FC = () => {
     }
   }, [isOpen, loadWorkspaceState]);
 
+  // Load tabs when project opens
+  const { loadTabs, tabs } = useTabStore();
+  useEffect(() => {
+    if (isOpen) {
+      loadTabs();
+    }
+  }, [isOpen, loadTabs]);
+
+  // If no tabs are open, initialize with manuscript view
+  useEffect(() => {
+    if (isOpen && tabs.length === 0) {
+      const { openTab } = useTabStore.getState();
+      openTab({ type: 'manuscript', title: 'Manuscript' });
+    }
+  }, [isOpen, tabs.length]);
+
   if (!isOpen) {
     return <ProjectSetup />;
   }
@@ -77,42 +85,18 @@ const App: React.FC = () => {
       ? 'bg-black text-slate-100'
       : 'bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)]';
 
-  // Contenido principal de la vista activa
-  const renderMainView = () => {
-    switch (activeView) {
-      case 'manuscript':
-        return <ManuscriptView onStatsUpdate={(w, r) => { setWordCount(w); setReadTime(r); }} />;
-      case 'universe':
-        return <UniversePanel />;
-      case 'settings':
-        return <ProjectSettings />;
-      case 'versioning':
-        return <ChangelogPanel />;
-      case 'about':
-        return <UpdatePanel />;
-      case 'timeline':
-        return <TimelinePanel />;
-      case 'calendars':
-        return <CalendarsPanel />;
-      case 'import':
-        return <WordImportPanel />;
-      case 'export':
-        return <ExportPanel />;
-      default:
-        return (
-          <div className="flex items-center justify-center h-full text-slate-500 text-sm">
-            Vista "{activeView}" en desarrollo...
-          </div>
-        );
-    }
-  };
-
   return (
     <div className={`min-h-screen ${appShellClass}`}>
       <div className={`absolute inset-0 pointer-events-none ${themeOverlayClass}`} />
       <div className="relative z-10 h-screen">
         <WorkspaceLayout wordCount={wordCount} readTime={readTime}>
-          {renderMainView()}
+          <TabBar />
+          <TabContent
+            onStatsUpdate={(words, read) => {
+              setWordCount(words);
+              setReadTime(read);
+            }}
+          />
         </WorkspaceLayout>
         <UpdateDialog />
       </div>

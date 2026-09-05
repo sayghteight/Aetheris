@@ -128,52 +128,6 @@ fn get_all_tags() -> Vec<GitTag> {
     }
 }
 
-fn get_commits_since_tag(tag: &Option<String>) -> Vec<GitCommit> {
-    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf();
-
-    // Ensure origin/main is up to date
-    let _ = Command::new("git")
-        .args(["fetch", "origin", "refs/heads/main:refs/remotes/origin/main"])
-        .current_dir(&repo_root)
-        .output();
-
-    // Use origin/main as base to get all commits since the tag on the main release branch
-    let range = match tag {
-        Some(t) => format!("{}..origin/main", t),
-        None => "origin/main".to_string(),
-    };
-
-    let output = Command::new("git")
-        .args([
-            "log",
-            &range,
-            "--no-merges",
-            "--format=%H|%s|%ad",
-            "--date=short",
-        ])
-        .current_dir(&repo_root)
-        .output();
-
-    match output {
-        Ok(out) if out.status.success() => String::from_utf8_lossy(&out.stdout)
-            .lines()
-            .filter_map(|line| {
-                let parts: Vec<&str> = line.splitn(3, '|').collect();
-                if parts.len() >= 3 {
-                    Some(GitCommit {
-                        hash: parts[0][..8].to_string(),
-                        message: parts[1].to_string(),
-                        date: parts[2].to_string(),
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect(),
-        _ => Vec::new()
-    }
-}
-
 fn get_commits_between_tags(from_tag: &Option<String>, to_tag: &Option<String>) -> Vec<GitCommit> {
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf();
 
