@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import type { UniverseBlock, BlockContent } from '../../types';
 import { useI18n } from '../../../../i18n';
 
@@ -13,7 +13,6 @@ export const RichTextBlock: React.FC<RichTextBlockProps> = ({ block, onUpdate, i
   const content = block.content as { type: 'rich-text'; html: string };
   const editorRef = useRef<HTMLDivElement>(null);
   const isComposingRef = useRef(false);
-  const [localHtml, setLocalHtml] = useState(content.html || '');
   const isUpdatingRef = useRef(false);
 
   // Sync local state when content changes externally (e.g., loading from DB)
@@ -21,7 +20,6 @@ export const RichTextBlock: React.FC<RichTextBlockProps> = ({ block, onUpdate, i
     if (!isEditing || isUpdatingRef.current) return;
     if (editorRef.current && editorRef.current.innerHTML !== content.html) {
       editorRef.current.innerHTML = content.html || '';
-      setLocalHtml(content.html || '');
     }
   }, [content.html, isEditing]);
 
@@ -30,7 +28,6 @@ export const RichTextBlock: React.FC<RichTextBlockProps> = ({ block, onUpdate, i
     if (isComposingRef.current || !editorRef.current) return;
     isUpdatingRef.current = true;
     const newHtml = editorRef.current.innerHTML;
-    setLocalHtml(newHtml);
     onUpdate({
       type: 'rich-text',
       html: newHtml,
@@ -47,7 +44,6 @@ export const RichTextBlock: React.FC<RichTextBlockProps> = ({ block, onUpdate, i
     isComposingRef.current = false;
     if (editorRef.current) {
       const newHtml = editorRef.current.innerHTML;
-      setLocalHtml(newHtml);
       onUpdate({
         type: 'rich-text',
         html: newHtml,

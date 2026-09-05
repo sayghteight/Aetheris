@@ -6,7 +6,7 @@ type Translations = typeof esTranslations;
 
 const translations: Record<string, Translations> = {
   es: esTranslations,
-  en: enTranslations,
+  en: enTranslations as Translations,
 };
 
 interface I18nContextType {

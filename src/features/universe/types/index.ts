@@ -143,7 +143,8 @@ export interface RelatedLink {
 
 export interface EntryReferenceBlockContent {
   type: 'entry-reference';
-  entryId: string;
+  referenceType?: 'entry' | 'chapter';
+  referenceId: string;
   displayMode: 'card' | 'inline' | 'badge';
   note?: string;
 }
@@ -267,7 +268,7 @@ export function createDefaultBlock(
       content = { type: 'related-links', links: [] };
       break;
     case 'entry-reference':
-      content = { type: 'entry-reference', entryId: '', displayMode: 'card' };
+      content = { type: 'entry-reference', referenceId: '', displayMode: 'card' };
       break;
     default:
       content = { type: 'rich-text', html: '' };

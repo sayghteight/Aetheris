@@ -107,34 +107,6 @@ const ResizeHandle: React.FC<ResizeHandleProps> = ({ onResize, widths, index }) 
   );
 };
 
-// ─── Block Toolbar ─────────────────────────────────────────────────────────────
-
-interface BlockToolbarProps {
-  onDelete: () => void;
-  isDragging?: boolean;
-}
-
-const BlockToolbar: React.FC<BlockToolbarProps> = ({ onDelete, isDragging }) => {
-  return (
-    <div className={`absolute -left-1 top-1/2 z-10 flex -translate-y-1/2 gap-0.5 transition-opacity ${isDragging ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-      {/* Drag Handle */}
-      <div className="flex h-6 w-5 cursor-grab items-center justify-center rounded-l-md bg-violet-600/80 text-white/80">
-        <GripVertical className="h-3.5 w-3.5" />
-      </div>
-      {/* Delete Button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        className="flex h-6 w-5 cursor-pointer items-center justify-center rounded-l-md bg-red-600/80 text-white/80 hover:bg-red-500 transition-colors"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  );
-};
-
 // ─── Add Block Menu ─────────────────────────────────────────────────────────────
 
 interface AddBlockMenuProps {
@@ -199,7 +171,6 @@ interface ColumnContainerProps {
   onAddBlock: (columnIndex: 0 | 1 | 2, blockType: BlockType) => void;
   onUpdateBlock: (blockId: string, content: BlockContent) => void;
   onDeleteBlock: (blockId: string) => void;
-  onMoveBlock: (blockId: string, targetBlockId: string, position: 'before' | 'after') => void;
   selectedBlockId: string | null;
   onSelectBlock: (blockId: string | null) => void;
   layout: LayoutType;
@@ -212,7 +183,6 @@ const ColumnContainer: React.FC<ColumnContainerProps> = ({
   onAddBlock,
   onUpdateBlock,
   onDeleteBlock,
-  onMoveBlock,
   selectedBlockId,
   onSelectBlock,
   layout,
@@ -447,34 +417,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     }
   };
 
-  const handleMoveBlock = (blockId: string, targetBlockId: string, position: 'before' | 'after') => {
-    // Find indices
-    const blockIndex = entryBlocks.findIndex(b => b.id === blockId);
-    const targetIndex = entryBlocks.findIndex(b => b.id === targetBlockId);
-
-    if (blockIndex === -1 || targetIndex === -1) return;
-
-    // Create new array
-    const newBlocks = [...entryBlocks];
-    const [removed] = newBlocks.splice(blockIndex, 1);
-
-    // Calculate new index
-    let newIndex = newBlocks.findIndex(b => b.id === targetBlockId);
-    if (position === 'after') {
-      newIndex = newIndex + 1;
-    }
-
-    newBlocks.splice(newIndex, 0, removed);
-
-    // Update order values
-    newBlocks.forEach((b, i) => {
-      b.blockOrder = i;
-    });
-
-    // Update local state only (no backend call until save)
-    setEntryBlocks(newBlocks);
-  };
-
   const handleSave = async () => {
     if (entry) {
       await updateEntry(entry, entryBlocks);
@@ -519,7 +461,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
             onAddBlock={handleAddBlock}
             onUpdateBlock={handleUpdateBlock}
             onDeleteBlock={handleDeleteBlock}
-            onMoveBlock={handleMoveBlock}
             selectedBlockId={selectedBlockId}
             onSelectBlock={setSelectedBlockId}
             layout={layout}
@@ -550,8 +491,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
               onAddBlock={handleAddBlock}
               onUpdateBlock={handleUpdateBlock}
               onDeleteBlock={handleDeleteBlock}
-              onMoveBlock={handleMoveBlock}
-              selectedBlockId={selectedBlockId}
+                selectedBlockId={selectedBlockId}
               onSelectBlock={setSelectedBlockId}
               layout={layout}
               isEditing={isEditing}
@@ -580,8 +520,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
               onAddBlock={handleAddBlock}
               onUpdateBlock={handleUpdateBlock}
               onDeleteBlock={handleDeleteBlock}
-              onMoveBlock={handleMoveBlock}
-              selectedBlockId={selectedBlockId}
+                selectedBlockId={selectedBlockId}
               onSelectBlock={setSelectedBlockId}
               layout={layout}
               isEditing={isEditing}
