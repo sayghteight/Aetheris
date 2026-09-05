@@ -611,7 +611,7 @@ function getDefaultContent(blockType: BlockType): BlockContent {
     case 'related-links':
       return { type: 'related-links', links: [] };
     case 'entry-reference':
-      return { type: 'entry-reference', entryId: '', displayMode: 'card' };
+      return { type: 'entry-reference', referenceId: '', displayMode: 'card' };
     default:
       return { type: 'rich-text', html: '' };
   }

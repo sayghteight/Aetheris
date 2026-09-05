@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { FileText, Search, X, BookOpen } from 'lucide-react';
-import type { UniverseBlock, BlockContent, UniverseEntry } from '../../types';
+import type { UniverseBlock, BlockContent, UniverseEntry, EntryReferenceBlockContent } from '../../types';
 import { useUniverseStore } from '../../store/universeStore';
 import { useManuscriptStore, ManuscriptNode } from '../../../../store/manuscriptStore';
 import { useI18n } from '../../../../i18n';
@@ -15,13 +15,7 @@ type ReferenceType = 'entry' | 'chapter';
 
 export const EntryReferenceBlock: React.FC<EntryReferenceBlockProps> = ({ block, onUpdate, isEditing }) => {
   const { t } = useI18n();
-  const content = block.content as {
-    type: 'entry-reference';
-    referenceType?: ReferenceType;
-    referenceId: string;
-    displayMode: 'card' | 'inline' | 'badge';
-    note?: string;
-  };
+  const content = block.content as EntryReferenceBlockContent;
 
   const { entries, entryTypes } = useUniverseStore();
   const { nodes: manuscriptNodes } = useManuscriptStore();
