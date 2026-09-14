@@ -1597,6 +1597,289 @@ pub fn save_workspace_state(state: State<'_, AppState>, data: WorkspaceState) ->
     Ok(())
 }
 
+// ─── Lore Master Commands ─────────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LoreEntity {
+    pub id: String,
+    pub name: String,
+    pub entry_type: String,
+    pub brief_description: Option<String>,
+    pub category_name: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LoreRelation {
+    pub source_id: String,
+    pub source_name: String,
+    pub target_id: String,
+    pub target_name: String,
+    pub relation_type: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct EntityAppearance {
+    pub chapter_title: String,
+    pub scene_title: String,
+    pub scene_id: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LoreForScene {
+    pub characters: Vec<LoreEntity>,
+    pub locations: Vec<LoreEntity>,
+    pub factions: Vec<LoreEntity>,
+    pub items: Vec<LoreEntity>,
+    pub events: Vec<LoreEntity>,
+    pub relations: Vec<LoreRelation>,
+    pub previous_appearances: std::collections::HashMap<String, Vec<EntityAppearance>>,
+}
+
+/// Extract plain text from JSON content (Lexical format)
+fn extract_text_from_json_content(content: &str) -> String {
+    let text = if let Ok(json) = serde_json::from_str::<serde_json::Value>(content) {
+        extract_plain_text_recursive(&json)
+    } else {
+        content.to_string()
+    };
+    text.trim().to_string()
+}
+
+fn extract_plain_text_recursive(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Array(arr) => {
+            let mut result = String::new();
+            for v in arr {
+                let text = extract_plain_text_recursive(v);
+                if !result.is_empty() && !text.is_empty() {
+                    result.push(' ');
+                }
+                result.push_str(&text);
+            }
+            result
+        }
+        serde_json::Value::Object(obj) => {
+            let mut result = String::new();
+            for (key, val) in obj {
+                if key == "text" || key == "content" || key == "html" {
+                    let text = extract_plain_text_recursive(val);
+                    if !result.is_empty() && !text.is_empty() {
+                        result.push(' ');
+                    }
+                    result.push_str(&text);
+                }
+                if key == "children" {
+                    let text = extract_plain_text_recursive(val);
+                    if !result.is_empty() && !text.is_empty() {
+                        result.push(' ');
+                    }
+                    result.push_str(&text);
+                }
+            }
+            result
+        }
+        _ => String::new(),
+    }
+}
+
+/// Find entity names in scene text using word boundary matching
+fn find_entities_in_text(text: &str, entity_names: &[(String, String)]) -> Vec<String> {
+    let text_lower = text.to_lowercase();
+    let mut found_ids = Vec::new();
+
+    for (id, name) in entity_names {
+        let name_lower = name.to_lowercase();
+        if text_lower.contains(&name_lower) {
+            // Check word boundaries
+            if let Some(pos) = text_lower.find(&name_lower) {
+                let before = if pos > 0 { &text_lower[..pos] } else { "" };
+                let after_pos = pos + name_lower.len();
+                let after = if after_pos < text_lower.len() { &text_lower[after_pos..] } else { "" };
+
+                let valid_before = before.is_empty() || !before.chars().last().map(|c| c.is_alphanumeric()).unwrap_or(false);
+                let valid_after = after.is_empty() || !after.chars().next().map(|c| c.is_alphanumeric()).unwrap_or(false);
+
+                if valid_before && valid_after {
+                    found_ids.push(id.clone());
+                }
+            }
+        }
+    }
+
+    found_ids
+}
+
+#[tauri::command]
+pub fn get_lore_for_scene(state: State<'_, AppState>, scene_id: String) -> Result<LoreForScene, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error locking state")?;
+    let conn = db_guard.as_ref().ok_or("No project open")?;
+
+    // Get scene content
+    let content: Option<String> = conn
+        .query_row(
+            "SELECT content FROM scene_contents WHERE node_id = ?1;",
+            [&scene_id],
+            |row| row.get(0),
+        )
+        .ok();
+
+    let scene_text = content
+        .map(|c| extract_text_from_json_content(&c))
+        .unwrap_or_default();
+
+    // Get all universe entries organized by type
+    let mut entry_stmt = conn
+        .prepare(
+            "SELECT e.id, e.name, e.entry_type, e.brief_description, COALESCE(c.name, 'Other') as category_name
+             FROM universe_entries e
+             LEFT JOIN universe_categories c ON e.category_id = c.id
+             ORDER BY e.name ASC;",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let entries: Vec<(String, String, String, Option<String>, String)> = entry_stmt
+        .query_map([], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?))
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    // Build entity name lookup by type
+    let entity_names: Vec<(String, String)> = entries.iter().map(|(id, name, _, _, _)| (id.clone(), name.clone())).collect();
+
+    // Find which entities are mentioned in this scene
+    let mentioned_ids = find_entities_in_text(&scene_text, &entity_names);
+    let mentioned_set: std::collections::HashSet<String> = mentioned_ids.iter().cloned().collect();
+
+    // Group mentioned entities by type
+    let mut characters: Vec<LoreEntity> = Vec::new();
+    let mut locations: Vec<LoreEntity> = Vec::new();
+    let mut factions: Vec<LoreEntity> = Vec::new();
+    let mut items: Vec<LoreEntity> = Vec::new();
+    let mut events: Vec<LoreEntity> = Vec::new();
+
+    for (id, name, entry_type, brief_desc, cat_name) in &entries {
+        if mentioned_set.contains(id) {
+            let entity = LoreEntity {
+                id: id.clone(),
+                name: name.clone(),
+                entry_type: entry_type.clone(),
+                brief_description: brief_desc.clone(),
+                category_name: cat_name.clone(),
+            };
+
+            match entry_type.as_str() {
+                "character" | "race" => characters.push(entity),
+                "location" => locations.push(entity),
+                "faction" | "organization" | "kingdom" => factions.push(entity),
+                "item" => items.push(entity),
+                "event" => events.push(entity),
+                _ => items.push(entity),
+            }
+        }
+    }
+
+    // Get relations between mentioned entities
+    let mut relations: Vec<LoreRelation> = Vec::new();
+    if !mentioned_ids.is_empty() {
+        // Create placeholders for both IN clauses (need to pass IDs twice)
+        let placeholders: Vec<String> = mentioned_ids.iter().flat_map(|_| ["?".to_string(), "?".to_string()]).collect();
+        let query = format!(
+            "SELECT r.source_entry_id, COALESCE(s.name, 'Unknown'), r.target_entry_id, COALESCE(t.name, 'Unknown'), r.relation_type
+             FROM universe_relations r
+             LEFT JOIN universe_entries s ON r.source_entry_id = s.id
+             LEFT JOIN universe_entries t ON r.target_entry_id = t.id
+             WHERE r.source_entry_id IN ({}) OR r.target_entry_id IN ({})",
+            mentioned_ids.iter().map(|_| "?".to_string()).collect::<Vec<_>>().join(","),
+            mentioned_ids.iter().map(|_| "?".to_string()).collect::<Vec<_>>().join(",")
+        );
+
+        let mut rel_stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
+        // Pass IDs twice: once for source, once for target
+        let mut params: Vec<&dyn rusqlite::ToSql> = Vec::new();
+        for id in &mentioned_ids {
+            params.push(id as &dyn rusqlite::ToSql);
+            params.push(id as &dyn rusqlite::ToSql);
+        }
+        let rel_results: Vec<(String, String, String, String, String)> = rel_stmt
+            .query_map(params.as_slice(), |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?))
+            })
+            .map_err(|e| e.to_string())?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        for (src_id, src_name, tgt_id, tgt_name, rel_type) in rel_results {
+            // Only include if both entities are in the scene
+            if mentioned_set.contains(&src_id) && mentioned_set.contains(&tgt_id) {
+                relations.push(LoreRelation {
+                    source_id: src_id,
+                    source_name: src_name,
+                    target_id: tgt_id,
+                    target_name: tgt_name,
+                    relation_type: rel_type,
+                });
+            }
+        }
+    }
+
+    // Get previous appearances for each mentioned entity (using character_appearances for characters)
+    let mut previous_appearances: std::collections::HashMap<String, Vec<EntityAppearance>> = std::collections::HashMap::new();
+
+    for entity_id in &mentioned_ids {
+        // Check if this entity is a character
+        let is_character: bool = entries.iter()
+            .find(|(id, _, et, _, _)| id == entity_id && (et == "character" || et == "race"))
+            .is_some();
+
+        if is_character {
+            let mut app_stmt = conn
+                .prepare(
+                    "SELECT DISTINCT m.title as chapter_title, s.title as scene_title, s.id as scene_id
+                     FROM character_appearances ca
+                     JOIN manuscript_nodes s ON ca.scene_id = s.id
+                     JOIN manuscript_nodes m ON ca.chapter_id = m.id
+                     WHERE ca.character_id = ?1 AND ca.scene_id != ?2
+                     ORDER BY m.sort_order DESC, s.sort_order DESC
+                     LIMIT 5;",
+                )
+                .map_err(|e| e.to_string())?;
+
+            let appearances: Vec<EntityAppearance> = app_stmt
+                .query_map([entity_id, &scene_id], |row| {
+                    Ok(EntityAppearance {
+                        chapter_title: row.get(0)?,
+                        scene_title: row.get(1)?,
+                        scene_id: row.get(2)?,
+                    })
+                })
+                .map_err(|e| e.to_string())?
+                .filter_map(|r| r.ok())
+                .collect();
+
+            if !appearances.is_empty() {
+                previous_appearances.insert(entity_id.clone(), appearances);
+            }
+        }
+    }
+
+    Ok(LoreForScene {
+        characters,
+        locations,
+        factions,
+        items,
+        events,
+        relations,
+        previous_appearances,
+    })
+}
+
 // ─── App Settings (local, outside project file) ──────────────────────────────
 
 #[tauri::command]
