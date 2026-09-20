@@ -290,6 +290,33 @@
       "scene": "Scene"
     }
   },
+  "characterTracking": {
+    "title": "Character Tracking",
+    "subtitle": "Track character appearances across your manuscript",
+    "rebuild": "Rebuild",
+    "searchPlaceholder": "Search characters...",
+    "insights": "Writing Insights",
+    "characters": "Characters",
+    "chapterDistribution": "Chapter Distribution",
+    "appearances": "appearances",
+    "firstAppearance": "First Appearance",
+    "lastAppearance": "Last Appearance",
+    "scenes": "Scenes",
+    "noCharactersFound": "No characters found",
+    "noCharactersHint": "Create characters in the Universe to track them here",
+    "chapters": "Chapters",
+    "notAppearedYet": "has not appeared yet",
+    "notAppearedFor": "has not appeared for",
+    "chaptersAgo": "chapters",
+    "wasIntroduced": "was introduced",
+    "chapterAgo": "chapter ago",
+    "appearsIn": "appears in",
+    "ofManuscriptChapters": "of the manuscript's chapters",
+    "status": "Character Status",
+    "statusAlive": "Alive",
+    "statusDead": "Dead",
+    "statusMissing": "Missing"
+  },
   "settings": {
     "title": "Settings",
     "subtitle": "Adjust the application to your preferences.",

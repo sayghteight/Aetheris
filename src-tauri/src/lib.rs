@@ -74,7 +74,12 @@ pub fn run() {
             commands::get_all_assets,
             commands::delete_asset,
             commands::get_tab_state,
-            commands::save_tab_state
+            commands::save_tab_state,
+            commands::get_character_tracking,
+            commands::rebuild_character_tracking,
+            commands::get_chapters_info,
+            commands::get_scenes_for_character,
+            commands::get_lore_for_scene,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

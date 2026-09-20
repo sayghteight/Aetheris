@@ -1,6 +1,6 @@
 [package]
 name = "aetheria-app"
-version = "0.1.6"
+version = "0.1.7"
 description = "A Tauri App"
 authors = ["Sayghteight"]
 edition = "2021"
@@ -31,6 +31,7 @@ tauri-plugin-updater = "2"
 dirs = "5"
 zip = "2"
 printpdf = "0.7"
+reqwest = { version = "0.12", features = ["blocking", "json"] }
 
 
 

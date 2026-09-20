@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type ActiveView = 'manuscript' | 'universe' | 'timeline' | 'calendars' | 'about' | 'versioning' | 'settings' | 'import' | 'export' | 'search';
+export type ActiveView = 'manuscript' | 'universe' | 'timeline' | 'calendars' | 'about' | 'versioning' | 'settings' | 'import' | 'export' | 'search' | 'character-tracking';
 
 interface NavigationState {
   activeView: ActiveView;

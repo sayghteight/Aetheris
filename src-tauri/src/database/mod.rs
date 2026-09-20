@@ -414,6 +414,34 @@ pub fn initialize_database(conn: &Connection) -> Result<()> {
         )?;
     }
 
+    // ─── Character Tracking Table ─────────────────────────────────────────────────
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS character_appearances (
+            id TEXT PRIMARY KEY,
+            character_id TEXT NOT NULL,
+            scene_id TEXT NOT NULL,
+            chapter_id TEXT NOT NULL,
+            part_id TEXT,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(character_id, scene_id),
+            FOREIGN KEY (character_id) REFERENCES universe_entries(id) ON DELETE CASCADE,
+            FOREIGN KEY (scene_id) REFERENCES manuscript_nodes(id) ON DELETE CASCADE,
+            FOREIGN KEY (chapter_id) REFERENCES manuscript_nodes(id) ON DELETE CASCADE
+        );",
+        [],
+    )?;
+
+    // Create index for faster lookups
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_character_appearances_character ON character_appearances(character_id);",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_character_appearances_scene ON character_appearances(scene_id);",
+        [],
+    )?;
+
     // ─── Migration: user_version 2 → 3 ────────────────────────────────────────
     // Check current user_version and migrate if needed
     let current_version: i32 = conn
@@ -427,7 +455,7 @@ pub fn initialize_database(conn: &Connection) -> Result<()> {
         }
     }
 
-    conn.execute("PRAGMA user_version = 3;", [])?;
+    conn.execute("PRAGMA user_version = 4;", [])?;
 
     Ok(())
 }

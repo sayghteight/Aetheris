@@ -23,7 +23,8 @@ export type TabType =
   | 'event'
   | 'concept'
   | 'other'
-  | 'search';
+  | 'search'
+  | 'character-tracking';
 
 export interface Tab {
   id: string;
@@ -110,7 +111,7 @@ export const useTabStore = create<TabState>((set, get) => ({
     }
 
     // Also check by type for singleton tabs (like settings, about, etc.)
-    const singletonTypes: TabType[] = ['manuscript', 'universe', 'settings', 'about', 'versioning', 'timeline', 'calendars', 'import', 'export'];
+    const singletonTypes: TabType[] = ['manuscript', 'universe', 'settings', 'about', 'versioning', 'timeline', 'calendars', 'import', 'export', 'character-tracking'];
 
     if (singletonTypes.includes(tabData.type)) {
       const existing = tabs.find((t) => t.type === tabData.type);
@@ -403,6 +404,7 @@ export const openMainViewTab = (viewType: Exclude<TabType, 'character' | 'locati
     versioning: 'Versioning',
     about: 'About',
     search: 'Search',
+    'character-tracking': 'Character Tracking',
   };
 
   openTab({
