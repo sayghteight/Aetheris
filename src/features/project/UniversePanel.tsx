@@ -711,8 +711,12 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
     if (saveTimeout.current) window.clearTimeout(saveTimeout.current);
     saveTimeout.current = window.setTimeout(async () => {
       try {
-        const plainText = newContent.replace(/<[^>]+>/g, ' ');
-        await invoke('update_scene_content', { nodeId: sceneId, content: newContent, plainText });
+        // Auto-convert mentions: replace plain text names with mention nodes
+        const convertedContent = await invoke<string>('auto_convert_mentions', { content: newContent });
+        const plainText = convertedContent.replace(/<[^>]+>/g, ' ');
+        await invoke('update_scene_content', { nodeId: sceneId, content: convertedContent, plainText });
+        // Update local content with converted content (has mention nodes now)
+        setContent(convertedContent);
         // Dispatch event to notify character tracking of changes
         window.dispatchEvent(new CustomEvent('scene-saved', { detail: { sceneId } }));
       } catch (err) {

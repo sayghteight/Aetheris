@@ -1714,6 +1714,94 @@ fn find_entities_in_text(text: &str, entity_names: &[(String, String)]) -> Vec<S
     found_ids
 }
 
+/// Convert plain text entity names in HTML content to mention nodes
+/// Only replaces text that is NOT inside existing HTML tags or attributes
+fn convert_text_to_mentions(html: &str, entities: &[(String, String, String, Option<String>)]) -> String {
+    // Sort entities by name length (longest first) to avoid partial replacements
+    let mut sorted_entities = entities.to_vec();
+    sorted_entities.sort_by(|a, b| b.1.len().cmp(&a.1.len()));
+
+    let mut result = html.to_string();
+
+    for entity in &sorted_entities {
+        let (id, name, entry_type, _) = entity;
+        // Build the mention HTML span
+        let mention_html = format!(
+            r#"<span data-character-mention data-id="{}" data-name="{}" data-type="{}">@{}</span>"#,
+            id, name, entry_type, name
+        );
+
+        // Split HTML by tags to process only text nodes
+        let parts: Vec<&str> = result.split(|c| c == '<').collect();
+        let mut new_parts: Vec<String> = Vec::with_capacity(parts.len());
+
+        for (i, part) in parts.iter().enumerate() {
+            if i == 0 {
+                // First part is before any tag, process it
+                let processed = replace_text_with_mention(part, name, mention_html.as_str());
+                new_parts.push(processed);
+            } else if part.starts_with('/') || part.starts_with("span") || part.starts_with("data-character-mention") {
+                // This is a closing tag or our mention tag, keep as-is
+                new_parts.push(format!("<{}", part));
+            } else if part.find('>').is_some() {
+                // This is an opening tag, keep as-is
+                new_parts.push(format!("<{}", part));
+            } else {
+                // This might be a text node fragment
+                let processed = replace_text_with_mention(part, name, mention_html.as_str());
+                new_parts.push(processed);
+            }
+        }
+
+        result = new_parts.join("");
+    }
+
+    result
+}
+
+/// Replace plain text name with mention HTML, respecting word boundaries
+fn replace_text_with_mention(text: &str, name: &str, mention_html: &str) -> String {
+    let regex_pattern = format!(
+        r"(?i)(?<![\w@])({})(?![@>\w])",
+        regex::escape(name)
+    );
+
+    let re = match regex::Regex::new(&regex_pattern) {
+        Ok(r) => r,
+        Err(_) => return text.to_string(),
+    };
+
+    re.replace_all(text, mention_html).to_string()
+}
+
+#[tauri::command]
+pub fn auto_convert_mentions(state: State<'_, AppState>, content: String) -> Result<String, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error locking state")?;
+    let conn = db_guard.as_ref().ok_or("No project open")?;
+
+    // Get all universe entries
+    let mut entry_stmt = conn
+        .prepare(
+            "SELECT e.id, e.name, e.entry_type, e.brief_description, COALESCE(c.name, 'Other') as category_name
+             FROM universe_entries e
+             LEFT JOIN universe_categories c ON e.category_id = c.id
+             ORDER BY LENGTH(e.name) DESC;",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let entries: Vec<(String, String, String, Option<String>)> = entry_stmt
+        .query_map([], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    let result = convert_text_to_mentions(&content, &entries);
+
+    Ok(result)
+}
+
 #[tauri::command]
 pub fn get_lore_for_scene(state: State<'_, AppState>, scene_id: String) -> Result<LoreForScene, String> {
     let db_guard = state.db.lock().map_err(|_| "Error locking state")?;

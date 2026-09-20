@@ -80,6 +80,7 @@ pub fn run() {
             commands::get_chapters_info,
             commands::get_scenes_for_character,
             commands::get_lore_for_scene,
+            commands::auto_convert_mentions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
