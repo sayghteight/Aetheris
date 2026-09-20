@@ -31,6 +31,17 @@ interface ManuscriptViewProps {
 }
 
 export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate }) => {
+  const { setSelectedUniverse } = useNavigationStore();
+  const { openTab } = useTabStore();
+
+  const handleOpenInWorldbuilding = useCallback((entityId: string) => {
+    setSelectedUniverse(null, entityId);
+    openTab({
+      type: 'universe',
+      title: 'Universe',
+      resourceId: entityId,
+    });
+  }, [setSelectedUniverse, openTab]);
   const { t } = useI18n();
   const { nodes, fetchNodes, createNode, updateNode, deleteNode, mergeScenes, splitSceneAtCursor, undo } = useManuscriptStore();
   const { activeSceneId, setActiveSceneId, selectedNodeId, setSelectedNodeId } = useNavigationStore();
@@ -423,6 +434,7 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
         <SceneEditor
           sceneId={selectedNode.id}
           onStatsUpdate={onStatsUpdate || (() => {})}
+          onOpenInWorldbuilding={handleOpenInWorldbuilding}
         />
       );
     }

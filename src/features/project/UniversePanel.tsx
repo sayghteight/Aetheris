@@ -683,9 +683,10 @@ interface SceneEditorProps {
   sceneId: string;
   onStatsUpdate: (words: number, readTime: number) => void;
   onSelectionChange?: (selection: { from: number; to: number } | null) => void;
+  onOpenInWorldbuilding?: (entityId: string) => void;
 }
 
-export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate, onSelectionChange }) => {
+export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate, onSelectionChange, onOpenInWorldbuilding }) => {
   const [content, setContent] = useState('');
   const saveTimeout = useRef<number | null>(null as any);
 
@@ -727,6 +728,7 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
       placeholder="Comienza a escribir tu escena aquí..."
       onStatsUpdate={onStatsUpdate}
       onSelectionChange={onSelectionChange}
+      onOpenInWorldbuilding={onOpenInWorldbuilding}
     />
   );
 };

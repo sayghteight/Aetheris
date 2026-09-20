@@ -15,9 +15,37 @@ import {
   Undo,
   Redo,
   MessageCircle,
+  User,
+  Search,
+  X,
 } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useCenteredWriting } from '../../hooks/useCenteredWriting';
+import { CharacterMention } from './extensions/CharacterMention';
+import { MentionTooltip } from './extensions/MentionTooltip';
+
+interface UniverseCategory {
+  id: string;
+  name: string;
+  entries: UniverseEntry[];
+}
+
+interface UniverseEntry {
+  id: string;
+  name: string;
+  type: 'folder' | 'entry';
+  entryType?: string;
+  briefDescription?: string | null;
+}
+
+interface MentionEntity {
+  id: string;
+  name: string;
+  characterType?: string;
+  briefDescription?: string | null;
+  categoryName?: string;
+}
 
 interface TiptapEditorProps {
   content: string;
@@ -25,6 +53,7 @@ interface TiptapEditorProps {
   placeholder?: string;
   onStatsUpdate?: (words: number, readTime: number) => void;
   onSelectionChange?: (selection: { from: number; to: number } | null) => void;
+  onOpenInWorldbuilding?: (entityId: string) => void;
 }
 
 // Toolbar Button Component
@@ -68,10 +97,80 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
   placeholder = 'Comienza a escribir tu escena aquí...',
   onStatsUpdate,
   onSelectionChange,
+  onOpenInWorldbuilding,
 }) => {
   const { settings } = useSettingsStore();
   const [wordCount, setWordCount] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Tooltip state for character mentions
+  const [hoveredMention, setHoveredMention] = useState<MentionEntity | null>(null);
+  const [mentionRect, setMentionRect] = useState<DOMRect | null>(null);
+  const tooltipTimeoutRef = useRef<number | null>(null);
+
+  // Mention insertion panel state
+  const [showMentionPanel, setShowMentionPanel] = useState(false);
+  const [mentionEntities, setMentionEntities] = useState<MentionEntity[]>([]);
+  const [mentionSearch, setMentionSearch] = useState('');
+  const [mentionLoading, setMentionLoading] = useState(false);
+  const mentionPanelRef = useRef<HTMLDivElement>(null);
+  const mentionInputRef = useRef<HTMLInputElement>(null);
+
+  // Load universe entities for mention panel
+  const loadMentionEntities = useCallback(async () => {
+    setMentionLoading(true);
+    try {
+      const data = await invoke<UniverseCategory[]>('get_universe_data');
+      const entities: MentionEntity[] = [];
+      data.forEach((cat: UniverseCategory) => {
+        cat.entries.forEach((entry: UniverseEntry) => {
+          if (entry.type === 'entry') {
+            entities.push({
+              id: entry.id,
+              name: entry.name,
+              characterType: entry.entryType || 'character',
+              briefDescription: entry.briefDescription,
+              categoryName: cat.name,
+            });
+          }
+        });
+      });
+      setMentionEntities(entities);
+    } catch (err) {
+      console.error('Error loading entities for mentions:', err);
+    } finally {
+      setMentionLoading(false);
+    }
+  }, []);
+
+  const handleShowMentionPanel = useCallback(() => {
+    loadMentionEntities();
+    setShowMentionPanel(true);
+    setMentionSearch('');
+    setTimeout(() => mentionInputRef.current?.focus(), 50);
+  }, [loadMentionEntities]);
+
+  const handleInsertMention = useCallback((entity: MentionEntity) => {
+    editor?.chain().focus().insertContent([
+      {
+        type: 'characterMention',
+        attrs: {
+          id: entity.id,
+          name: entity.name,
+          characterType: entity.characterType,
+          briefDescription: entity.briefDescription,
+          categoryName: entity.categoryName,
+        },
+      },
+      { type: 'text', text: ' ' },
+    ]).run();
+    setShowMentionPanel(false);
+  }, []);
+
+  // Filter entities based on search
+  const filteredEntities = mentionEntities.filter(e =>
+    e.name.toLowerCase().includes(mentionSearch.toLowerCase())
+  );
 
   // Calculate stats
   const calculateStats = useCallback((text: string) => {
@@ -111,6 +210,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
         },
       }),
       CharacterCount,
+      CharacterMention,
     ],
     content,
     onUpdate: ({ editor }) => {
@@ -163,6 +263,44 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
     targetPosition: settings.centeredWritingPosition ?? 50,
     scrollContainerRef,
   });
+
+  // Handle mention hover/leave events for tooltip
+  useEffect(() => {
+    const handleMentionHover = (e: Event) => {
+      const customEvent = e as CustomEvent<{ entity: MentionEntity; rect: DOMRect }>;
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current);
+      }
+      setHoveredMention(customEvent.detail.entity);
+      setMentionRect(customEvent.detail.rect);
+    };
+
+    const handleMentionLeave = () => {
+      tooltipTimeoutRef.current = window.setTimeout(() => {
+        setHoveredMention(null);
+        setMentionRect(null);
+      }, 150);
+    };
+
+    const handleMentionClick = (e: Event) => {
+      const customEvent = e as CustomEvent<{ entity: MentionEntity }>;
+      console.log('[TiptapEditor] Mention clicked:', customEvent.detail.entity);
+      // Could trigger navigation or other actions here
+    };
+
+    window.addEventListener('mention-hover', handleMentionHover);
+    window.addEventListener('mention-leave', handleMentionLeave);
+    window.addEventListener('mention-click', handleMentionClick);
+
+    return () => {
+      window.removeEventListener('mention-hover', handleMentionHover);
+      window.removeEventListener('mention-leave', handleMentionLeave);
+      window.removeEventListener('mention-click', handleMentionClick);
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Calculate bottom padding for centered writing mode
   // This ensures the last line can reach the centered cursor position
@@ -255,8 +393,19 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
         >
           <span className="text-sm font-semibold">⁂</span>
         </ToolbarButton>
+
         <Divider />
-        
+
+        {/* Mention Insert Button */}
+        <ToolbarButton
+          onClick={handleShowMentionPanel}
+          title="Insertar mención de personaje"
+        >
+          <User className="w-4 h-4" />
+        </ToolbarButton>
+
+        <Divider />
+
         {/* Undo/Redo */}
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}
@@ -290,6 +439,101 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
       <div className="flex items-center justify-end px-4 py-2 border-t border-[var(--color-border)] bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-muted)]">
         <span>{wordCount} palabras</span>
       </div>
+
+      {/* Mention Tooltip */}
+      {hoveredMention && mentionRect && (
+        <MentionTooltip
+          entity={hoveredMention}
+          anchorRect={mentionRect}
+          onOpenInWorldbuilding={onOpenInWorldbuilding || (() => {})}
+        />
+      )}
+
+      {/* Mention Insertion Panel */}
+      {showMentionPanel && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div
+            ref={mentionPanelRef}
+            className="bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-[400px] max-h-[500px] flex flex-col overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
+              <div className="flex items-center gap-2">
+                <User className="w-5 h-5 text-violet-400" />
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Insertar mención</h3>
+              </div>
+              <button
+                onClick={() => setShowMentionPanel(false)}
+                className="p-1 hover:bg-[var(--color-bg-hover)] rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="px-4 py-3 border-b border-[var(--color-border)]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
+                <input
+                  ref={mentionInputRef}
+                  type="text"
+                  value={mentionSearch}
+                  onChange={e => setMentionSearch(e.target.value)}
+                  placeholder="Buscar personajes..."
+                  className="w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg pl-10 pr-4 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-violet-500"
+                />
+              </div>
+            </div>
+
+            {/* Entity List */}
+            <div className="flex-1 overflow-y-auto p-2">
+              {mentionLoading ? (
+                <div className="flex items-center justify-center py-8 text-[var(--color-text-muted)]">
+                  <div className="animate-spin w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full mr-2" />
+                  Cargando...
+                </div>
+              ) : filteredEntities.length === 0 ? (
+                <div className="text-center py-8 text-[var(--color-text-muted)] text-sm">
+                  No se encontraron entidades
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {filteredEntities.map(entity => (
+                    <button
+                      key={entity.id}
+                      onClick={() => handleInsertMention(entity)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--color-bg-hover)] text-left transition-colors"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
+                        {entity.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">{entity.name}</span>
+                          <span className="text-xs text-[var(--color-text-muted)] capitalize">
+                            {entity.categoryName || entity.characterType}
+                          </span>
+                        </div>
+                        {entity.briefDescription && (
+                          <p className="text-xs text-[var(--color-text-muted)] truncate mt-0.5">
+                            {entity.briefDescription}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer hint */}
+            <div className="px-4 py-2 border-t border-[var(--color-border)] text-xs text-[var(--color-text-muted)] text-center">
+              Haz clic en un personaje para insertar la mención
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
