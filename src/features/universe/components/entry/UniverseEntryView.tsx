@@ -297,6 +297,45 @@ export const UniverseEntryView: React.FC<UniverseEntryViewProps> = ({
         onBriefDescriptionChange={setEditedBriefDescription}
       />
 
+      {/* Character Status Selector */}
+      {isEditing && entry.entryType === 'character' && (
+        <div className="px-6 py-3 border-b border-slate-800/60 bg-slate-900/30">
+          <label className="block text-xs text-slate-400 mb-2">{t('characterTracking.status')}</label>
+          <div className="flex gap-2">
+            {(['alive', 'dead', 'missing'] as const).map((status) => {
+              const isSelected = (entry.metadata?.status as string) === status;
+              const statusColors = {
+                alive: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/50' },
+                dead: { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/50' },
+                missing: { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/50' },
+              };
+              const labels = {
+                alive: t('characterTracking.statusAlive'),
+                dead: t('characterTracking.statusDead'),
+                missing: t('characterTracking.statusMissing'),
+              };
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => {
+                    const newMetadata = { ...entry.metadata, status };
+                    updateEntry({ ...entry, metadata: newMetadata }, entryBlocks);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    isSelected
+                      ? `${statusColors[status].bg} ${statusColors[status].text} ${statusColors[status].border}`
+                      : 'bg-slate-800/30 text-slate-400 border-slate-700/50 hover:border-slate-600'
+                  }`}
+                >
+                  {labels[status]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Block Editor / Viewer */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-950">
         {isEditing ? (

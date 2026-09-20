@@ -712,6 +712,8 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
       try {
         const plainText = newContent.replace(/<[^>]+>/g, ' ');
         await invoke('update_scene_content', { nodeId: sceneId, content: newContent, plainText });
+        // Dispatch event to notify character tracking of changes
+        window.dispatchEvent(new CustomEvent('scene-saved', { detail: { sceneId } }));
       } catch (err) {
         console.error('Auto-save failed', err);
       }

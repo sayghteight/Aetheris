@@ -21,7 +21,10 @@ import {
   Target,
   StickyNote,
   Trash2,
+  Sparkles,
 } from 'lucide-react';
+import { LoreMasterPanel } from '../loreMaster/LoreMasterPanel';
+import { useTabStore } from '../../store/tabStore';
 
 interface ManuscriptViewProps {
   onStatsUpdate?: (words: number, readTime: number) => void;
@@ -39,6 +42,8 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
     isLoaded,
     sidebarExpanded,
     setSidebarExpanded,
+    rightPanelExpanded,
+    setRightPanelExpanded,
   } = useWorkspaceStore();
 
   const treeRef = useRef<HTMLDivElement>(null);
@@ -510,13 +515,26 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
           {sidebarExpanded && (
             <h2 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Manuscrito</h2>
           )}
-          <button
-            onClick={() => { setSidebarExpanded(!sidebarExpanded); scheduleWorkspaceSave(); }}
-            className="p-1 hover:bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] rounded transition-colors shrink-0"
-            title={sidebarExpanded ? 'Colapsar' : 'Expandir'}
-          >
-            {sidebarExpanded ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => { setRightPanelExpanded(!rightPanelExpanded); scheduleWorkspaceSave(); }}
+              className={`p-1.5 rounded transition-colors shrink-0 ${
+                rightPanelExpanded
+                  ? 'bg-violet-500/15 text-violet-400 hover:bg-violet-500/25'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]'
+              }`}
+              title="Lore Master"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => { setSidebarExpanded(!sidebarExpanded); scheduleWorkspaceSave(); }}
+              className="p-1 hover:bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] rounded transition-colors shrink-0"
+              title={sidebarExpanded ? 'Colapsar' : 'Expandir'}
+            >
+              {sidebarExpanded ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
 
         {/* Tree content */}
@@ -580,6 +598,22 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-[var(--color-bg-primary)]/10">
         {renderMainContent()}
       </div>
+
+      {/* Lore Master Panel */}
+      {rightPanelExpanded && selectedNode?.type === 'scene' && (
+        <div className="w-96 shrink-0 h-full">
+          <LoreMasterPanel onOpenInWorldbuilding={(entityId) => {
+            // Set navigation store first so UniversePanel can use it
+            useNavigationStore.getState().setSelectedUniverse(null, entityId);
+            // Open universe tab
+            useTabStore.getState().openTab({
+              type: 'universe',
+              title: 'Universe',
+              resourceId: entityId,
+            });
+          }} />
+        </div>
+      )}
 
       {/* Context Menu */}
       {contextMenu && (
