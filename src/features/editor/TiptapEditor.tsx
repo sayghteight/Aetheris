@@ -266,20 +266,26 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
 
   // Handle mention hover/leave events for tooltip
   useEffect(() => {
+    let isTooltipHovered = false;
+
     const handleMentionHover = (e: Event) => {
       const customEvent = e as CustomEvent<{ entity: MentionEntity; rect: DOMRect }>;
       if (tooltipTimeoutRef.current) {
         clearTimeout(tooltipTimeoutRef.current);
       }
+      isTooltipHovered = false;
       setHoveredMention(customEvent.detail.entity);
       setMentionRect(customEvent.detail.rect);
     };
 
     const handleMentionLeave = () => {
+      // Delay to allow moving to tooltip
       tooltipTimeoutRef.current = window.setTimeout(() => {
-        setHoveredMention(null);
-        setMentionRect(null);
-      }, 150);
+        if (!isTooltipHovered) {
+          setHoveredMention(null);
+          setMentionRect(null);
+        }
+      }, 300);
     };
 
     const handleMentionClick = (e: Event) => {
@@ -442,11 +448,21 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
 
       {/* Mention Tooltip */}
       {hoveredMention && mentionRect && (
-        <MentionTooltip
-          entity={hoveredMention}
-          anchorRect={mentionRect}
-          onOpenInWorldbuilding={onOpenInWorldbuilding || (() => {})}
-        />
+        <div
+          onMouseEnter={() => {
+            if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current);
+          }}
+          onMouseLeave={() => {
+            setHoveredMention(null);
+            setMentionRect(null);
+          }}
+        >
+          <MentionTooltip
+            entity={hoveredMention}
+            anchorRect={mentionRect}
+            onOpenInWorldbuilding={onOpenInWorldbuilding || (() => {})}
+          />
+        </div>
       )}
 
       {/* Mention Insertion Panel */}
