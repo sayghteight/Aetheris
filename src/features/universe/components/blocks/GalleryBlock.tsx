@@ -202,7 +202,7 @@ export const GalleryBlock: React.FC<GalleryBlockProps> = ({ block, onUpdate, isE
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Images className="h-5 w-5 text-slate-500" />
-        <span className="text-sm text-slate-400">Galería ({content.assetIds.length} imágenes)</span>
+        <span className="text-sm text-slate-400">Gallery ({content.assetIds.length} images)</span>
       </div>
 
       {/* Image grid */}

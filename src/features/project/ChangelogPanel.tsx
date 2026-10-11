@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Tag, GitBranch, ArrowUpRight, FlaskConical } from 'lucide-react';
+import { useI18n } from '../../i18n';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -31,14 +32,6 @@ const typeColors: Record<string, string> = {
   merge: 'text-sky-400 bg-sky-400/10',
 };
 
-const typeLabels: Record<string, string> = {
-  feat: 'Nueva funcionalidad',
-  fix: 'Corrección',
-  refactor: 'Refactorización',
-  chore: 'Tarea',
-  merge: 'Merge',
-};
-
 const detectType = (message: string): string => {
   const lower = message.toLowerCase();
   if (lower.startsWith('feat') || lower.includes('add') || lower.includes('nuevo')) return 'feat';
@@ -49,8 +42,17 @@ const detectType = (message: string): string => {
 };
 
 export const ChangelogPanel: React.FC = () => {
+  const { t } = useI18n();
   const [tagInfo, setTagInfo] = useState<TagInfo | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const typeLabels: Record<string, string> = {
+    feat: t('ui.newFeature'),
+    fix: t('ui.bugFix'),
+    refactor: 'Refactorización',
+    chore: 'Tarea',
+    merge: 'Merge',
+  };
 
   useEffect(() => {
     const loadGitInfo = async () => {

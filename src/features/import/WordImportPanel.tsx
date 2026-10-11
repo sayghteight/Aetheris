@@ -206,7 +206,7 @@ export const WordImportPanel: React.FC = () => {
                 </div>
                 {part.chapters.map((chapter, ci) => (
                   <div key={ci} className="border-b border-slate-800/30 last:border-0">
-                    {/* Capítulo */}
+                    {/* Chapter */}
                     <div className="flex items-center gap-2 px-4 py-2 bg-amber-950/10 border-b border-slate-800/20">
                       <Folder className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                       <span className="text-sm font-medium text-amber-200">{chapter.title}</span>

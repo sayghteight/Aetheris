@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, X, Replace, ChevronDown } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 interface FindReplaceDialogProps {
   text: string;
@@ -16,6 +17,7 @@ export const FindReplaceDialog: React.FC<FindReplaceDialogProps> = ({
   onReplace,
   initialQuery = '',
 }) => {
+  const { t } = useI18n();
   const [query, setQuery] = useState(initialQuery);
   const [replaceWith, setReplaceWith] = useState('');
   const [matchCount, setMatchCount] = useState(0);
@@ -71,7 +73,7 @@ export const FindReplaceDialog: React.FC<FindReplaceDialogProps> = ({
     <div className="absolute top-0 right-0 w-80 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700">
-        <span className="text-xs font-semibold text-slate-200">Buscar y reemplazar</span>
+        <span className="text-xs font-semibold text-slate-200">Find and replace</span>
         <button
           onClick={onClose}
           className="p-1 text-slate-400 hover:text-white transition-colors"
@@ -90,7 +92,7 @@ export const FindReplaceDialog: React.FC<FindReplaceDialogProps> = ({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Buscar..."
+            placeholder="Search..."
             className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-violet-500"
           />
           {matchCount > 0 && (
@@ -108,7 +110,7 @@ export const FindReplaceDialog: React.FC<FindReplaceDialogProps> = ({
             value={replaceWith}
             onChange={(e) => setReplaceWith(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Reemplazar con..."
+            placeholder={t('ui.replaceWith')}
             className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-violet-500"
           />
         </div>
@@ -119,38 +121,38 @@ export const FindReplaceDialog: React.FC<FindReplaceDialogProps> = ({
             onClick={handleFindNext}
             disabled={!query.trim()}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs text-slate-200 rounded-lg transition-colors"
-            title="Buscar siguiente"
+            title={t('ui.findNext')}
           >
             <ChevronDown className="w-3 h-3" />
-            <span>Siguiente</span>
+            <span>Next</span>
           </button>
 
           <button
             onClick={handleReplace}
             disabled={!query.trim()}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs text-slate-200 rounded-lg transition-colors"
-            title="Reemplazar siguiente"
+            title={t('ui.replaceNext')}
           >
             <Replace className="w-3 h-3" />
-            <span>Reemplazar</span>
+            <span>Replace</span>
           </button>
 
           <button
             onClick={handleReplaceAll}
             disabled={!query.trim()}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-xs text-white rounded-lg transition-colors"
-            title="Reemplazar todo"
+            title={t('ui.replaceAll')}
           >
-            <span>Todo</span>
+            <span>All</span>
           </button>
 
           <div className="ml-auto text-[10px] text-slate-500">
-            {isMac ? '⌘' : 'Ctrl'}+Enter = Buscar
+            {isMac ? '⌘' : 'Ctrl'}+Enter = Find
           </div>
         </div>
 
         <div className="text-[10px] text-slate-600">
-          {isMac ? '⇧' : 'Shift'}+Enter = Reemplazar · Esc = Cerrar
+          {isMac ? '⇧' : 'Shift'}+Enter = Replace · Esc = Close
         </div>
       </div>
     </div>

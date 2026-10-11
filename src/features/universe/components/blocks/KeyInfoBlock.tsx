@@ -74,7 +74,7 @@ export const KeyInfoBlock: React.FC<KeyInfoBlockProps> = ({ block, onUpdate, isE
               type="text"
               value={field.label}
               onChange={(e) => updateField(idx, { label: e.target.value })}
-              placeholder="Campo"
+              placeholder={t('universe.blocks.field')}
               className="w-24 rounded border border-slate-700/50 bg-slate-800/50 px-2 py-1 text-xs text-slate-300 outline-none focus:border-violet-500/50"
             />
             <span className="text-slate-600">:</span>

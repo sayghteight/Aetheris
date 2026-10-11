@@ -78,13 +78,13 @@ export const UpdateDialog: React.FC = () => {
             <RefreshCw className="w-5 h-5 text-emerald-400" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white">Nueva versión disponible</h3>
+            <h3 className="text-lg font-bold text-white">New version available</h3>
             <p className="text-sm text-slate-400">v{updateAvailable.version}</p>
           </div>
         </div>
 
         <p className="text-sm text-slate-300 mb-4">
-          Hay una nueva versión del editor. ¿Quieres actualizar ahora?
+          A new version of the editor is available. Do you want to update now?
         </p>
 
         {updateAvailable.notes && (
@@ -114,7 +114,7 @@ export const UpdateDialog: React.FC = () => {
             disabled={isDownloading}
             className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg font-medium transition-colors disabled:opacity-50"
           >
-            Más tarde
+            Later
           </button>
           <button
             onClick={handleUpdate}

@@ -281,7 +281,7 @@ export const ProjectSettings: React.FC = () => {
                   {
                     value: 'midnight',
                     label: 'Midnight',
-                    desc: 'Azul profundo',
+                    desc: t('settingsProject.deepBlue'),
                     icon: Moon,
                     bg: 'bg-gradient-to-br from-[#13162a] to-[#252d55]',
                     accent: 'text-[#f0c040]',

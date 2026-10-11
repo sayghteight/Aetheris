@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus, RotateCcw } from 'lucide-react';
+import { useI18n } from '../../i18n';
 import { Tab } from './Tab';
 import { useTabStore, TabType } from '../../store/tabStore';
 
@@ -8,17 +9,21 @@ interface TabBarProps {
 }
 
 export const TabBar: React.FC<TabBarProps> = ({ onOpenMainView }) => {
+  const { t } = useI18n();
   const {
     tabs,
     activeTabId,
     recentlyClosedTabs,
     setActiveTab,
     closeTab,
+    reorderTabs,
     reopenLastClosedTab,
   } = useTabStore();
 
   const tabBarRef = useRef<HTMLDivElement>(null);
   const activeTabRef = useRef<HTMLDivElement>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Scroll active tab into view
   useEffect(() => {
@@ -87,6 +92,49 @@ export const TabBar: React.FC<TabBarProps> = ({ onOpenMainView }) => {
     [closeTab]
   );
 
+  // Drag & Drop handlers
+  const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    // Only clear dragOverIndex if we're leaving the tab bar entirely
+    const relatedTarget = e.relatedTarget as Node | null;
+    if (!tabBarRef.current?.contains(relatedTarget)) {
+      setDragOverIndex(null);
+    }
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent, dropIndex: number) => {
+      e.preventDefault();
+      if (draggedIndex !== null && draggedIndex !== dropIndex) {
+        reorderTabs(draggedIndex, dropIndex);
+      }
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+    },
+    [draggedIndex, reorderTabs]
+  );
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  }, []);
+
   if (tabs.length === 0) {
     return null;
   }
@@ -102,11 +150,23 @@ export const TabBar: React.FC<TabBarProps> = ({ onOpenMainView }) => {
         className="flex items-center flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-[var(--color-border)] scrollbar-track-transparent"
         style={{ scrollbarWidth: 'thin' }}
       >
-        {tabs.map((tab) => (
+        {tabs.map((tab, index) => (
           <div
             key={tab.id}
             ref={tab.id === activeTabId ? activeTabRef : null}
+            draggable
+            onDragStart={(e) => handleDragStart(e, index)}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDragEnter={(e) => handleDragEnter(e, index)}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, index)}
+            onDragEnd={handleDragEnd}
             onMouseDown={(e) => handleMiddleMouseClick(e, tab.id)}
+            className={`
+              relative transition-all duration-150
+              ${draggedIndex === index ? 'opacity-50' : ''}
+              ${dragOverIndex === index && draggedIndex !== null ? 'before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-amber-500 before:rounded-full' : ''}
+            `}
           >
             <Tab
               id={tab.id}
@@ -139,7 +199,7 @@ export const TabBar: React.FC<TabBarProps> = ({ onOpenMainView }) => {
           <button
             onClick={() => onOpenMainView('manuscript')}
             className="p-1.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)] transition-colors"
-            title="New tab"
+            title={t('ui.newTab')}
           >
             <Plus className="w-3.5 h-3.5" />
           </button>

@@ -54,6 +54,7 @@ interface TabState {
   closeTab: (tabId: string) => void;
   closeActiveTab: () => void;
   setActiveTab: (tabId: string) => void;
+  reorderTabs: (fromIndex: number, toIndex: number) => void;
   updateTab: (tabId: string, updates: Partial<Omit<Tab, 'id'>>) => void;
   setTabModified: (tabId: string, isModified: boolean) => void;
   reopenLastClosedTab: () => void;
@@ -186,6 +187,15 @@ export const useTabStore = create<TabState>((set, get) => ({
       set({ activeTabId: tabId });
       scheduleWorkspaceSave();
     }
+  },
+
+  reorderTabs: (fromIndex, toIndex) => {
+    const { tabs } = get();
+    const newTabs = [...tabs];
+    const [moved] = newTabs.splice(fromIndex, 1);
+    newTabs.splice(toIndex, 0, moved);
+    set({ tabs: newTabs });
+    scheduleWorkspaceSave();
   },
 
   updateTab: (tabId, updates) => {

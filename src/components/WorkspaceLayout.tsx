@@ -3,6 +3,7 @@ import { useProjectStore } from '../store/projectStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { openMainViewTab } from '../store/tabStore';
 import { APP_VERSION } from '../utils/version';
+import { useI18n } from '../i18n';
 import { SearchPanel } from '../features/search/SearchPanel';
 import {
   BookOpen,
@@ -39,6 +40,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   const { currentProject, closeProject } = useProjectStore();
   const { settings, saveSettings } = useSettingsStore();
   const [searchOpen, setSearchOpen] = useState(false);
+  const { t } = useI18n();
 
   // Keyboard shortcut: Ctrl+Shift+F to open search
   useEffect(() => {
@@ -70,7 +72,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           <button
             onClick={() => openMainViewTab('manuscript')}
             className="w-8 h-8 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] transition-colors duration-150 shrink-0"
-            title="Volver al manuscrito"
+            title="{t('common.backToManuscript')}"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
@@ -81,7 +83,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           <button
             onClick={closeProject}
             className="w-8 h-8 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:text-red-400 hover:bg-[var(--color-bg-hover)] transition-colors duration-150 shrink-0"
-            title="Salir al selector de proyectos"
+            title="{t('common.exitToProjectSelector')}"
           >
             <LogOut className="w-4 h-4" />
           </button>
@@ -117,7 +119,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
               <button
                 onClick={() => setSearchOpen(true)}
                 className="w-8 h-8 flex items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] transition-colors duration-150"
-                title="Buscar (Ctrl+Shift+F)"
+                title="Search (Ctrl+Shift+F)"
               >
                 <Search className="w-3.5 h-3.5" />
               </button>
@@ -132,7 +134,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                 ? 'text-[var(--color-accent)] bg-[var(--color-accent-bg)] hover:bg-[var(--color-accent-bg)]'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)]'
             }`}
-            title={settings.focus_mode === 'standard' ? 'Activar modo foco' : 'Desactivar modo foco'}
+            title={settings.focus_mode === 'standard' ? t('ui.enableFocusMode') : t('ui.disableFocusMode')}
           >
             {settings.focus_mode === 'standard' ? (
               <Maximize2 className="w-3.5 h-3.5" />
@@ -159,18 +161,18 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
           {/* Section label */}
           <div className="px-4 mb-1">
-            <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-widest font-medium">Proyecto</span>
+            <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-widest font-medium">Project</span>
           </div>
 
           {/* Navigation items */}
           <div className="flex flex-col gap-0.5 px-2">
             {([
-              { view: 'manuscript', icon: BookOpen, label: 'Manuscrito' },
-              { view: 'universe', icon: Compass, label: 'Universo' },
-              { view: 'character-tracking', icon: Users, label: 'Character Tracking' },
-              { view: 'timeline', icon: Calendar, label: 'Línea Temporal' },
-              { view: 'calendars', icon: Globe, label: 'Calendarios' },
-            ] as { view: MainViewTabType; icon: React.ComponentType<{ className?: string }>; label: string }[]).map((item) => {
+              { view: 'manuscript' as MainViewTabType, icon: BookOpen, labelKey: 'nav.manuscript' },
+              { view: 'universe' as MainViewTabType, icon: Compass, labelKey: 'nav.universe' },
+              { view: 'character-tracking' as MainViewTabType, icon: Users, labelKey: 'nav.characterTracking' },
+              { view: 'timeline' as MainViewTabType, icon: Calendar, labelKey: 'nav.timeline' },
+              { view: 'calendars' as MainViewTabType, icon: Globe, labelKey: 'nav.calendars' },
+            ] as { view: MainViewTabType; icon: React.ComponentType<{ className?: string }>; labelKey: string }[]).map((item) => {
               const Icon = item.icon;
               return (
                 <button
@@ -179,7 +181,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                   className="group relative flex items-center gap-2.5 pl-3 pr-2 py-2 rounded text-left transition-all duration-150 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                 >
                   <Icon className="w-4 h-4 shrink-0 transition-colors text-[var(--color-text-muted)] group-hover:text-[var(--color-text-secondary)]" />
-                  <span className="text-xs font-medium flex-1 tracking-wide">{item.label}</span>
+                  <span className="text-xs font-medium flex-1 tracking-wide">{t(item.labelKey)}</span>
                 </button>
               );
             })}
@@ -187,13 +189,13 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
           {/* Tools section */}
           <div className="px-4 mt-4 mb-1">
-            <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-widest font-medium">Herramientas</span>
+            <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-widest font-medium">Tools</span>
           </div>
           <div className="flex flex-col gap-0.5 px-2">
             {([
-              { view: 'import' as MainViewTabType, icon: FileUp, label: 'Importar' },
-              { view: 'export' as MainViewTabType, icon: FileDown, label: 'Exportar' },
-            ] as { view: MainViewTabType; icon: React.ComponentType<{ className?: string }>; label: string }[]).map((item) => {
+              { view: 'import' as MainViewTabType, icon: FileUp, labelKey: 'nav.import' },
+              { view: 'export' as MainViewTabType, icon: FileDown, labelKey: 'nav.export' },
+            ] as { view: MainViewTabType; icon: React.ComponentType<{ className?: string }>; labelKey: string }[]).map((item) => {
               const Icon = item.icon;
               return (
                 <button
@@ -202,7 +204,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                   className="group relative flex items-center gap-2.5 pl-3 pr-2 py-2 rounded text-left transition-all duration-150 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                 >
                   <Icon className="w-4 h-4 shrink-0 transition-colors text-[var(--color-text-muted)] group-hover:text-[var(--color-text-secondary)]" />
-                  <span className="text-xs font-medium flex-1 tracking-wide">{item.label}</span>
+                  <span className="text-xs font-medium flex-1 tracking-wide">{t(item.labelKey)}</span>
                 </button>
               );
             })}
@@ -210,14 +212,14 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
           {/* Config section */}
           <div className="px-4 mt-4 mb-1">
-            <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-widest font-medium">Configuración</span>
+            <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-widest font-medium">Settings</span>
           </div>
 
           <div className="flex flex-col gap-0.5 px-2">
             {([
-              { view: 'settings' as MainViewTabType, icon: Settings, label: 'Ajustes' },
-              { view: 'about' as MainViewTabType, icon: FileUp, label: 'Acerca de' },
-            ] as { view: MainViewTabType; icon: React.ComponentType<{ className?: string }>; label: string }[]).map((item) => {
+              { view: 'settings' as MainViewTabType, icon: Settings, labelKey: 'nav.settings' },
+              { view: 'about' as MainViewTabType, icon: FileUp, labelKey: 'nav.about' },
+            ] as { view: MainViewTabType; icon: React.ComponentType<{ className?: string }>; labelKey: string }[]).map((item) => {
               const Icon = item.icon;
               return (
                 <button
@@ -226,7 +228,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                   className="group relative flex items-center gap-2.5 pl-3 pr-2 py-2 rounded text-left transition-all duration-150 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                 >
                   <Icon className="w-4 h-4 shrink-0 transition-colors text-[var(--color-text-muted)] group-hover:text-[var(--color-text-secondary)]" />
-                  <span className="text-xs font-medium flex-1 tracking-wide">{item.label}</span>
+                  <span className="text-xs font-medium flex-1 tracking-wide">{t(item.labelKey)}</span>
                 </button>
               );
             })}
@@ -257,18 +259,18 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
       {/* Bottom Status Bar */}
       <footer className="h-10 border-t border-[var(--color-border)] bg-[var(--color-bg-primary)]/80 flex items-center justify-between px-4 text-xs text-[var(--color-text-muted)] shrink-0 select-none">
         <div className="flex items-center gap-4">
-          <span>Palabras: <strong className="text-[var(--color-text-secondary)]">{wordCount}</strong></span>
+          <span>{t('common.words')}: <strong className="text-[var(--color-text-secondary)]">{wordCount}</strong></span>
           <span className="opacity-40">·</span>
-          <span>Lectura: <strong className="text-[var(--color-text-secondary)]">~{readTime} min</strong></span>
+          <span>{t('common.reading')}: <strong className="text-[var(--color-text-secondary)]">~{readTime} min</strong></span>
           <span className="opacity-40">·</span>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-            <span className="text-emerald-500 font-semibold">Offline</span>
+            <span className="text-emerald-500 font-semibold">{t('common.offline')}</span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <span>Meta Diaria: <strong className="text-[var(--color-accent)]">{wordCount} / 1000</strong></span>
+          <span>{t('common.dailyGoal')}: <strong className="text-[var(--color-accent)]">{wordCount} / 1000</strong></span>
           <div className="w-24 bg-[var(--color-bg-tertiary)] rounded-full h-1.5 overflow-hidden">
             <div className="bg-gradient-to-r from-amber-600 to-orange-500 h-full w-[45%]" />
           </div>

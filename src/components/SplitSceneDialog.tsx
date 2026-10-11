@@ -83,7 +83,7 @@ export const SplitSceneDialog: React.FC<SplitSceneDialogProps> = ({
               <Scissors className="w-5 h-5 text-violet-400" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">{t('manuscript.splitScene') || 'Dividir Escena'}</h2>
+              <h2 className="text-lg font-bold text-white">{t('manuscript.splitScene') || 'Split Scene'}</h2>
               <p className="text-xs text-slate-400">{sceneTitle}</p>
             </div>
           </div>
@@ -98,7 +98,7 @@ export const SplitSceneDialog: React.FC<SplitSceneDialogProps> = ({
         {/* Instructions */}
         <div className="px-6 py-3 border-b border-slate-700 bg-slate-800/30">
           <p className="text-sm text-slate-300">
-            {t('manuscript.splitInstruction') || 'Haz clic en el texto donde quieres dividir la escena'}
+            {t('manuscript.splitInstruction') || 'Click on the text where you want to split the scene'}
           </p>
         </div>
 
@@ -106,7 +106,7 @@ export const SplitSceneDialog: React.FC<SplitSceneDialogProps> = ({
         <div className="flex-1 overflow-hidden flex flex-col p-6">
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
-              <div className="text-slate-400">{t('common.loading') || 'Cargando...'}</div>
+              <div className="text-slate-400">{t('common.loading') || 'Loading...'}</div>
             </div>
           ) : (
             <>
@@ -114,20 +114,20 @@ export const SplitSceneDialog: React.FC<SplitSceneDialogProps> = ({
                 {/* Clickable Text */}
                 <div className="w-1/2 flex flex-col">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                    {t('manuscript.sceneContent') || 'Contenido de la escena'}
+                    {t('manuscript.sceneContent') || 'Scene content'}
                   </h3>
                   <div
                     onClick={handleTextClick}
                     className="flex-1 overflow-y-auto bg-slate-950/50 rounded-lg border border-slate-800 p-4 cursor-crosshair select-text"
                   >
                     <div className="text-base text-slate-200 whitespace-pre-wrap leading-relaxed font-sans text-content">
-                      {plainText || <span className="text-slate-600 italic">(vacío)</span>}
+                      {plainText || <span className="text-slate-600 italic">(empty)</span>}
                     </div>
                   </div>
                   {splitPosition !== null && (
                     <div className="text-xs text-violet-400 mt-2 flex items-center gap-2">
                       <span className="inline-block w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-                      {t('manuscript.splitAt') || 'Dividir en posición'} {splitPosition} / {plainText.length}
+                      {t('manuscript.splitAt') || 'Split at position'} {splitPosition} / {plainText.length}
                     </div>
                   )}
                 </div>
@@ -137,30 +137,30 @@ export const SplitSceneDialog: React.FC<SplitSceneDialogProps> = ({
                   {/* First Part Preview */}
                   <div className="flex-1 flex flex-col min-h-0">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                      {t('manuscript.firstPart') || 'Primera parte'} →
+                      {t('manuscript.firstPart') || 'First part'} →
                     </h3>
                     <div className="flex-1 overflow-y-auto bg-slate-950/50 rounded-lg border border-slate-800 p-3">
                       <pre className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed font-sans">
-                        {firstPart || <span className="text-slate-600 italic">(vacío)</span>}
+                        {firstPart || <span className="text-slate-600 italic">(empty)</span>}
                       </pre>
                     </div>
                     <div className="text-xs text-slate-500 mt-1">
-                      {firstPart.split(/\s+/).filter(w => w.length > 0).length} {t('manuscript.words') || 'palabras'}
+                      {firstPart.split(/\s+/).filter(w => w.length > 0).length} {t('manuscript.words') || 'words'}
                     </div>
                   </div>
 
                   {/* Second Part Preview */}
                   <div className="flex-1 flex flex-col min-h-0">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                      ← {t('manuscript.secondPart') || 'Segunda parte'}
+                      ← {t('manuscript.secondPart') || 'Second part'}
                     </h3>
                     <div className="flex-1 overflow-y-auto bg-slate-950/50 rounded-lg border border-slate-800 p-3">
                       <pre className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed font-sans">
-                        {secondPart || <span className="text-slate-600 italic">(vacío)</span>}
+                        {secondPart || <span className="text-slate-600 italic">(empty)</span>}
                       </pre>
                     </div>
                     <div className="text-xs text-slate-500 mt-1">
-                      {secondPart.split(/\s+/).filter(w => w.length > 0).length} {t('manuscript.words') || 'palabras'}
+                      {secondPart.split(/\s+/).filter(w => w.length > 0).length} {t('manuscript.words') || 'words'}
                     </div>
                   </div>
                 </div>
@@ -182,7 +182,7 @@ export const SplitSceneDialog: React.FC<SplitSceneDialogProps> = ({
             disabled={splitPosition === null}
             className="px-6 py-2 text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {t('manuscript.splitConfirm') || 'Dividir escena'}
+            {t('manuscript.splitConfirm') || 'Split scene'}
           </button>
         </div>
       </div>

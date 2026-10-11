@@ -3,6 +3,7 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react';
+import { useI18n } from '../../../../i18n';
 import { useUniverseStore } from '../../store/universeStore';
 import type { UniverseBlock, LayoutType, BlockType, BlockContent } from '../../types';
 import {
@@ -115,25 +116,27 @@ interface AddBlockMenuProps {
   onClose: () => void;
 }
 
-const blockTypes: Array<{ type: BlockType; label: string; icon: string }> = [
-  { type: 'rich-text', label: 'Texto enriquecido', icon: 'T' },
-  { type: 'image', label: 'Imagen', icon: '🖼' },
-  { type: 'gallery', label: 'Galería', icon: '▦' },
-  { type: 'list', label: 'Lista', icon: '☰' },
-  { type: 'quote', label: 'Cita', icon: '"' },
-  { type: 'key-info', label: 'Información clave', icon: 'ⓘ' },
-  { type: 'table', label: 'Tabla', icon: '⊞' },
-  { type: 'divider', label: 'Separador', icon: '―' },
-  { type: 'related-links', label: 'Enlaces relacionados', icon: '🔗' },
-  { type: 'entry-reference', label: 'Referencia a entrada', icon: '↗' },
-];
-
 const AddBlockMenu: React.FC<AddBlockMenuProps> = ({ columnIndex: _columnIndex, onAdd, onClose }) => {
+  const { t } = useI18n();
+
+  const blockTypes: Array<{ type: BlockType; label: string; icon: string }> = [
+    { type: 'rich-text', label: t('ui.richText'), icon: 'T' },
+    { type: 'image', label: t('universe.blocks.imageBlock'), icon: '🖼' },
+    { type: 'gallery', label: 'Galería', icon: '▦' },
+    { type: 'list', label: t('universe.blocks.table'), icon: '☰' },
+    { type: 'quote', label: t('editor.quote'), icon: '"' },
+    { type: 'key-info', label: t('universe.blocks.keyInfo'), icon: 'ⓘ' },
+    { type: 'table', label: t('universe.blocks.table'), icon: '⊞' },
+    { type: 'divider', label: 'Divider', icon: '―' },
+    { type: 'related-links', label: t('ui.relatedLinksLabel'), icon: '🔗' },
+    { type: 'entry-reference', label: t('universe.blocks.entryReference'), icon: '↗' },
+  ];
+
   return (
     <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm">
       <div className="w-64 rounded-xl border border-slate-700/80 bg-slate-900/95 p-2 shadow-xl max-h-80 overflow-y-auto">
         <div className="mb-1 px-2 py-1 text-xs font-medium text-slate-500 sticky top-0 bg-slate-900/95">
-          Añadir bloque
+          Add block
         </div>
         <div className="space-y-0.5">
           {blockTypes.map((bt) => (
@@ -246,7 +249,7 @@ const ColumnContainer: React.FC<ColumnContainerProps> = ({
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-700/50 py-3 text-sm text-slate-500 transition hover:border-violet-500/50 hover:text-violet-400"
         >
           <Plus className="h-4 w-4" />
-          Añadir bloque
+          Add block
         </button>
       )}
 
@@ -311,6 +314,7 @@ interface LayoutSelectorProps {
 }
 
 const LayoutSelector: React.FC<LayoutSelectorProps> = ({ layout, onChange, onColumnWidthsReset }) => {
+  const { t } = useI18n();
   const handleChange = (newLayout: LayoutType) => {
     onChange(newLayout);
     if (onColumnWidthsReset) {
@@ -325,7 +329,7 @@ const LayoutSelector: React.FC<LayoutSelectorProps> = ({ layout, onChange, onCol
         className={`flex h-7 w-7 items-center justify-center rounded transition ${
           layout === '1-col' ? 'bg-violet-600/30 text-violet-300' : 'text-slate-500 hover:text-slate-300'
         }`}
-        title="Una columna"
+        title={t('ui.oneColumn')}
       >
         <div className="h-4 w-3 rounded-sm bg-current" />
       </button>
@@ -334,7 +338,7 @@ const LayoutSelector: React.FC<LayoutSelectorProps> = ({ layout, onChange, onCol
         className={`flex h-7 w-7 items-center justify-center rounded transition ${
           layout === '2-col' ? 'bg-violet-600/30 text-violet-300' : 'text-slate-500 hover:text-slate-300'
         }`}
-        title="Dos columnas"
+        title={t('ui.twoColumns')}
       >
         <div className="flex h-4 w-4 gap-0.5">
           <div className="h-4 flex-1 rounded-sm bg-current" />
@@ -346,7 +350,7 @@ const LayoutSelector: React.FC<LayoutSelectorProps> = ({ layout, onChange, onCol
         className={`flex h-7 w-7 items-center justify-center rounded transition ${
           layout === '3-col' ? 'bg-violet-600/30 text-violet-300' : 'text-slate-500 hover:text-slate-300'
         }`}
-        title="Tres columnas"
+        title={t('ui.threeColumns')}
       >
         <div className="flex h-4 w-5 gap-px">
           <div className="h-4 flex-1 rounded-sm bg-current opacity-30" />
@@ -437,7 +441,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
               onClick={handleSave}
               className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-violet-500"
             >
-              Guardar
+              Save
             </button>
           </div>
         </div>

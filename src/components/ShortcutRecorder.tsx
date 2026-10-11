@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Keyboard, X } from 'lucide-react';
+import { useI18n } from '../i18n';
 import { useShortcutsStore, Shortcut, ModifierKey } from '../store/shortcutsStore';
 
 interface ShortcutRecorderProps {
@@ -15,6 +16,7 @@ export const ShortcutRecorder: React.FC<ShortcutRecorderProps> = ({
   onCancel,
   conflictLabel,
 }) => {
+  const { t } = useI18n();
   const [recording, setRecording] = useState(false);
   const [currentKey, setCurrentKey] = useState<string | null>(null);
   const [currentModifiers, setCurrentModifiers] = useState<ModifierKey[]>([]);
@@ -102,7 +104,7 @@ export const ShortcutRecorder: React.FC<ShortcutRecorderProps> = ({
         type="button"
         onClick={() => onSave({ key: '', modifiers: [] })}
         className="p-1 text-slate-500 hover:text-slate-300 transition-colors"
-        title="Quitar atajo"
+        title={t('ui.removeShortcut')}
       >
         <X className="w-3.5 h-3.5" />
       </button>

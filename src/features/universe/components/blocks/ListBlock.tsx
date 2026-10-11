@@ -113,7 +113,7 @@ export const ListBlock: React.FC<ListBlockProps> = ({ block, onUpdate, isEditing
         onClick={addItem}
         className="text-xs text-violet-400 hover:text-violet-300"
       >
-        + Añadir elemento
+        + Add element
       </button>
     </div>
   );

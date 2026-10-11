@@ -82,8 +82,8 @@ export const MergeScenesDialog: React.FC<MergeScenesDialogProps> = ({
               <FileText className="w-5 h-5 text-violet-400" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">{t('manuscript.mergeScenes') || 'Fusionar Escenas'}</h2>
-              <p className="text-xs text-slate-400">{t('manuscript.mergeScenesSubtitle') || 'Selecciona qué contenido y metadatos conservar'}</p>
+              <h2 className="text-lg font-bold text-white">{t('manuscript.mergeScenes') || 'Merge Scenes'}</h2>
+              <p className="text-xs text-slate-400">{t('manuscript.mergeScenesSubtitle') || 'Select which content and metadata to keep'}</p>
             </div>
           </div>
           <button
@@ -98,7 +98,7 @@ export const MergeScenesDialog: React.FC<MergeScenesDialogProps> = ({
         <div className="flex-1 overflow-hidden flex">
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
-              <div className="text-slate-400">{t('common.loading') || 'Cargando...'}</div>
+              <div className="text-slate-400">{t('common.loading') || 'Loading...'}</div>
             </div>
           ) : (
             <>
@@ -106,10 +106,10 @@ export const MergeScenesDialog: React.FC<MergeScenesDialogProps> = ({
               <div className="w-72 border-r border-slate-700 flex flex-col">
                 <div className="p-4 border-b border-slate-700">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    {t('manuscript.selectSceneToKeep') || 'Escena a conservar'}
+                    {t('manuscript.selectSceneToKeep') || 'Scene to keep'}
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    {t('manuscript.mergeInstructions') || 'Elige qué escena será la principal y qué contenido se usará'}
+                    {t('manuscript.mergeInstructions') || 'Choose which scene will be the main one and what content to use'}
                   </p>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2">
@@ -145,7 +145,7 @@ export const MergeScenesDialog: React.FC<MergeScenesDialogProps> = ({
               <div className="flex-1 flex flex-col">
                 <div className="p-4 border-b border-slate-700">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    {t('manuscript.mergePreview') || 'Vista previa de la fusión'}
+                    {t('manuscript.mergePreview') || 'Merge preview'}
                   </h3>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4">
@@ -173,7 +173,7 @@ export const MergeScenesDialog: React.FC<MergeScenesDialogProps> = ({
             disabled={loading}
             className="px-6 py-2 text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors disabled:opacity-50"
           >
-            {t('manuscript.mergeConfirm') || 'Fusionar escenas'}
+            {t('manuscript.mergeConfirm') || 'Merge scenes'}
           </button>
         </div>
       </div>

@@ -117,13 +117,13 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
     e.preventDefault();
     const trimmed = newRootTitle.trim();
     if (!trimmed) {
-      setRootTitleError('El título es obligatorio');
+      setRootTitleError('Title is required');
       return;
     }
     // Check for duplicate root nodes
     const isDuplicate = nodes.some(n => !n.parent_id && n.title.toLowerCase() === trimmed.toLowerCase());
     if (isDuplicate) {
-      setRootTitleError('Ya existe un elemento con este nombre');
+      setRootTitleError(t('common.alreadyExists'));
       return;
     }
     try {
@@ -141,13 +141,13 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
   const handleAddChild = async (parentId: string) => {
     const trimmed = newChildTitle.trim();
     if (!trimmed) {
-      setChildTitleError('El título es obligatorio');
+      setChildTitleError('Title is required');
       return;
     }
     // Check for duplicate children under this parent
     const isDuplicate = nodes.some(n => n.parent_id === parentId && n.title.toLowerCase() === trimmed.toLowerCase());
     if (isDuplicate) {
-      setChildTitleError('Ya existe un elemento con este nombre');
+      setChildTitleError(t('common.alreadyExists'));
       return;
     }
     try {
@@ -342,7 +342,7 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
               <button
                 onClick={(e) => { e.stopPropagation(); setAddingChildTo(node.id); setNewChildType(node.type === 'part' ? 'chapter' : 'scene'); }}
                 className="p-1 hover:bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] rounded"
-                title="Añadir"
+                title={t('common.create')}
               >
                 <Plus className="w-3 h-3" />
               </button>
@@ -350,14 +350,14 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
             <button
               onClick={(e) => { e.stopPropagation(); startEditingTitle(node); }}
               className="p-1 hover:bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] rounded"
-              title="Renombrar"
+              title={t('manuscript.rename')}
             >
               <FileText className="w-3 h-3" />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(node.id); }}
               className="p-1 hover:bg-[var(--color-danger-bg)] text-[var(--color-text-muted)] hover:text-[var(--color-danger)] rounded"
-              title="Eliminar"
+              title={t('common.delete')}
             >
               <Trash2 className="w-3 h-3" />
             </button>
@@ -399,9 +399,9 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
               {childTitleError && <p className="text-[10px] text-red-400">{childTitleError}</p>}
               <div className="flex justify-between items-center gap-2">
                 <select value={newChildType} onChange={e => setNewChildType(e.target.value as any)} className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[10px] text-[var(--color-text-secondary)] px-1 py-0.5 outline-none">
-                  <option value="scene">Escena</option>
-                  <option value="chapter">Capítulo</option>
-                  <option value="folder">Carpeta</option>
+                  <option value="scene">{t('manuscript.scene')}</option>
+                  <option value="chapter">Chapter</option>
+                  <option value="folder">{t('manuscript.folder')}</option>
                 </select>
                 <div className="flex gap-1.5">
                   <button onClick={() => { setAddingChildTo(null); setChildTitleError(null); }} className="text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]">{t('common.cancel')}</button>
@@ -519,15 +519,22 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
       {/* Left Sidebar — Tree */}
       <div
         className={`flex flex-col shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg-primary)]/50 transition-all duration-200 ${
-          sidebarExpanded ? 'w-64' : 'w-10'
+          sidebarExpanded ? 'w-64' : 'w-14'
         }`}
       >
         {/* Header */}
-        <div className="px-3 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-2">
+        <div className="px-2 py-3 border-b border-[var(--color-border)] gap-2">
+          {/* Always visible toggle button */}
+          <button
+            onClick={() => setSidebarExpanded(!sidebarExpanded)}
+            className="p-1.5 rounded transition-all shrink-0 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]"
+            title={sidebarExpanded ? 'Colapsar' : 'Expandir'}
+          >
+            {sidebarExpanded ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+
+          {/* Lore Master button - only when expanded */}
           {sidebarExpanded && (
-            <h2 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Manuscrito</h2>
-          )}
-          <div className="flex items-center gap-1">
             <button
               onClick={() => { setRightPanelExpanded(!rightPanelExpanded); scheduleWorkspaceSave(); }}
               className={`p-1.5 rounded transition-colors shrink-0 ${
@@ -539,15 +546,15 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
             >
               <Sparkles className="w-4 h-4" />
             </button>
-            <button
-              onClick={() => { setSidebarExpanded(!sidebarExpanded); scheduleWorkspaceSave(); }}
-              className="p-1 hover:bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] rounded transition-colors shrink-0"
-              title={sidebarExpanded ? 'Colapsar' : 'Expandir'}
-            >
-              {sidebarExpanded ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            </button>
-          </div>
+          )}
         </div>
+
+        {/* Title - only when expanded */}
+        {sidebarExpanded && (
+          <div className="px-3 py-2 border-b border-[var(--color-border)]">
+            <h2 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Manuscrito</h2>
+          </div>
+        )}
 
         {/* Tree content */}
         {sidebarExpanded && (
@@ -591,8 +598,8 @@ export const ManuscriptView: React.FC<ManuscriptViewProps> = ({ onStatsUpdate })
                   {rootTitleError && <p className="text-[10px] text-red-400">{rootTitleError}</p>}
                   <div className="flex justify-between items-center">
                     <select value={newRootType} onChange={e => setNewRootType(e.target.value as any)} className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-secondary)] px-2 py-1 outline-none">
-                      <option value="part">Parte</option>
-                      <option value="folder">Carpeta</option>
+                      <option value="part">{t('manuscript.part')}</option>
+                      <option value="folder">{t('manuscript.folder')}</option>
                     </select>
                     <div className="flex gap-2 text-xs">
                       <button type="button" onClick={() => { setIsAddingRoot(false); setRootTitleError(null); }} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]">{t('common.cancel')}</button>

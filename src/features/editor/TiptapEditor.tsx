@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
+import { useI18n } from '../../i18n';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -94,12 +95,14 @@ const Divider = () => (
 export const TiptapEditor: React.FC<TiptapEditorProps> = ({
   content,
   onChange,
-  placeholder = 'Comienza a escribir tu escena aquí...',
+  placeholder,
   onStatsUpdate,
   onSelectionChange,
   onOpenInWorldbuilding,
 }) => {
+  const { t } = useI18n();
   const { settings } = useSettingsStore();
+  const placeholderText = placeholder || t('ui.scenePlaceholder');
   const [wordCount, setWordCount] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -195,7 +198,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
         gapcursor: false,
       }),
       Placeholder.configure({
-        placeholder,
+        placeholder: placeholderText,
         emptyEditorClass: 'is-editor-empty',
       }),
       Typography,
@@ -381,21 +384,21 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
           onClick={() => {
             editor.chain().focus().insertContent('»').run();
           }}
-          title="Cerrar comillas angulares"
+          title="Close angle quotes"
         >
           <span className="text-sm font-semibold">»</span>
         </ToolbarButton>
 
         <ToolbarButton
         onClick={() => editor.chain().focus().insertContent('…').run()}
-        title="Puntos suspensivos"
+        title={t('ui.ellipsis')}
         >
           <span className="text-sm font-semibold">…</span>
         </ToolbarButton>
 
         <ToolbarButton
           onClick={() => editor.chain().focus().insertContent('\n\n⁂\n\n').run()}
-          title="Separador de escena"
+          title={t('ui.sceneBreak')}
         >
           <span className="text-sm font-semibold">⁂</span>
         </ToolbarButton>
@@ -405,7 +408,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
         {/* Mention Insert Button */}
         <ToolbarButton
           onClick={handleShowMentionPanel}
-          title="Insertar mención de personaje"
+          title="Insert character mention"
         >
           <User className="w-4 h-4" />
         </ToolbarButton>
@@ -416,14 +419,14 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}
           disabled={!editor.can().undo()}
-          title="Deshacer (Ctrl+Z)"
+          title="Undo (Ctrl+Z)"
         >
           <Undo className="w-4 h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().redo().run()}
           disabled={!editor.can().redo()}
-          title="Rehacer (Ctrl+Y)"
+          title="Redo (Ctrl+Y)"
         >
           <Redo className="w-4 h-4" />
         </ToolbarButton>
@@ -443,7 +446,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
 
       {/* Footer with word count */}
       <div className="flex items-center justify-end px-4 py-2 border-t border-[var(--color-border)] bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-muted)]">
-        <span>{wordCount} palabras</span>
+        <span>{wordCount} words</span>
       </div>
 
       {/* Mention Tooltip */}
@@ -477,7 +480,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
             <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
               <div className="flex items-center gap-2">
                 <User className="w-5 h-5 text-violet-400" />
-                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Insertar mención</h3>
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Insert mention</h3>
               </div>
               <button
                 onClick={() => setShowMentionPanel(false)}
@@ -496,7 +499,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
                   type="text"
                   value={mentionSearch}
                   onChange={e => setMentionSearch(e.target.value)}
-                  placeholder="Buscar personajes..."
+                  placeholder="Search characters..."
                   className="w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg pl-10 pr-4 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-violet-500"
                 />
               </div>
@@ -545,7 +548,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
 
             {/* Footer hint */}
             <div className="px-4 py-2 border-t border-[var(--color-border)] text-xs text-[var(--color-text-muted)] text-center">
-              Haz clic en un personaje para insertar la mención
+              Click on a character to insert the mention
             </div>
           </div>
         </div>

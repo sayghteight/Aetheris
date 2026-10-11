@@ -28,6 +28,17 @@
     "closeProject": "Close project",
     "selectGenre": "Select..."
   },
+  "nav": {
+    "manuscript": "Manuscript",
+    "universe": "Universe",
+    "characterTracking": "Character Tracking",
+    "timeline": "Timeline",
+    "calendars": "Calendars",
+    "import": "Import",
+    "export": "Export",
+    "settings": "Settings",
+    "about": "About"
+  },
   "genres": {
     "Fantasy": "Fantasy",
     "ScienceFiction": "Science Fiction",
@@ -127,7 +138,21 @@
     "firstPart": "First part",
     "secondPart": "Second part",
     "splitAt": "Split at position",
-    "splitConfirm": "Split scene"
+    "splitConfirm": "Split scene",
+    "addElement": "Add Element",
+    "elementTitlePlaceholder": "Element title...",
+    "nodeTitlePlaceholder": "Node title...",
+    "folder": "Folder",
+    "chapter": "Chapter",
+    "scene": "Scene",
+    "part": "Part"
+  },
+  "export": {
+    "title": "Export Manuscript",
+    "preview": "Preview",
+    "content": "Content",
+    "options": "Options",
+    "exportFormat": "Export Format"
   },
   "import": {
     "title": "Import from Word",
@@ -272,6 +297,7 @@
       "noInfo": "No information",
       "keyInfo": "Key information",
       "addFields": "Add information fields",
+      "field": "Field",
       "noImage": "No image",
       "imageBlock": "Image block",
       "clickToUpload": "Click to upload image",
@@ -406,6 +432,62 @@
     "success": "Success",
     "confirm": "Confirm",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "version": "Version",
+    "alreadyExists": "An element with this name already exists",
+    "words": "Words",
+    "reading": "Reading",
+    "dailyGoal": "Daily Goal",
+    "offline": "Offline"
+  },
+  "ui": {
+    "newTab": "New tab",
+    "unsavedChanges": "Unsaved changes",
+    "closeTab": "Close tab",
+    "closePanel": "Close panel",
+    "findNext": "Find next",
+    "replaceNext": "Replace next",
+    "replaceAll": "Replace all",
+    "sceneBreak": "Scene break",
+    "ellipsis": "Ellipsis",
+    "oneColumn": "One column",
+    "twoColumns": "Two columns",
+    "threeColumns": "Three columns",
+    "richText": "Rich text",
+    "relatedLinksLabel": "Related links",
+    "noText": "No text",
+    "attribution": "Attribution",
+    "source": "Source",
+    "focusMode": "Focus mode",
+    "enableFocusMode": "Enable focus mode",
+    "disableFocusMode": "Disable focus mode",
+    "replaceWith": "Replace with...",
+    "scenePlaceholder": "Start writing your scene here...",
+    "partTitles": "Part titles",
+    "chapterTitles": "Chapter titles",
+    "sceneTitles": "Scene titles",
+    "preview": "Preview",
+    "newFeature": "New feature",
+    "bugFix": "Bug fix",
+    "removeShortcut": "Remove shortcut"
+  },
+  "project": {
+    "digitalManuscript": "Digital manuscript",
+    "digitalManuscriptDesc": "Edit and organize scenes with a rich text editor.",
+    "narrativeUniverse": "Narrative universe",
+    "narrativeUniverseDesc": "Manage characters, locations, plots and events.",
+    "timelineFeature": "Timeline",
+    "timelineFeatureDesc": "View events on an interactive timeline.",
+    "customCalendars": "Custom calendars",
+    "customCalendarsDesc": "Create fictional calendars with months, weeks and seasons.",
+    "aboutWhatIs": "What is Aetheria?",
+    "aboutWhatIsDesc": "Aetheria is an editor for writers working with complex worlds: multiple timelines, custom calendars, interconnected scenes, and an expanding narrative universe. It lets you organize, write, and visualize your fictional world from a single centralized space.",
+    "aboutCredits": "Credits",
+    "aboutCreditsDesc": "Aetheria is developed and maintained by <author>{{author}}</author>. Built with Tauri, React, Lexical, and a lot of coffee.",
+    "aboutViewOnGitHub": "View on GitHub",
+    "aboutFooter": "Made with narrative purpose"
+  },
+  "settingsProject": {
+    "deepBlue": "Deep blue"
   }
 }

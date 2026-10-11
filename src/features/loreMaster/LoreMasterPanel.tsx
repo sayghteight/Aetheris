@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useI18n } from '../../i18n';
 import { useNavigationStore } from '../../store/navigationStore';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import {
@@ -164,6 +165,7 @@ interface LoreMasterPanelProps {
 }
 
 export const LoreMasterPanel: React.FC<LoreMasterPanelProps> = ({ onOpenInWorldbuilding }) => {
+  const { t } = useI18n();
   const { activeSceneId } = useNavigationStore();
   const { setRightPanelExpanded } = useWorkspaceStore();
   const [activeTab, setActiveTab] = useState<TabType>('context');
@@ -235,7 +237,7 @@ export const LoreMasterPanel: React.FC<LoreMasterPanelProps> = ({ onOpenInWorldb
           <button
             onClick={() => setRightPanelExpanded(false)}
             className="ml-auto p-1.5 rounded-lg hover:bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
-            title="Close panel"
+            title={t('ui.closePanel')}
           >
             <X className="w-4 h-4" />
           </button>
