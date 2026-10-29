@@ -140,6 +140,15 @@ body {
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
+/* Aetheris controla la experiencia de edicion: el corrector ortografico nativo
+   de WebView2 queda desactivado en el editor mediante el atributo
+   spellcheck="false". Estas reglas son la red de seguridad para que Chromium no
+   dibuje los subrayados de error ni los del corrector gramatical. */
+::spelling-error,
+::grammar-error {
+  text-decoration: none !important;
+}
+
 /* Custom scrollbar styles */
 .scrollbar-custom {
   scrollbar-width: thin;

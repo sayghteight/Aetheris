@@ -7,6 +7,44 @@ mod git;
 
 use state::AppState;
 
+/// Desactiva el menu contextual nativo de WebView2 en Windows.
+///
+/// WebView2 incrusta su propio menu contextual (con las sugerencias del corrector
+/// ortografico nativo) y no hay forma de configurarlo desde `tauri.conf.json`:
+/// Tauri 2 no reenvia el `with_default_context_menus` de wry, que es la via que
+/// wry usa internamente para llamar a
+/// `ICoreWebView2Settings::SetAreDefaultContextMenusEnabled(false)`.
+///
+/// Por eso se llama directamente a la API COM desde `with_webview`. La cadena
+/// `controller() -> CoreWebView2() -> Settings() -> SetAreDefaultContextMenusEnabled()`
+/// se apoya en metodos inherentes de los tipos de `webview2-com`, asi que no hace
+/// falta declarar ese crate como dependencia: ya forma parte del arbol (a traves
+/// de tauri, en la misma version) y el inference de Rust resuelve los tipos sin
+/// necesidad de nombrarlos.
+#[cfg(target_os = "windows")]
+fn disable_native_context_menu(app: &tauri::AppHandle) {
+    use tauri::Manager;
+
+    for (_, window) in app.webview_windows() {
+        if let Err(err) = window.with_webview(|webview| unsafe {
+            let controller = webview.controller();
+            match controller.CoreWebView2() {
+                Ok(core_webview) => match core_webview.Settings() {
+                    Ok(settings) => {
+                        if let Err(err) = settings.SetAreDefaultContextMenusEnabled(false) {
+                            eprintln!("[aetheria] No se pudo desactivar el menu nativo: {err:?}");
+                        }
+                    }
+                    Err(err) => eprintln!("[aetheria] ICoreWebView2Settings no disponible: {err:?}"),
+                },
+                Err(err) => eprintln!("[aetheria] ICoreWebView2 no disponible: {err:?}"),
+            }
+        }) {
+            eprintln!("[aetheria] with_webview fallo: {err:?}");
+        }
+    }
+}
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -20,6 +58,15 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .setup(|app| {
+            // El menu contextual de WebView2 se desactiva en la capa nativa para
+            // que nunca aparezca, ni siquiera antes de que React monte el menu
+            // propio de Aetheris.
+            #[cfg(target_os = "windows")]
+            disable_native_context_menu(app.handle());
+
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             greet,
             commands::create_project,

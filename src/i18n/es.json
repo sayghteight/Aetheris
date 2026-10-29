@@ -99,6 +99,20 @@
     "cursorPosition": "Posición del Cursor",
     "cursorPositionDesc": "Define dónde se mantiene el cursor en la pantalla mientras escribes."
   },
+  "contextMenu": {
+    "label": "Menú contextual",
+    "cut": "Cortar",
+    "copy": "Copiar",
+    "paste": "Pegar",
+    "selectAll": "Seleccionar todo",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "bold": "Negrita",
+    "italic": "Cursiva",
+    "underline": "Subrayado",
+    "strikethrough": "Tachado",
+    "pasteUnavailable": "No se pudo leer el portapapeles. Usa Ctrl+V para pegar."
+  },
   "manuscript": {
     "title": "Manuscrito",
     "newPart": "Nueva Parte",

@@ -99,6 +99,20 @@
     "cursorPosition": "Cursor Position",
     "cursorPositionDesc": "Defines where the cursor stays on screen while you write."
   },
+  "contextMenu": {
+    "label": "Context menu",
+    "cut": "Cut",
+    "copy": "Copy",
+    "paste": "Paste",
+    "selectAll": "Select all",
+    "undo": "Undo",
+    "redo": "Redo",
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "strikethrough": "Strikethrough",
+    "pasteUnavailable": "Could not read the clipboard. Use Ctrl+V to paste."
+  },
   "manuscript": {
     "title": "Manuscript",
     "newPart": "New Part",

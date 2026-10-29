@@ -25,6 +25,12 @@ import { useSettingsStore } from '../../store/settingsStore';
 import { useCenteredWriting } from '../../hooks/useCenteredWriting';
 import { CharacterMention } from './extensions/CharacterMention';
 import { MentionTooltip } from './extensions/MentionTooltip';
+import { useContextMenuScope } from '../../components/context-menu/ContextMenuProvider';
+import {
+  buildEditorContextMenuItems,
+  EDITOR_CONTEXT_MENU_ID,
+  runEditorContextMenuAction,
+} from './editorContextMenu';
 
 interface UniverseCategory {
   id: string;
@@ -102,6 +108,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
 }) => {
   const { t } = useI18n();
   const { settings } = useSettingsStore();
+  const { registerScope } = useContextMenuScope();
   const placeholderText = placeholder || t('ui.scenePlaceholder');
   const [wordCount, setWordCount] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -239,9 +246,29 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
         class:
           'prose prose-lg max-w-none focus:outline-none min-h-[60vh] text-[var(--color-text-primary)] leading-relaxed',
         style: `font-family: ${settings.fontFamily === 'serif' ? 'Georgia, serif' : settings.fontFamily === 'mono' ? 'monospace' : 'Inter, sans-serif'}; font-size: ${settings.fontSize || 18}px; line-height: ${settings.lineHeight || 1.75};`,
+        // Desactiva el corrector ortografico nativo de WebView2: el menu
+        // contextual nativo ya esta desactivado en la capa de Rust y el
+        // corrector se controla desde Aetheris.
+        spellcheck: 'false',
       },
     },
   });
+
+  // Registra el ambito del menu contextual propio del editor. El proveedor
+  // global lo consulta en cada clic derecho dentro de la zona editable.
+  useEffect(() => {
+    if (!editor) return;
+
+    return registerScope({
+      id: EDITOR_CONTEXT_MENU_ID,
+      matches: (target) => {
+        const dom = editor.view.dom;
+        return dom === target || dom.contains(target);
+      },
+      build: () => buildEditorContextMenuItems(editor, t),
+      run: (itemId) => runEditorContextMenuAction(itemId, editor),
+    });
+  }, [editor, registerScope, t]);
 
   // Sync content from props (for loading saved content)
   useEffect(() => {
