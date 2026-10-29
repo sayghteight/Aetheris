@@ -1,7 +1,11 @@
 /**
- * Spell Checker Service using Browser Native Spellcheck
- * Uses the browser's built-in spell checker which supports multiple languages
- * configured in the OS settings.
+ * Spell Checker Service
+ *
+ * NOTA: el corrector ortografico nativo de WebView2 esta desactivado en
+ * Aetheris (el editor usa `spellcheck="false"` y el menu contextual nativo se
+ * desactiva en la capa de Rust). Este servicio sigue siendo un stub sin usar:
+ * no comprueba nada y no devuelve sugerencias. Para tener corrector ortografico
+ * hay que implementar un motor propio, no relies en el del navegador.
  */
 
 export interface SpellCheckerService {
