@@ -90,7 +90,7 @@ Available in English and Spanish
 ### Latest Release: v0.1.8 (August 25, 2026)
 
 #### Windows
-- [Aetheria_0.1.5_x64-setup.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_x64-setup.exe) — Windows Installer
+- [Aetheria_0.1.8_x64-setup.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_x64-setup.exe) — Windows Installer
 
 #### macOS
 - [Aetheria_0.1.8_aarch64.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_aarch64.dmg) — Apple Silicon
