@@ -53,7 +53,7 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-950">
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto">
       <div className="mx-auto w-full max-w-6xl px-4 py-6">
         {/* Header */}
         <div className="mb-8 flex items-center gap-4">

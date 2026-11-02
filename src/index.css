@@ -149,15 +149,62 @@ body {
   text-decoration: none !important;
 }
 
-/* Custom scrollbar styles */
-.scrollbar-custom {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLLBARS
+   Barra fina y discreta, acorde al tema: pista transparente, pulgar redondeado
+   que se ilumina al pasar el raton y toma el color de acento al arrastrar.
+   Se aplica a TODO (incluida la raiz del documento) para que no aparezca la
+   barra de Windows en ninguna zona de la app.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Chromium / WebView2: control total del diseno. */
+*::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
 }
 
+/* Sin flechas: la barra es un control continuo, no un boton. */
+*::-webkit-scrollbar-button {
+  display: none;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--color-scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-scrollbar-thumb);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.18s ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-scrollbar-thumb-hover);
+}
+
+/* Al arrastrar, el pulgar adopta el acento del tema. */
+*::-webkit-scrollbar-thumb:active {
+  background-color: var(--color-accent);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox no soporta ::-webkit-scrollbar: se usa la via estandar. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
+  }
+}
+
+/* Utilidad para Scrollbars de un contenedor concreto. */
 .scrollbar-custom::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 11px;
+  height: 11px;
 }
 
 .scrollbar-custom::-webkit-scrollbar-track {

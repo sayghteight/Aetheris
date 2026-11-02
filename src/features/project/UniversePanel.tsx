@@ -270,7 +270,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       )}
 
       {/* Scrollable writing area — scroll vive SOLO aquí */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-8 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-950">
+      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-8">
         <div className="mx-auto" >
           <div
             ref={editorRef}
@@ -555,7 +555,7 @@ const CategoryView: React.FC<{
             <p className="text-xs text-slate-500">Carpetas y fichas</p>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-950">
+          <div className="flex-1 overflow-y-auto p-4">
             {renderTree(category.entries, null)}
           </div>
 
@@ -629,7 +629,7 @@ const CategoryView: React.FC<{
             </p>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-950">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4">
             {selectedEntry ? (
               <div className="flex h-full flex-col space-y-4">
                 <div>
