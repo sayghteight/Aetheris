@@ -1216,6 +1216,77 @@ pub struct RecentProject {
     pub last_opened: String,
 }
 
+/// Ajustes de la aplicacion (no de la novela).
+///
+/// Se guardan en `app_settings.json`, dentro del directorio de configuracion,
+/// para que apliquen a toda la aplicacion con independencia del proyecto
+/// abierto.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct AppSettings {
+    /// Tema de la interfaz: midnight | aurora | noir | light
+    pub theme: String,
+    /// Idioma de la interfaz: es | en
+    pub language: String,
+    /// Ancho de la ventana en pixeles logicos.
+    pub window_width: u32,
+    /// Alto de la ventana en pixeles logicos.
+    pub window_height: u32,
+    /// Si la ventana se abre maximizada.
+    pub window_maximized: bool,
+    /// Si la ventana esta en pantalla completa.
+    pub window_fullscreen: bool,
+    /// Si se restaura el tamano guardado al arrancar.
+    pub restore_window_on_start: bool,
+    /// Si se abre el ultimo proyecto al arrancar.
+    pub open_last_project_on_start: bool,
+    /// Si se pide confirmacion antes de cerrar la aplicacion.
+    pub confirm_before_close: bool,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            theme: "midnight".to_string(),
+            language: "es".to_string(),
+            window_width: 1280,
+            window_height: 800,
+            window_maximized: false,
+            window_fullscreen: false,
+            restore_window_on_start: true,
+            open_last_project_on_start: false,
+            confirm_before_close: false,
+        }
+    }
+}
+
+fn get_app_settings_path() -> Result<PathBuf, String> {
+    Ok(get_config_dir()?.join("app_settings.json"))
+}
+
+/// Lee los ajustes de la aplicacion del disco.
+///
+/// Un fichero ausente o corrupto no debe impedir abrir la app: en ese caso se
+/// devuelven los valores por defecto.
+///
+/// La escritura la hace el comando generico `save_app_settings` con la clave
+/// `app_settings`, que deja el fichero en esta misma ruta.
+pub fn read_app_settings() -> AppSettings {
+    let path = match get_app_settings_path() {
+        Ok(path) => path,
+        Err(_) => return AppSettings::default(),
+    };
+
+    if !path.exists() {
+        return AppSettings::default();
+    }
+
+    fs::read_to_string(&path)
+        .ok()
+        .and_then(|contents| serde_json::from_str::<AppSettings>(&contents).ok())
+        .unwrap_or_default()
+}
+
 /// Progreso de escritura de un proyecto cerrado.
 ///
 /// La biblioteca lo usa para la tarjeta "Continuar donde lo dejaste": cuantas

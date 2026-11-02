@@ -6,6 +6,7 @@ mod export;
 mod git;
 
 use state::AppState;
+use tauri::Manager;
 
 /// Desactiva el menu contextual nativo de WebView2 en Windows.
 ///
@@ -58,6 +59,17 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            // Restaura el tamano de ventana guardado, si el usuario lo pidio.
+            let app_settings = commands::read_app_settings();
+            if app_settings.restore_window_on_start && !app_settings.window_fullscreen {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_size(tauri::LogicalSize::new(
+                        f64::from(app_settings.window_width),
+                        f64::from(app_settings.window_height),
+                    ));
+                }
+            }
+
             // El menu contextual de WebView2 se desactiva en la capa nativa para
             // que nunca aparezca, ni siquiera antes de que React monte el menu
             // propio de Aetheris.

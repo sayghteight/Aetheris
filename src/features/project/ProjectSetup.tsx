@@ -3,7 +3,8 @@ import { useProjectStore } from '../../store/projectStore';
 import { useI18n } from '../../i18n';
 import { invoke } from '@tauri-apps/api/core';
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { Plus, Feather, Search, X, Sparkles } from 'lucide-react';
+import { Plus, Feather, Search, X, Sparkles, Settings } from 'lucide-react';
+import { AppSettingsDialog } from '../settings/AppSettingsDialog';
 import './library.css';
 
 interface ProjectProgress {
@@ -63,6 +64,7 @@ export const ProjectSetup: React.FC = () => {
   const [createdPath, setCreatedPath] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [progress, setProgress] = useState<ProjectProgress | null>(null);
+  const [appSettingsOpen, setAppSettingsOpen] = useState(false);
 
   useEffect(() => {
     loadRecentProjects();
@@ -249,6 +251,15 @@ export const ProjectSetup: React.FC = () => {
               className="w-full rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] py-2 pl-9 pr-4 text-sm placeholder:text-[var(--color-text-muted)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
           </label>
+
+          <button
+            onClick={() => setAppSettingsOpen(true)}
+            title={t('appSettings.title')}
+            aria-label={t('appSettings.title')}
+            className="lib-ring flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-primary)]"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
 
           {isOpen ? (
             <button
@@ -506,6 +517,8 @@ export const ProjectSetup: React.FC = () => {
           </div>
         )}
       </main>
+
+      <AppSettingsDialog open={appSettingsOpen} onClose={() => setAppSettingsOpen(false)} />
     </div>
   );
 };

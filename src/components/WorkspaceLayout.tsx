@@ -5,6 +5,7 @@ import { openMainViewTab } from '../store/tabStore';
 import { APP_VERSION } from '../utils/version';
 import { useI18n } from '../i18n';
 import { SearchPanel } from '../features/search/SearchPanel';
+import { AppSettingsDialog } from '../features/settings/AppSettingsDialog';
 import {
   BookOpen,
   Sparkles,
@@ -40,6 +41,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   const { currentProject, closeProject } = useProjectStore();
   const { settings, saveSettings } = useSettingsStore();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [appSettingsOpen, setAppSettingsOpen] = useState(false);
   const { t } = useI18n();
 
   // Keyboard shortcut: Ctrl+Shift+F to open search
@@ -125,6 +127,15 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
               </button>
             )}
           </div>
+
+          {/* Ajustes de la aplicacion */}
+          <button
+            onClick={() => setAppSettingsOpen(true)}
+            className="w-8 h-8 flex items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] transition-colors duration-150"
+            title={t('appSettings.title')}
+          >
+            <Settings className="w-3.5 h-3.5" />
+          </button>
 
           {/* Focus mode toggle */}
           <button
@@ -276,6 +287,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           </div>
         </div>
       </footer>
+
+      <AppSettingsDialog open={appSettingsOpen} onClose={() => setAppSettingsOpen(false)} />
     </div>
   );
 };
