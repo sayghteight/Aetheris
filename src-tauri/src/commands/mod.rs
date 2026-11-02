@@ -1216,6 +1216,83 @@ pub struct RecentProject {
     pub last_opened: String,
 }
 
+/// Progreso de escritura de un proyecto cerrado.
+///
+/// La biblioteca lo usa para la tarjeta "Continuar donde lo dejaste": cuantas
+/// escenas lleva escritas y en cual se estaba trabajando la ultima vez.
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct ProjectProgress {
+    /// Titulo de la ultima escena en la que se estaba trabajando.
+    pub last_scene_title: Option<String>,
+    /// Numero total de escenas del manuscrito.
+    pub scenes_total: u32,
+    /// Escenas que ya tienen contenido.
+    pub scenes_written: u32,
+}
+
+#[tauri::command]
+pub fn get_project_progress(path: String) -> Result<ProjectProgress, String> {
+    let file_path = Path::new(&path);
+    if !file_path.exists() {
+        return Err("El archivo del proyecto no existe".to_string());
+    }
+
+    // Solo lectura: la biblioteca nunca debe modificar un proyecto que esta
+    // cerrado. Si el fichero tiene un WAL pendiente, SQLite no puede abrirlo
+    // en solo lectura, asi que se reintenta con una conexion normal (que
+    // tampoco altera los datos).
+    let conn = Connection::open_with_flags(file_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+        .or_else(|_| Connection::open(file_path))
+        .map_err(|e| format!("Error abriendo el proyecto: {}", e))?;
+
+    let scenes_total: u32 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM manuscript_nodes WHERE type = 'scene';",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
+        .unwrap_or(0) as u32;
+
+    let scenes_written: u32 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM scene_contents sc
+             JOIN manuscript_nodes mn ON mn.id = sc.node_id
+             WHERE mn.type = 'scene'
+               AND sc.content IS NOT NULL
+               AND TRIM(sc.content) != '';",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
+        .unwrap_or(0) as u32;
+
+    // El estado del workspace vive dentro del propio proyecto, asi que permite
+    // recuperar la escena en la que se estaba trabajando.
+    let active_scene_id = conn
+        .query_row(
+            "SELECT data FROM workspace_state WHERE id = 'default' LIMIT 1;",
+            [],
+            |row| row.get::<_, String>(0),
+        )
+        .ok()
+        .and_then(|data| serde_json::from_str::<WorkspaceState>(&data).ok())
+        .and_then(|workspace| workspace.active_scene_id);
+
+    let last_scene_title = active_scene_id.and_then(|scene_id| {
+        conn.query_row(
+            "SELECT title FROM manuscript_nodes WHERE id = ?1;",
+            [&scene_id],
+            |row| row.get::<_, String>(0),
+        )
+        .ok()
+    });
+
+    Ok(ProjectProgress {
+        last_scene_title,
+        scenes_total,
+        scenes_written,
+    })
+}
+
 pub fn get_config_dir() -> Result<PathBuf, String> {
     let config_dir = dirs::config_dir()
         .ok_or("No se pudo encontrar el directorio de configuración")?

@@ -95,6 +95,7 @@ pub fn run() {
             commands::reset_project,
             commands::get_recent_projects,
             commands::add_recent_project,
+            commands::get_project_progress,
             commands::get_timeline_events,
             commands::create_timeline_event,
             commands::update_timeline_event,
