@@ -17,9 +17,12 @@ import {
   Compass,
   ArrowLeft,
   Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useProjectStore } from '../../store/projectStore';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { useAppSettingsStore } from '../../store/appSettingsStore';
+import { registerSceneSaver } from '../../utils/sceneSaver';
 import { useNavigationStore } from '../../store/navigationStore';
 import { TiptapEditor } from '../editor/TiptapEditor';
 import { EmptyState } from '../../components/EmptyState';
@@ -689,8 +692,11 @@ interface SceneEditorProps {
 }
 
 export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate, onSelectionChange, onOpenInWorldbuilding }) => {
+  const { settings: appSettings } = useAppSettingsStore();
+  const { t } = useI18n();
   const [content, setContent] = useState('');
   const saveTimeout = useRef<number | null>(null as any);
+  const contentRef = useRef('');
 
   // Load content on mount
   useEffect(() => {
@@ -700,6 +706,7 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
         const loaded = await invoke<string | null>('get_scene_content', { nodeId: sceneId });
         if (!mounted) return;
         setContent(loaded ?? '');
+        contentRef.current = loaded ?? '';
       } catch (err) {
         console.error('Error loading scene:', err);
       }
@@ -707,35 +714,53 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
     return () => { mounted = false; };
   }, [sceneId]);
 
+  // Persiste el contenido en el proyecto y avisa al resto de componentes.
+  const persist = useCallback(async (rawContent: string) => {
+    // Auto-convert mentions: replace plain text names with mention nodes
+    const convertedContent = await invoke<string>('auto_convert_mentions', { content: rawContent });
+    const plainText = convertedContent.replace(/<[^>]+>/g, ' ');
+    await invoke('update_scene_content', { nodeId: sceneId, content: convertedContent, plainText });
+    // Update local content with converted content (has mention nodes now)
+    setContent(convertedContent);
+    contentRef.current = convertedContent;
+    // Dispatch event to notify character tracking of changes
+    window.dispatchEvent(new CustomEvent('scene-saved', { detail: { sceneId } }));
+  }, [sceneId]);
+
+  // Guardado manual (atajo Ctrl+S): este editor es el que esta activo.
+  useEffect(() => registerSceneSaver(() => persist(contentRef.current)), [persist]);
+
   // Handle content change with autosave
   const handleChange = (newContent: string) => {
     setContent(newContent);
+    contentRef.current = newContent;
+
     if (saveTimeout.current) window.clearTimeout(saveTimeout.current);
-    saveTimeout.current = window.setTimeout(async () => {
-      try {
-        // Auto-convert mentions: replace plain text names with mention nodes
-        const convertedContent = await invoke<string>('auto_convert_mentions', { content: newContent });
-        const plainText = convertedContent.replace(/<[^>]+>/g, ' ');
-        await invoke('update_scene_content', { nodeId: sceneId, content: convertedContent, plainText });
-        // Update local content with converted content (has mention nodes now)
-        setContent(convertedContent);
-        // Dispatch event to notify character tracking of changes
-        window.dispatchEvent(new CustomEvent('scene-saved', { detail: { sceneId } }));
-      } catch (err) {
-        console.error('Auto-save failed', err);
-      }
-    }, 700);
+    // Con el autoguardado desactivado solo se guarda con el atajo de guardar.
+    if (!appSettings.autoSaveEnabled) return;
+
+    saveTimeout.current = window.setTimeout(() => {
+      persist(newContent).catch((err) => console.error('Auto-save failed', err));
+    }, appSettings.autoSaveDelayMs);
   };
 
   return (
-    <TiptapEditor
-      content={content}
-      onChange={handleChange}
-      placeholder="Comienza a escribir tu escena aquí..."
-      onStatsUpdate={onStatsUpdate}
-      onSelectionChange={onSelectionChange}
-      onOpenInWorldbuilding={onOpenInWorldbuilding}
-    />
+    <>
+      {!appSettings.autoSaveEnabled && (
+        <div className="flex items-center gap-2 border-b border-[var(--color-accent-border)] bg-[var(--color-accent-bg)] px-4 py-1.5 text-xs text-[var(--color-text-secondary)]">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[var(--color-accent)]" />
+          {t('appSettings.autoSaveOffNotice')}
+        </div>
+      )}
+      <TiptapEditor
+        content={content}
+        onChange={handleChange}
+        placeholder="Comienza a escribir tu escena aquí..."
+        onStatsUpdate={onStatsUpdate}
+        onSelectionChange={onSelectionChange}
+        onOpenInWorldbuilding={onOpenInWorldbuilding}
+      />
+    </>
   );
 };
 

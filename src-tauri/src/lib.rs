@@ -6,7 +6,7 @@ mod export;
 mod git;
 
 use state::AppState;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 /// Desactiva el menu contextual nativo de WebView2 en Windows.
 ///
@@ -78,6 +78,20 @@ pub fn run() {
 
             Ok(())
         })
+        .on_window_event(|window, event| {
+            // Si el usuario ha pedido confirmacion al cerrar, se bloquea el
+            // cierre y se avisa al frontend para que lo pregunte.
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let app_settings = commands::read_app_settings();
+
+                if app_settings.confirm_before_close
+                    && !commands::ALLOW_CLOSE.load(std::sync::atomic::Ordering::Relaxed)
+                {
+                    api.prevent_close();
+                    let _ = window.emit("aetheria://close-requested", ());
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             greet,
             commands::create_project,
@@ -108,6 +122,8 @@ pub fn run() {
             commands::get_recent_projects,
             commands::add_recent_project,
             commands::get_project_progress,
+            commands::get_app_data_dir,
+            commands::close_window,
             commands::get_timeline_events,
             commands::create_timeline_event,
             commands::update_timeline_event,

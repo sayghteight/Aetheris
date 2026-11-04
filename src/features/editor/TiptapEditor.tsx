@@ -21,7 +21,7 @@ import {
   X,
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
-import { useSettingsStore } from '../../store/settingsStore';
+import { useAppSettingsStore } from '../../store/appSettingsStore';
 import { useCenteredWriting } from '../../hooks/useCenteredWriting';
 import { CharacterMention } from './extensions/CharacterMention';
 import { MentionTooltip } from './extensions/MentionTooltip';
@@ -107,7 +107,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
   onOpenInWorldbuilding,
 }) => {
   const { t } = useI18n();
-  const { settings } = useSettingsStore();
+  const { settings: appSettings } = useAppSettingsStore();
   const { registerScope } = useContextMenuScope();
   const placeholderText = placeholder || t('ui.scenePlaceholder');
   const [wordCount, setWordCount] = useState(0);
@@ -245,7 +245,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
       attributes: {
         class:
           'prose prose-lg max-w-none focus:outline-none min-h-[60vh] text-[var(--color-text-primary)] leading-relaxed',
-        style: `font-family: ${settings.fontFamily === 'serif' ? 'Georgia, serif' : settings.fontFamily === 'mono' ? 'monospace' : 'Inter, sans-serif'}; font-size: ${settings.fontSize || 18}px; line-height: ${settings.lineHeight || 1.75};`,
+        style: `font-family: ${appSettings.fontFamily === 'serif' ? 'Georgia, Iowan Old Style, Palatino Linotype, serif' : appSettings.fontFamily === 'mono' ? 'ui-monospace, monospace' : 'Inter, system-ui, sans-serif'}; font-size: ${appSettings.fontSize || 18}px; line-height: ${appSettings.lineHeight || 1.75}; text-align: ${appSettings.textAlign || 'left'};`,
         // Desactiva el corrector ortografico nativo de WebView2: el menu
         // contextual nativo ya esta desactivado en la capa de Rust y el
         // corrector se controla desde Aetheris.
@@ -289,8 +289,8 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
   // Centered writing mode hook
   useCenteredWriting({
     editor,
-    enabled: settings.centeredWritingMode ?? false,
-    targetPosition: settings.centeredWritingPosition ?? 50,
+    enabled: appSettings.centeredWritingMode ?? false,
+    targetPosition: appSettings.centeredWritingPosition ?? 50,
     scrollContainerRef,
   });
 
@@ -340,8 +340,8 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
 
   // Calculate bottom padding for centered writing mode
   // This ensures the last line can reach the centered cursor position
-  const centeredWritingPadding = settings.centeredWritingMode
-    ? `calc(${100 - (settings.centeredWritingPosition ?? 50)}vh + 20vh)`
+  const centeredWritingPadding = appSettings.centeredWritingMode
+    ? `calc(${100 - (appSettings.centeredWritingPosition ?? 50)}vh + 20vh)`
     : '0';
 
   if (!editor) {
@@ -472,9 +472,11 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
       </div>
 
       {/* Footer with word count */}
-      <div className="flex items-center justify-end px-4 py-2 border-t border-[var(--color-border)] bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-muted)]">
-        <span>{wordCount} words</span>
-      </div>
+      {appSettings.showWordCount && (
+        <div className="flex items-center justify-end px-4 py-2 border-t border-[var(--color-border)] bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-muted)]">
+          <span>{wordCount} {t('editor.words')}</span>
+        </div>
+      )}
 
       {/* Mention Tooltip */}
       {hoveredMention && mentionRect && (

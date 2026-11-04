@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
 use tauri::State;
 use uuid::Uuid;
 
@@ -20,7 +21,8 @@ pub struct ProjectMetadata {
     pub updated_at: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(default)]
 pub struct ProjectSettings {
     pub theme: String,
     pub focus_mode: String,
@@ -32,6 +34,29 @@ pub struct ProjectSettings {
     pub updated_at: Option<String>,
     pub centered_writing_mode: bool,
     pub centered_writing_position: i64,
+}
+
+/// Valores por defecto de los ajustes de la novela.
+///
+/// El struct acepta `#[serde(default)]`: los ajustes que ya no existen en la
+/// base de datos (tema, idioma, estilo) se completan con estos valores en vez
+/// de fallar la deserializacion, de modo que el cliente puede enviar solo los
+/// campos que de verdad usa.
+impl Default for ProjectSettings {
+    fn default() -> Self {
+        Self {
+            theme: "midnight".to_string(),
+            focus_mode: "standard".to_string(),
+            auto_save_enabled: true,
+            auto_save_interval_minutes: 5,
+            language: "es".to_string(),
+            writing_style: "creative".to_string(),
+            spell_check_languages: vec!["es".to_string(), "en".to_string()],
+            updated_at: None,
+            centered_writing_mode: false,
+            centered_writing_position: 50,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -1222,7 +1247,7 @@ pub struct RecentProject {
 /// para que apliquen a toda la aplicacion con independencia del proyecto
 /// abierto.
 #[derive(Serialize, Deserialize, Clone)]
-#[serde(default)]
+#[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
     /// Tema de la interfaz: midnight | aurora | noir | light
     pub theme: String,
@@ -1242,6 +1267,12 @@ pub struct AppSettings {
     pub open_last_project_on_start: bool,
     /// Si se pide confirmacion antes de cerrar la aplicacion.
     pub confirm_before_close: bool,
+    /// Zoom de la interfaz (1 = 100 %).
+    pub interface_zoom: f64,
+    /// Si la ventana se mantiene siempre encima.
+    pub always_on_top: bool,
+    /// Si la ventana se puede redimensionar.
+    pub resizable: bool,
 }
 
 impl Default for AppSettings {
@@ -1256,6 +1287,9 @@ impl Default for AppSettings {
             restore_window_on_start: true,
             open_last_project_on_start: false,
             confirm_before_close: false,
+            interface_zoom: 1.0,
+            always_on_top: false,
+            resizable: true,
         }
     }
 }
@@ -1286,6 +1320,28 @@ pub fn read_app_settings() -> AppSettings {
         .and_then(|contents| serde_json::from_str::<AppSettings>(&contents).ok())
         .unwrap_or_default()
 }
+
+/// Ruta de la carpeta de datos de la aplicacion.
+///
+/// La usa el dialogo de ajustes para poder abrirla en el explorador.
+#[tauri::command]
+pub fn get_app_data_dir() -> Result<String, String> {
+    Ok(get_config_dir()?.to_string_lossy().to_string())
+}
+
+/// Permite el cierre de la ventana aunque este protegido.
+///
+/// El manejador de `CloseRequested` bloquea el cierre cuando el usuario ha
+/// activado la confirmacion; esta marca lo deja pasar.
+#[tauri::command]
+pub fn close_window(window: tauri::Window) {
+    ALLOW_CLOSE.store(true, Ordering::Relaxed);
+    let _ = window.close();
+}
+
+/// Marca de cierre autorizado (ver `close_window`).
+pub static ALLOW_CLOSE: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
 
 /// Progreso de escritura de un proyecto cerrado.
 ///

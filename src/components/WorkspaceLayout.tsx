@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useProjectStore } from '../store/projectStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { useAppSettingsStore } from '../store/appSettingsStore';
 import { openMainViewTab } from '../store/tabStore';
 import { APP_VERSION } from '../utils/version';
 import { useI18n } from '../i18n';
@@ -40,6 +41,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 }) => {
   const { currentProject, closeProject } = useProjectStore();
   const { settings, saveSettings } = useSettingsStore();
+  const { settings: appSettings } = useAppSettingsStore();
+  const showWordCount = appSettings.showWordCount;
   const [searchOpen, setSearchOpen] = useState(false);
   const [appSettingsOpen, setAppSettingsOpen] = useState(false);
   const { t } = useI18n();
@@ -270,8 +273,12 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
       {/* Bottom Status Bar */}
       <footer className="h-10 border-t border-[var(--color-border)] bg-[var(--color-bg-primary)]/80 flex items-center justify-between px-4 text-xs text-[var(--color-text-muted)] shrink-0 select-none">
         <div className="flex items-center gap-4">
-          <span>{t('common.words')}: <strong className="text-[var(--color-text-secondary)]">{wordCount}</strong></span>
-          <span className="opacity-40">·</span>
+          {showWordCount && (
+            <>
+              <span>{t('common.words')}: <strong className="text-[var(--color-text-secondary)]">{wordCount}</strong></span>
+              <span className="opacity-40">·</span>
+            </>
+          )}
           <span>{t('common.reading')}: <strong className="text-[var(--color-text-secondary)]">~{readTime} min</strong></span>
           <span className="opacity-40">·</span>
           <div className="flex items-center gap-1.5">
@@ -280,12 +287,14 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span>{t('common.dailyGoal')}: <strong className="text-[var(--color-accent)]">{wordCount} / 1000</strong></span>
-          <div className="w-24 bg-[var(--color-bg-tertiary)] rounded-full h-1.5 overflow-hidden">
-            <div className="bg-gradient-to-r from-amber-600 to-orange-500 h-full w-[45%]" />
+        {showWordCount && (
+          <div className="flex items-center gap-3">
+            <span>{t('common.dailyGoal')}: <strong className="text-[var(--color-accent)]">{wordCount} / 1000</strong></span>
+            <div className="w-24 bg-[var(--color-bg-tertiary)] rounded-full h-1.5 overflow-hidden">
+              <div className="bg-gradient-to-r from-amber-600 to-orange-500 h-full w-[45%]" />
+            </div>
           </div>
-        </div>
+        )}
       </footer>
 
       <AppSettingsDialog open={appSettingsOpen} onClose={() => setAppSettingsOpen(false)} />

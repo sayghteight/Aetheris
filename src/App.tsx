@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { useProjectStore } from './store/projectStore';
 import { useSettingsStore } from './store/settingsStore';
 import { useAppSettingsStore } from './store/appSettingsStore';
@@ -10,9 +13,12 @@ import { WorkspaceLayout } from './components/WorkspaceLayout';
 import { TabBar } from './components/tab-bar';
 import { TabContent } from './components/tab-bar/TabContent';
 import { UpdateDialog } from './components/UpdateDialog';
+import { CloseGuard } from './features/settings/CloseGuard';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { saveActiveScene } from './utils/sceneSaver';
 
 const App: React.FC = () => {
-  const { isOpen } = useProjectStore();
+  const { isOpen, openProject } = useProjectStore();
   const { settings, loadSettings, isLoaded } = useSettingsStore();
   const {
     settings: appSettings,
@@ -22,6 +28,14 @@ const App: React.FC = () => {
   const { language, setLanguage } = useI18n();
   const [wordCount, setWordCount] = useState(0);
   const [readTime, setReadTime] = useState(0);
+
+  // Atajo de guardado: guarda la escena activa aunque el autoguardado este
+  // desactivado en los ajustes de la aplicacion.
+  useKeyboardShortcuts({
+    onSave: () => {
+      void saveActiveScene();
+    },
+  });
 
   // Ajustes de la aplicacion: se cargan siempre, haya proyecto abierto o no.
   useEffect(() => {
@@ -41,17 +55,51 @@ const App: React.FC = () => {
     }
   }, [isOpen, isLoaded, loadSettings]);
 
-  // Apply theme to document - use dark class for dark themes, data-theme for light
+  // Tema de la interfaz. El atributo `data-theme` es lo que selecciona la
+  // paleta en index.css: hay que asignarlo siempre con el nombre del tema
+  // (los temas oscuros no tienen bloque propio y usan la paleta base).
   useEffect(() => {
     const theme = appSettings.theme;
-    if (theme === 'light') {
-      document.documentElement.removeAttribute('class');
-      document.documentElement.setAttribute('data-theme', 'light');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-      document.documentElement.classList.add('dark');
-    }
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.classList.toggle('dark', theme !== 'light');
   }, [appSettings.theme]);
+
+  // Zoom de la interfaz y comportamiento de la ventana.
+  useEffect(() => {
+    if (!appSettingsLoaded) return;
+
+    // Las llamadas a la ventana pueden lanzar si el runtime no esta disponible:
+    // un fallo aqui no debe derribar la aplicacion.
+    try {
+      getCurrentWebview().setZoom(appSettings.interfaceZoom).catch(() => {});
+      getCurrentWindow().setAlwaysOnTop(appSettings.alwaysOnTop).catch(() => {});
+      getCurrentWindow().setResizable(appSettings.resizable).catch(() => {});
+    } catch (error) {
+      console.error(error);
+    }
+  }, [
+    appSettingsLoaded,
+    appSettings.interfaceZoom,
+    appSettings.alwaysOnTop,
+    appSettings.resizable,
+  ]);
+
+  // Abrir automaticamente el ultimo proyecto, si el usuario lo pidio.
+  useEffect(() => {
+    if (!appSettingsLoaded || !appSettings.openLastProjectOnStart || isOpen) return;
+
+    let cancelled = false;
+    invoke<{ path: string }[]>('get_recent_projects')
+      .then((projects) => {
+        if (cancelled || !projects.length) return;
+        openProject(projects[0].path);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appSettingsLoaded, appSettings.openLastProjectOnStart, isOpen, openProject]);
 
   // Load workspace state when project opens
   const { loadWorkspaceState } = useWorkspaceStore();
@@ -78,7 +126,12 @@ const App: React.FC = () => {
   }, [isOpen, tabs.length]);
 
   if (!isOpen) {
-    return <ProjectSetup />;
+    return (
+      <>
+        <ProjectSetup />
+        <CloseGuard />
+      </>
+    );
   }
 
   // Theme-specific gradient overlays (only for dark themes)
@@ -111,6 +164,8 @@ const App: React.FC = () => {
         </WorkspaceLayout>
         <UpdateDialog />
       </div>
+
+      <CloseGuard />
     </div>
   );
 };

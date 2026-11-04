@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 
 export type AppTheme = 'midnight' | 'aurora' | 'noir' | 'light';
+/** Tipografia disponible para el editor. */
+export type EditorFontFamily = 'serif' | 'sans' | 'mono';
+/** Alineacion del parrafo en el editor. */
+export type EditorTextAlign = 'left' | 'justify' | 'center';
 
 export interface AppSettings {
   /** Tema de la interfaz. */
@@ -22,6 +26,30 @@ export interface AppSettings {
   openLastProjectOnStart: boolean;
   /** Si se pide confirmacion antes de cerrar la aplicacion. */
   confirmBeforeClose: boolean;
+  /** Zoom de la interfaz (1 = 100 %). */
+  interfaceZoom: number;
+  /** Si la ventana se mantiene siempre encima. */
+  alwaysOnTop: boolean;
+  /** Si la ventana se puede redimensionar. */
+  resizable: boolean;
+  /** Tipografia del editor. */
+  fontFamily: EditorFontFamily;
+  /** Tamano de letra del editor, en pixeles. */
+  fontSize: number;
+  /** Interlineado del editor. */
+  lineHeight: number;
+  /** Alineacion del parrafo en el editor. */
+  textAlign: EditorTextAlign;
+  /** Si se muestra el contador de palabras. */
+  showWordCount: boolean;
+  /** Modo de escritura centrada: el cursor queda fijo en una banda central. */
+  centeredWritingMode: boolean;
+  /** Altura de la banda central, en porcentaje del alto del editor. */
+  centeredWritingPosition: number;
+  /** Si el editor guarda solo los cambios. */
+  autoSaveEnabled: boolean;
+  /** Retardo del autoguardado, en milisegundos. */
+  autoSaveDelayMs: number;
 }
 
 /** Clave dentro del almacen generico de la aplicacion (`{config}/app_settings.json`). */
@@ -37,6 +65,18 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   restoreWindowOnStart: true,
   openLastProjectOnStart: false,
   confirmBeforeClose: false,
+  interfaceZoom: 1,
+  alwaysOnTop: false,
+  resizable: true,
+  fontFamily: 'serif',
+  fontSize: 18,
+  lineHeight: 1.75,
+  textAlign: 'left',
+  showWordCount: true,
+  centeredWritingMode: false,
+  centeredWritingPosition: 50,
+  autoSaveEnabled: true,
+  autoSaveDelayMs: 700,
 };
 
 interface AppSettingsState {

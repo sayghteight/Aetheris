@@ -132,6 +132,50 @@
   --color-scrollbar-thumb-hover: rgba(60, 75, 100, 0.6);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   TEMA: LIGHT (Papel)
+   Personalidad: Claro, limpio, papel de manuscrito
+   ═══════════════════════════════════════════════════════════════════════════ */
+[data-theme="light"] {
+  --color-bg-primary: #faf7f2;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #f0ece4;
+  --color-bg-hover: #f5f1e9;
+  --color-bg-elevated: #ffffff;
+  --color-bg-overlay: rgba(250, 247, 242, 0.97);
+
+  --color-text-primary: #1f1b16;
+  --color-text-secondary: #5b5347;
+  --color-text-muted: #8b8172;
+  --color-text-inverse: #ffffff;
+
+  --color-border: #ddd5c7;
+  --color-border-subtle: rgba(221, 213, 199, 0.65);
+
+  --color-accent: #a97a09;
+  --color-accent-hover: #8a6106;
+  --color-accent-bg: rgba(169, 122, 9, 0.1);
+  --color-accent-border: rgba(169, 122, 9, 0.32);
+
+  --color-brand: #5b53c9;
+  --color-brand-hover: #4740ad;
+  --color-brand-bg: rgba(91, 83, 201, 0.1);
+
+  --color-danger: #c0392b;
+  --color-danger-bg: rgba(192, 57, 43, 0.1);
+
+  --color-success: #2e8b57;
+  --color-success-bg: rgba(46, 139, 87, 0.1);
+
+  --color-canvas: #faf7f2;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f0ece4;
+  --color-input-bg: #ffffff;
+  --color-scrollbar-track: transparent;
+  --color-scrollbar-thumb: rgba(120, 105, 80, 0.35);
+  --color-scrollbar-thumb-hover: rgba(120, 105, 80, 0.55);
+}
+
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;

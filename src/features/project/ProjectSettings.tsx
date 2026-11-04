@@ -7,26 +7,21 @@ import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useShortcutsStore, SHORTCUT_DEFINITIONS, ShortcutAction } from '../../store/shortcutsStore';
 import { useI18n } from '../../i18n';
 import { ShortcutRecorder } from '../../components/ShortcutRecorder';
+import { AppSettingsDialog } from '../settings/AppSettingsDialog';
 import {
   BookOpen,
-  HardDrive,
   Settings2,
   RotateCcw,
   AlertTriangle,
-  Type,
-  Minus,
-  Plus,
   Check,
   Keyboard,
-  Moon,
-  Sunset,
-  Sparkles,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 export const ProjectSettings: React.FC = () => {
   const { t } = useI18n();
   const { currentProject: project } = useProjectStore();
-  const { settings, loadSettings, saveSettings } = useSettingsStore();
+  const { loadSettings } = useSettingsStore();
   const { fetchNodes } = useManuscriptStore();
   const { setActiveView } = useWorkspaceStore();
   const { loadShortcuts, setShortcut, resetToDefaults, getShortcut } = useShortcutsStore();
@@ -35,24 +30,12 @@ export const ProjectSettings: React.FC = () => {
   const [saved, setSaved] = useState<string | null>(null);
   const [editingShortcut, setEditingShortcut] = useState<ShortcutAction | null>(null);
   const [conflictLabel, setConflictLabel] = useState<string | null>(null);
+  const [appSettingsOpen, setAppSettingsOpen] = useState(false);
 
   // Project info
   const [title, setTitle] = useState(project?.title ?? '');
   const [author, setAuthor] = useState(project?.author ?? '');
   const [description, setDescription] = useState(project?.description ?? '');
-
-  // Editor settings (local state)
-  const [editorSettings, setEditorSettings] = useState({
-    fontSize: settings.fontSize || 16,
-    lineHeight: settings.lineHeight || 1.6,
-    fontFamily: settings.fontFamily || 'default',
-    textAlign: settings.textAlign || 'left',
-    spellCheck: settings.spellCheck !== false,
-    autoCorrect: settings.autoCorrect !== false,
-    showWordCount: settings.showWordCount !== false,
-    centeredWritingMode: settings.centeredWritingMode ?? false,
-    centeredWritingPosition: settings.centeredWritingPosition ?? 50,
-  });
 
   useEffect(() => {
     loadSettings();
@@ -66,20 +49,6 @@ export const ProjectSettings: React.FC = () => {
       setDescription(project.description ?? '');
     }
   }, [project]);
-
-  useEffect(() => {
-    setEditorSettings({
-      fontSize: settings.fontSize || 16,
-      lineHeight: settings.lineHeight || 1.6,
-      fontFamily: settings.fontFamily || 'default',
-      textAlign: settings.textAlign || 'left',
-      spellCheck: settings.spellCheck !== false,
-      autoCorrect: settings.autoCorrect !== false,
-      showWordCount: settings.showWordCount !== false,
-      centeredWritingMode: settings.centeredWritingMode ?? false,
-      centeredWritingPosition: settings.centeredWritingPosition ?? 50,
-    });
-  }, [settings]);
 
   const handleSaveProjectInfo = async () => {
     try {
@@ -97,12 +66,6 @@ export const ProjectSettings: React.FC = () => {
     }
   };
 
-  const handleSaveSettings = async () => {
-    await saveSettings({ ...settings, ...editorSettings });
-    setSaved('settings');
-    setTimeout(() => setSaved(null), 2000);
-  };
-
   const handleResetProject = async () => {
     setIsResetting(true);
     try {
@@ -117,10 +80,6 @@ export const ProjectSettings: React.FC = () => {
     }
   };
 
-  const updateEditorSetting = (key: string, value: any) => {
-    setEditorSettings(prev => ({ ...prev, [key]: value }));
-  };
-
   const SavedMessage = () => (
     <span className="text-[var(--color-success)] text-sm flex items-center gap-2">
       <Check className="w-4 h-4" />
@@ -128,11 +87,10 @@ export const ProjectSettings: React.FC = () => {
     </span>
   );
 
-  const [activeTab, setActiveTab] = useState<'project' | 'editor' | 'shortcuts'>('project');
+  const [activeTab, setActiveTab] = useState<'project' | 'shortcuts'>('project');
 
   const tabs = [
     { id: 'project' as const, label: t('setup.title') || 'Proyecto', icon: BookOpen },
-    { id: 'editor' as const, label: t('editorSettings.title'), icon: Type },
     { id: 'shortcuts' as const, label: t('settings.keyboardShortcuts'), icon: Keyboard },
   ];
 
@@ -197,23 +155,22 @@ export const ProjectSettings: React.FC = () => {
           </section>
 
           <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-xl">
-            <div className="flex items-center gap-2 mb-4">
-              <HardDrive className="w-4 h-4 text-cyan-400" />
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">{t('settings.autoSave')}</h3>
-            </div>
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-3">
-                <button onClick={() => saveSettings({ ...settings, auto_save_enabled: !settings.auto_save_enabled })} className={`w-12 h-7 rounded-full transition-all relative ${settings.auto_save_enabled ? 'bg-[var(--color-brand)]' : 'bg-[var(--color-bg-tertiary)]'}`}>
-                  <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all ${settings.auto_save_enabled ? 'left-6' : 'left-1'}`} />
-                </button>
-                <span className="text-sm text-[var(--color-text-secondary)]">{t('settings.autoSaveEnabled')}</span>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
+                  {t('appSettings.title')}
+                </h3>
+                <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+                  {t('appSettings.projectScopeHint')}
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-[var(--color-text-muted)]">{t('settings.autoSaveInterval')}:</label>
-                <select value={settings.auto_save_interval_minutes} onChange={(e) => saveSettings({ ...settings, auto_save_interval_minutes: Number(e.target.value) })} className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg px-3 py-1.5 text-sm text-[var(--color-text-secondary)] outline-none">
-                  <option value={1}>1</option><option value={3}>3</option><option value={5}>5</option><option value={10}>10</option>
-                </select>
-              </div>
+              <button
+                onClick={() => setAppSettingsOpen(true)}
+                className="lib-ring inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-hover)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                {t('appSettings.open')}
+              </button>
             </div>
           </section>
 
@@ -242,139 +199,6 @@ export const ProjectSettings: React.FC = () => {
           </section>
         </>
       )}
-
-      {/* ─── Editor Tab ─── */}
-      {activeTab === 'editor' && (
-        <>
-          <section className="min-w-[420px] rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Type className="w-4 h-4 text-[var(--color-accent)]" />
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">{t('editorSettings.title')}</h3>
-              </div>
-              {saved === 'settings' && <SavedMessage />}
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 mb-6">
-              <div className="bg-[var(--color-bg-primary)]/40 border border-[var(--color-border)] rounded-xl p-4">
-                <label className="block text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">{t('editorSettings.fontSize')}</label>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => updateEditorSetting('fontSize', Math.max(12, editorSettings.fontSize - 1))} className="w-8 h-8 rounded-lg bg-[var(--color-bg-hover)] hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] flex items-center justify-center transition-colors"><Minus className="w-4 h-4" /></button>
-                  <div className="flex-1 text-center"><span className="text-xl font-bold text-[var(--color-text-primary)]">{editorSettings.fontSize}</span><span className="text-[var(--color-text-muted)] text-sm ml-1">px</span></div>
-                  <button onClick={() => updateEditorSetting('fontSize', Math.min(24, editorSettings.fontSize + 1))} className="w-8 h-8 rounded-lg bg-[var(--color-bg-hover)] hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] flex items-center justify-center transition-colors"><Plus className="w-4 h-4" /></button>
-                </div>
-              </div>
-              <div className="bg-[var(--color-bg-primary)]/40 border border-[var(--color-border)] rounded-xl p-4">
-                <label className="block text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">{t('editorSettings.lineHeight')}</label>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => updateEditorSetting('lineHeight', Math.max(1.0, editorSettings.lineHeight - 0.1))} className="w-8 h-8 rounded-lg bg-[var(--color-bg-hover)] hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] flex items-center justify-center transition-colors"><Minus className="w-4 h-4" /></button>
-                  <div className="flex-1 text-center"><span className="text-xl font-bold text-[var(--color-text-primary)]">{editorSettings.lineHeight.toFixed(1)}</span></div>
-                  <button onClick={() => updateEditorSetting('lineHeight', Math.min(2.5, editorSettings.lineHeight + 0.1))} className="w-8 h-8 rounded-lg bg-[var(--color-bg-hover)] hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] flex items-center justify-center transition-colors"><Plus className="w-4 h-4" /></button>
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">{t('settings.theme') || 'Tema'}</label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {[
-                  {
-                    value: 'midnight',
-                    label: 'Midnight',
-                    desc: t('settingsProject.deepBlue'),
-                    icon: Moon,
-                    bg: 'bg-gradient-to-br from-[#13162a] to-[#252d55]',
-                    accent: 'text-[#f0c040]',
-                    border: 'border-[#333d66]'
-                  },
-                  {
-                    value: 'aurora',
-                    label: 'Aurora',
-                    desc: 'Tonos cálidos',
-                    icon: Sunset,
-                    bg: 'bg-gradient-to-br from-[#1a1510] to-[#352d20]',
-                    accent: 'text-[#f0b040]',
-                    border: 'border-[#4a3d2e]'
-                  },
-                  {
-                    value: 'noir',
-                    label: 'Noir',
-                    desc: 'Cyan neón',
-                    icon: Sparkles,
-                    bg: 'bg-gradient-to-br from-[#080a0d] to-[#181c24]',
-                    accent: 'text-[#50e8e0]',
-                    border: 'border-[#28303d]'
-                  },
-                ].map((theme) => {
-                  const Icon = theme.icon;
-                  const isActive = settings.theme === theme.value;
-                  return (
-                    <button
-                      key={theme.value}
-                      onClick={() => saveSettings({ ...settings, theme: theme.value as any })}
-                      className={`p-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
-                        isActive
-                          ? 'border-[var(--color-brand)] bg-[var(--color-brand-bg)]'
-                          : 'border-[var(--color-border)] bg-[var(--color-bg-secondary)] hover:border-[var(--color-text-muted)]'
-                      }`}
-                    >
-                      <div className={`w-14 h-14 rounded-xl ${theme.bg} border ${theme.border} flex items-center justify-center shrink-0 shadow-lg`}>
-                        <Icon className={`w-6 h-6 ${isActive ? theme.accent : 'text-[var(--color-text-muted)]'}`} />
-                      </div>
-                      <div className="text-left">
-                        <div className={`text-sm font-bold ${isActive ? 'text-[var(--color-brand)]' : 'text-[var(--color-text-primary)]'}`}>{theme.label}</div>
-                        <div className="text-xs text-[var(--color-text-muted)]">{theme.desc}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-1">{t('settings.language')}</label>
-                <select value={settings.language} onChange={(e) => saveSettings({ ...settings, language: e.target.value })} className="w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-secondary)] outline-none">
-                  <option value="es">{t('settings.languageEs')}</option>
-                  <option value="en">{t('settings.languageEn')}</option>
-                </select>
-              </div>              
-              <ToggleOption label={t('editorSettings.showWordCount')} enabled={editorSettings.showWordCount} onChange={(v) => updateEditorSetting('showWordCount', v)} />
-              <ToggleOption label={t('editorSettings.centeredWritingMode')} enabled={editorSettings.centeredWritingMode} onChange={(v) => updateEditorSetting('centeredWritingMode', v)} />
-
-              {editorSettings.centeredWritingMode && (
-                <div className="mt-3 p-4 bg-[var(--color-bg-primary)]/40 border border-[var(--color-border)] rounded-xl">
-                  <label className="block text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
-                    {t('editorSettings.cursorPosition')}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    {[30, 40, 50, 60].map((pos) => (
-                      <button
-                        key={pos}
-                        type="button"
-                        onClick={() => updateEditorSetting('centeredWritingPosition', pos)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                          editorSettings.centeredWritingPosition === pos
-                            ? 'bg-[var(--color-brand)] text-white'
-                            : 'bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-text-muted)]'
-                        }`}
-                      >
-                        {pos}%
-                      </button>
-                    ))}
-                  </div>
-                  <p className="mt-2 text-xs text-[var(--color-text-muted)]">
-                    {t('editorSettings.cursorPositionDesc')}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <button onClick={handleSaveSettings} className="mt-6 w-full md:w-auto rounded-lg bg-[var(--color-brand-bg)] border border-[var(--color-brand)]/30 px-4 py-2 text-sm font-semibold text-[var(--color-brand)] hover:bg-[var(--color-brand)]/20 transition-colors">{t('common.save')}</button>
-          </section>
-        </>
-      )}
-
       {/* ─── Shortcuts Tab ─── */}
       {activeTab === 'shortcuts' && (
         <>
@@ -442,30 +266,8 @@ export const ProjectSettings: React.FC = () => {
         </section>
         </>
       )}
-    </div>
-  );
-};
 
-interface ToggleOptionProps {
-  label: string;
-  enabled: boolean;
-  onChange: (value: boolean) => void;
-}
-
-const ToggleOption: React.FC<ToggleOptionProps> = ({ label, enabled, onChange }) => {
-  return (
-    <div className="flex items-center justify-between p-3 bg-[var(--color-bg-primary)]/40 border border-[var(--color-border)] rounded-xl">
-      <span className="text-sm font-medium text-[var(--color-text-secondary)]">{label}</span>
-      <button
-        onClick={() => onChange(!enabled)}
-        className={`w-11 h-6 rounded-full transition-all relative ${
-          enabled ? 'bg-[var(--color-brand)]' : 'bg-[var(--color-bg-tertiary)]'
-        }`}
-      >
-        <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${
-          enabled ? 'left-5' : 'left-0.5'
-        }`} />
-      </button>
+      <AppSettingsDialog open={appSettingsOpen} onClose={() => setAppSettingsOpen(false)} />
     </div>
   );
 };
