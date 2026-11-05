@@ -204,12 +204,14 @@ culto-guieditor/
 │   └── utils/                   # Utility functions
 ├── src-tauri/                    # Rust backend
 │   ├── src/
+│   │   ├── backup.rs             # Centralized backups and snapshots
 │   │   ├── commands/            # Tauri commands (IPC)
 │   │   ├── database/             # SQLite database operations
 │   │   ├── domain/              # Domain models
 │   │   ├── export/              # Export modules (PDF, DOCX, HTML, Markdown, TXT)
 │   │   └── state.rs             # Application state
 │   └── icons/                   # Application icons
+├── CHANGELOG.md                 # Release notes
 └── package.json
 ```
 
