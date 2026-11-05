@@ -70,11 +70,33 @@ Multiple themes to suit your preference:
 - **Midnight** — Dark theme (default)
 - **Aurora** — Warm dark theme with amber accents
 - **Noir** — Deep dark theme
+- **Light** — Clean paper theme
 
 Focus modes:
 - **Standard** — Normal interface
 - **Focus** — Reduced distractions
 - **Distraction-Free** — Clean black background
+
+### ⚙️ Application Settings
+A dedicated settings section for the whole application, reachable from the library and from the
+header of every novel:
+
+- **Window** — fullscreen, resolution, maximize, center, always on top, resizable and restoring
+  the window size on startup
+- **Appearance** — theme, interface language and interface zoom
+- **Writing** — font family, font size, line height, text alignment, word count and centered
+  writing mode
+- **Keyboard shortcuts** — remap any shortcut and restore the defaults
+- **Behaviour** — autosave interval, open the last project on startup, confirm before closing
+
+### 💾 Backups & Snapshots
+- **One automatic backup per project**, updated silently and written atomically
+- **Manual snapshots** to keep historical restore points, listed and restorable from the app
+- Stored in `AppData/Roaming/aetheria/backups/`, one folder per project
+
+### 🖱️ Context Menu
+A native context menu of your own, with editing actions and a dedicated scope inside the editor.
+The operating system spell checker is disabled.
 
 ### 🌐 Internationalization
 Available in English and Spanish
@@ -87,7 +109,9 @@ Available in English and Spanish
 
 ## 📥 Downloads
 
-### Latest Release: v0.1.8 (August 25, 2026)
+### Latest Release: v0.1.8 (November 5, 2026)
+
+📋 [Full changelog for v0.1.8](CHANGELOG.md#018--november-5-2026)
 
 #### Windows
 - [Aetheria_0.1.8_x64-setup.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_x64-setup.exe) — Windows Installer
@@ -102,7 +126,7 @@ Available in English and Spanish
 - [Aetheria-0.1.8-1.x86_64.rpm](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria-0.1.8-1.x86_64.rpm) — Fedora/RHEL
 
 #### Source Code
-- [Aetheria_0.1.8.tar.gz](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_aarch64.app.tar.gz) — Source archive
+- [app-v0.1.8.tar.gz](https://github.com/sayghteight/Aetheris/archive/refs/tags/app-v0.1.8.tar.gz) — Source archive (tar.gz)
 - [app-v0.1.8.zip](https://github.com/sayghteight/Aetheris/archive/refs/tags/app-v0.1.8.zip) — ZIP archive
 
 ---
