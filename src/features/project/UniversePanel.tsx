@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Maximize2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { useI18n } from '../../i18n';
 import {
   Bold,
   Italic,
@@ -16,9 +17,12 @@ import {
   Compass,
   ArrowLeft,
   Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useProjectStore } from '../../store/projectStore';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { useAppSettingsStore } from '../../store/appSettingsStore';
+import { registerSceneSaver } from '../../utils/sceneSaver';
 import { useNavigationStore } from '../../store/navigationStore';
 import { TiptapEditor } from '../editor/TiptapEditor';
 import { EmptyState } from '../../components/EmptyState';
@@ -61,7 +65,7 @@ const defaultCategories: UniverseCategory[] = [
         type: 'entry',
         parentId: 'folder-characters',
         content:
-          '<h3>Lyra</h3><p>Escribe aquí la esencia del personaje, sus conflictos y su arco.</p>',
+          '<h3>Lyra</h3><p>Write the essence of the character here, their conflicts and arc.</p>',
         createdAt: new Date().toISOString(),
       },
     ],
@@ -110,12 +114,13 @@ interface RichTextEditorProps {
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   value,
   onChange,
-  placeholder = 'Escribe aquí el contenido...',
+  placeholder = 'Write content here...',
   saveLabel,
   wordCount = 0,
   showWordCount = true,
   onSelectionChange,
 }) => {
+  const { t } = useI18n();
   const [focusMode, setFocusMode] = useState(false);
   const editorRef = useRef<HTMLDivElement | null>(null);
   const savedRange = useRef<Range | null>(null);
@@ -249,7 +254,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <button
             type="button"
             onClick={() => setFocusMode(true)}
-            title="Modo enfoque"
+            title={t('ui.focusMode')}
             className="ml-2 flex items-center gap-1.5 rounded-md border border-slate-800 bg-slate-800/40 px-3 py-1.5 text-xs text-slate-400 hover:border-violet-500/60 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <Maximize2 className="h-3.5 w-3.5" />
@@ -268,7 +273,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       )}
 
       {/* Scrollable writing area — scroll vive SOLO aquí */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-8 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-950">
+      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-8">
         <div className="mx-auto" >
           <div
             ref={editorRef}
@@ -367,26 +372,26 @@ const CategoriesView: React.FC<{
           <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700/60 bg-slate-800/40 text-slate-400">
             <Plus className="h-5 w-5" />
           </div>
-          <p className="text-sm font-semibold text-slate-400">Nueva categoría</p>
+          <p className="text-sm font-semibold text-slate-400">New category</p>
         </div>
       </div>
 
       {/* Formulario crear categoría */}
       <div className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-5">
         <p className="mb-3 text-sm font-semibold text-slate-200">
-          Crear nueva categoría
+          Create new category
         </p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Nombre (ej. Hechizos)"
+            placeholder="Name (e.g. Spells)"
             className="flex-1 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-violet-500"
           />
           <input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Descripción breve"
+            placeholder="Brief description"
             className="flex-[2] rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-violet-500"
           />
           <button
@@ -395,7 +400,7 @@ const CategoriesView: React.FC<{
             className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-500"
           >
             <Plus className="h-4 w-4" />
-            Crear
+            Create
           </button>
         </div>
       </div>
@@ -467,7 +472,7 @@ const CategoryView: React.FC<{
       return;
     }
     setEntryError(null);
-    const defaultContent = `<h3>${trimmed}</h3><p>Escribe aquí la información sobre ${trimmed}.</p>`;
+    const defaultContent = `<h3>${trimmed}</h3><p>Write information about ${trimmed} here.</p>`;
     onAddEntry(trimmed, defaultContent);
     setNewEntryName('');
   };
@@ -553,14 +558,14 @@ const CategoryView: React.FC<{
             <p className="text-xs text-slate-500">Carpetas y fichas</p>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-950">
+          <div className="flex-1 overflow-y-auto p-4">
             {renderTree(category.entries, null)}
           </div>
 
           {/* Agregar carpeta */}
           <div className="border-t border-slate-800/70 p-4 space-y-2">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
-              Nueva carpeta
+              New folder
             </p>
             <div className="flex gap-2">
               <input
@@ -582,14 +587,14 @@ const CategoryView: React.FC<{
                 className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950/70 px-2.5 py-1.5 text-sm text-slate-300 transition hover:border-violet-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FolderPlus className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only">Añadir</span>
+                <span className="sr-only sm:not-sr-only">Add</span>
               </button>
             </div>
             {folderError && <p className="text-xs text-red-400">{folderError}</p>}
 
             {/* Agregar entrada */}
             <p className="mt-3 text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
-              Nueva ficha
+              New entry
             </p>
             <input
               value={newEntryName}
@@ -598,7 +603,7 @@ const CategoryView: React.FC<{
                 setEntryError(null);
               }}
               onKeyDown={(e) => e.key === 'Enter' && handleAddEntry()}
-              placeholder="Nombre de la ficha"
+              placeholder="Entry name"
               className={`w-full rounded-lg border bg-slate-950 px-2.5 py-1.5 text-sm text-slate-200 outline-none focus:border-violet-500 ${
                 entryError ? 'border-red-500' : 'border-slate-800'
               }`}
@@ -611,7 +616,7 @@ const CategoryView: React.FC<{
               className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <StickyNote className="h-3.5 w-3.5" />
-              Guardar ficha
+              Save entry
             </button>
           </div>
         </div>
@@ -622,12 +627,12 @@ const CategoryView: React.FC<{
             <p className="text-sm font-semibold text-slate-200">Editor</p>
             <p className="text-xs text-slate-500">
               {selectedEntry
-                ? `Editando: ${selectedEntry.name}`
-                : 'Selecciona un elemento para editarlo'}
+                ? `Editing: ${selectedEntry.name}`
+                : 'Select an element to edit it'}
             </p>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-950">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4">
             {selectedEntry ? (
               <div className="flex h-full flex-col space-y-4">
                 <div>
@@ -683,11 +688,15 @@ interface SceneEditorProps {
   sceneId: string;
   onStatsUpdate: (words: number, readTime: number) => void;
   onSelectionChange?: (selection: { from: number; to: number } | null) => void;
+  onOpenInWorldbuilding?: (entityId: string) => void;
 }
 
-export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate, onSelectionChange }) => {
+export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate, onSelectionChange, onOpenInWorldbuilding }) => {
+  const { settings: appSettings } = useAppSettingsStore();
+  const { t } = useI18n();
   const [content, setContent] = useState('');
   const saveTimeout = useRef<number | null>(null as any);
+  const contentRef = useRef('');
 
   // Load content on mount
   useEffect(() => {
@@ -697,6 +706,7 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
         const loaded = await invoke<string | null>('get_scene_content', { nodeId: sceneId });
         if (!mounted) return;
         setContent(loaded ?? '');
+        contentRef.current = loaded ?? '';
       } catch (err) {
         console.error('Error loading scene:', err);
       }
@@ -704,30 +714,53 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
     return () => { mounted = false; };
   }, [sceneId]);
 
+  // Persiste el contenido en el proyecto y avisa al resto de componentes.
+  const persist = useCallback(async (rawContent: string) => {
+    // Auto-convert mentions: replace plain text names with mention nodes
+    const convertedContent = await invoke<string>('auto_convert_mentions', { content: rawContent });
+    const plainText = convertedContent.replace(/<[^>]+>/g, ' ');
+    await invoke('update_scene_content', { nodeId: sceneId, content: convertedContent, plainText });
+    // Update local content with converted content (has mention nodes now)
+    setContent(convertedContent);
+    contentRef.current = convertedContent;
+    // Dispatch event to notify character tracking of changes
+    window.dispatchEvent(new CustomEvent('scene-saved', { detail: { sceneId } }));
+  }, [sceneId]);
+
+  // Guardado manual (atajo Ctrl+S): este editor es el que esta activo.
+  useEffect(() => registerSceneSaver(() => persist(contentRef.current)), [persist]);
+
   // Handle content change with autosave
   const handleChange = (newContent: string) => {
     setContent(newContent);
+    contentRef.current = newContent;
+
     if (saveTimeout.current) window.clearTimeout(saveTimeout.current);
-    saveTimeout.current = window.setTimeout(async () => {
-      try {
-        const plainText = newContent.replace(/<[^>]+>/g, ' ');
-        await invoke('update_scene_content', { nodeId: sceneId, content: newContent, plainText });
-        // Dispatch event to notify character tracking of changes
-        window.dispatchEvent(new CustomEvent('scene-saved', { detail: { sceneId } }));
-      } catch (err) {
-        console.error('Auto-save failed', err);
-      }
-    }, 700);
+    // Con el autoguardado desactivado solo se guarda con el atajo de guardar.
+    if (!appSettings.autoSaveEnabled) return;
+
+    saveTimeout.current = window.setTimeout(() => {
+      persist(newContent).catch((err) => console.error('Auto-save failed', err));
+    }, appSettings.autoSaveDelayMs);
   };
 
   return (
-    <TiptapEditor
-      content={content}
-      onChange={handleChange}
-      placeholder="Comienza a escribir tu escena aquí..."
-      onStatsUpdate={onStatsUpdate}
-      onSelectionChange={onSelectionChange}
-    />
+    <>
+      {!appSettings.autoSaveEnabled && (
+        <div className="flex items-center gap-2 border-b border-[var(--color-accent-border)] bg-[var(--color-accent-bg)] px-4 py-1.5 text-xs text-[var(--color-text-secondary)]">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[var(--color-accent)]" />
+          {t('appSettings.autoSaveOffNotice')}
+        </div>
+      )}
+      <TiptapEditor
+        content={content}
+        onChange={handleChange}
+        placeholder="Comienza a escribir tu escena aquí..."
+        onStatsUpdate={onStatsUpdate}
+        onSelectionChange={onSelectionChange}
+        onOpenInWorldbuilding={onOpenInWorldbuilding}
+      />
+    </>
   );
 };
 
@@ -816,7 +849,7 @@ export const UniversePanel: React.FC = () => {
     const nextCategory: UniverseCategory = {
       id: createId(),
       name,
-      description: description || 'Nueva categoría de universo.',
+      description: description || 'New universe category.',
       entries: [],
     };
     setCategories((current) => [...current, nextCategory]);

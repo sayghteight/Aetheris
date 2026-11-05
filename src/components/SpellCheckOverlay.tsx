@@ -174,7 +174,7 @@ export const SpellCheckOverlay: React.FC<SpellCheckOverlayProps> = ({
               className="w-full px-3 py-1.5 text-left text-sm text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-colors"
               onClick={handleAddToDictionary}
             >
-              + Añadir al diccionario
+              + Add to dictionary
             </button>
           </div>
 
@@ -185,7 +185,7 @@ export const SpellCheckOverlay: React.FC<SpellCheckOverlayProps> = ({
               setSuggestions([]);
             }}
           >
-            Cerrar
+            Close
           </button>
         </div>
       )}

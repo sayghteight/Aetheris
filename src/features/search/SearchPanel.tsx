@@ -115,7 +115,7 @@ export const SearchPanel: React.FC = () => {
       {/* Header */}
       <div className="px-4 py-3 border-b border-slate-800">
         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-          Buscar en el manuscrito
+          Search in manuscript
         </h3>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -124,7 +124,7 @@ export const SearchPanel: React.FC = () => {
             type="text"
             value={query}
             onChange={handleInputChange}
-            placeholder="Buscar escenas, personajes, lugares..."
+            placeholder="Search scenes, characters, locations..."
             className="w-full bg-slate-950/80 border border-slate-700 rounded-lg pl-9 pr-8 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all"
           />
           {query && (
@@ -144,7 +144,7 @@ export const SearchPanel: React.FC = () => {
         {isSearching && (
           <div className="flex items-center justify-center py-12 text-slate-500">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />
-            <span className="text-sm">Buscando...</span>
+            <span className="text-sm">Searching...</span>
           </div>
         )}
 

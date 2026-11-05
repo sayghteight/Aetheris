@@ -1,10 +1,12 @@
+use crate::backup::{self, BackupStatus, ProjectContext, SnapshotInfo};
 use crate::database::initialize_database;
 use crate::state::AppState;
-use rusqlite::Connection;
+use rusqlite::{Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
 use tauri::State;
 use uuid::Uuid;
 
@@ -20,7 +22,8 @@ pub struct ProjectMetadata {
     pub updated_at: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(default)]
 pub struct ProjectSettings {
     pub theme: String,
     pub focus_mode: String,
@@ -32,6 +35,29 @@ pub struct ProjectSettings {
     pub updated_at: Option<String>,
     pub centered_writing_mode: bool,
     pub centered_writing_position: i64,
+}
+
+/// Valores por defecto de los ajustes de la novela.
+///
+/// El struct acepta `#[serde(default)]`: los ajustes que ya no existen en la
+/// base de datos (tema, idioma, estilo) se completan con estos valores en vez
+/// de fallar la deserializacion, de modo que el cliente puede enviar solo los
+/// campos que de verdad usa.
+impl Default for ProjectSettings {
+    fn default() -> Self {
+        Self {
+            theme: "midnight".to_string(),
+            focus_mode: "standard".to_string(),
+            auto_save_enabled: true,
+            auto_save_interval_minutes: 5,
+            language: "es".to_string(),
+            writing_style: "creative".to_string(),
+            spell_check_languages: vec!["es".to_string(), "en".to_string()],
+            updated_at: None,
+            centered_writing_mode: false,
+            centered_writing_position: 50,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -55,21 +81,206 @@ pub struct UniverseCategory {
     pub entries: Vec<UniverseEntry>,
 }
 
-fn backup_project_file(path: &Path) -> Result<Option<PathBuf>, String> {
-    if !path.exists() {
-        return Ok(None);
+/// Lee el identificador del proyecto sin abrirlo en modo escritura.
+///
+/// Se usa para asociar los backups al proyecto correcto antes de que exista
+/// una conexion activa.
+fn peek_project_id(file_path: &Path) -> Option<String> {
+    let conn = Connection::open_with_flags(file_path, OpenFlags::SQLITE_OPEN_READ_ONLY).ok()?;
+    conn.query_row("SELECT id FROM project_metadata LIMIT 1;", [], |row| {
+        row.get::<_, String>(0)
+    })
+    .ok()
+}
+
+/// Lee los metadatos del proyecto de una conexion abierta.
+fn read_project_metadata(conn: &Connection) -> Result<ProjectMetadata, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, title, author, description, genre, synopsis, created_at, updated_at
+             FROM project_metadata
+             LIMIT 1;",
+        )
+        .map_err(|e| e.to_string())?;
+
+    stmt.query_row([], |row| {
+        Ok(ProjectMetadata {
+            id: row.get(0)?,
+            title: row.get(1)?,
+            author: row.get(2)?,
+            description: row.get(3)?,
+            genre: row.get(4)?,
+            synopsis: row.get(5)?,
+            created_at: row.get(6)?,
+            updated_at: row.get(7)?,
+        })
+    })
+    .map_err(|e| format!("No se encontraron metadatos de proyecto válidos: {}", e))
+}
+
+/// Actualiza el backup principal si la base de datos ha cambiado.
+///
+/// Devuelve `true` cuando se ha escrito una copia nueva. La comparacion usa
+/// `total_changes` de la conexion: cuenta las filas insertadas, modificadas
+/// o borradas desde que se abrio el proyecto, asi que basta con compararlo
+/// con el valor del ultimo backup para saber si hay cambios pendientes.
+pub fn flush_pending_backup(state: &AppState) -> Result<bool, String> {
+    let ctx = {
+        let guard = state.project.lock().map_err(|_| "Error bloqueando estado")?;
+        match guard.clone() {
+            Some(ctx) => ctx,
+            None => return Ok(false),
+        }
+    };
+
+    let changes = {
+        let guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+        match guard.as_ref() {
+            Some(conn) => conn.total_changes(),
+            None => return Ok(false),
+        }
+    };
+
+    if changes == ctx.last_backed_up_changes {
+        return Ok(false);
     }
 
-    let mut backup_path = path.with_extension("aer.bak");
-    let mut index = 1;
-    while backup_path.exists() {
-        backup_path = path.with_extension(format!("aer.bak.{}", index));
-        index += 1;
+    {
+        let guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+        let conn = guard.as_ref().ok_or("No hay proyecto abierto")?;
+        backup::update_main_backup(conn, &ctx)?;
+        let new_changes = conn.total_changes();
+
+        // El guardia de `db` se suelta antes de pedir `project`: los dos mutexes
+        // nunca se toman a la vez, asi que no puede haber interbloqueo.
+        let mut project = state.project.lock().map_err(|_| "Error bloqueando estado")?;
+        if let Some(current) = project.as_mut() {
+            current.last_backed_up_changes = new_changes;
+        }
     }
 
-    fs::copy(path, &backup_path)
-        .map(|_| Some(backup_path))
-        .map_err(|e| format!("No se pudo crear una copia de seguridad del proyecto: {}", e))
+    Ok(true)
+}
+
+/// Crea un snapshot manual del estado actual del proyecto.
+#[tauri::command]
+pub fn create_snapshot(state: State<'_, AppState>) -> Result<SnapshotInfo, String> {
+    let ctx = {
+        let guard = state.project.lock().map_err(|_| "Error bloqueando estado")?;
+        guard
+            .clone()
+            .ok_or("No hay proyecto abierto".to_string())?
+    };
+
+    let (info, changes) = {
+        let guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+        let conn = guard.as_ref().ok_or("No hay proyecto abierto")?;
+        let info = backup::create_snapshot(conn, &ctx)?;
+        (info, conn.total_changes())
+    };
+
+    // El estado actual ya esta guardado en el snapshot: se da por respaldado.
+    {
+        let mut project = state.project.lock().map_err(|_| "Error bloqueando estado")?;
+        if let Some(current) = project.as_mut() {
+            current.last_backed_up_changes = changes;
+        }
+    }
+
+    Ok(info)
+}
+
+/// Lista los snapshots manuales del proyecto abierto.
+#[tauri::command]
+pub fn list_snapshots(state: State<'_, AppState>) -> Result<Vec<SnapshotInfo>, String> {
+    let ctx = {
+        let guard = state.project.lock().map_err(|_| "Error bloqueando estado")?;
+        guard
+            .clone()
+            .ok_or("No hay proyecto abierto".to_string())?
+    };
+
+    backup::list_snapshots(&ctx)
+}
+
+/// Estado del sistema de copias de seguridad del proyecto abierto.
+#[tauri::command]
+pub fn get_backup_status(state: State<'_, AppState>) -> Result<BackupStatus, String> {
+    let ctx = {
+        let guard = state.project.lock().map_err(|_| "Error bloqueando estado")?;
+        guard
+            .clone()
+            .ok_or("No hay proyecto abierto".to_string())?
+    };
+
+    backup::backup_status(&ctx)
+}
+
+/// Restaura un snapshot sobre el proyecto abierto.
+///
+/// Antes de sobrescribir el proyecto se crea un snapshot del estado actual,
+/// para que el usuario pueda volver atras si se arrepiente de la
+/// restauracion.
+#[tauri::command]
+pub fn restore_snapshot(
+    state: State<'_, AppState>,
+    snapshot_id: String,
+) -> Result<ProjectMetadata, String> {
+    restore_snapshot_impl(&state, &snapshot_id)
+}
+
+/// Logica de la restauracion, separada del comando para poder probarla.
+pub fn restore_snapshot_impl(
+    state: &AppState,
+    snapshot_id: &str,
+) -> Result<ProjectMetadata, String> {
+    let ctx = {
+        let guard = state.project.lock().map_err(|_| "Error bloqueando estado")?;
+        guard
+            .clone()
+            .ok_or("No hay proyecto abierto".to_string())?
+    };
+
+    let source = backup::snapshot_file(&ctx, snapshot_id)?;
+    // El snapshot debe ser una base de datos valida antes de tocar nada.
+    backup::validate_database(&source)?;
+
+    // Punto de retorno: el estado actual se guarda como snapshot.
+    {
+        let guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+        let conn = guard.as_ref().ok_or("No hay proyecto abierto")?;
+        backup::create_snapshot(conn, &ctx)?;
+    }
+
+    // Se cierra la conexion para poder sustituir el archivo del proyecto.
+    {
+        let mut guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+        *guard = None;
+    }
+
+    backup::replace_atomically(&source, &ctx.project_path)?;
+
+    let conn = Connection::open(&ctx.project_path)
+        .map_err(|e| format!("Error abriendo el proyecto restaurado: {}", e))?;
+    initialize_database(&conn)
+        .map_err(|e| format!("Error actualizando estructura de datos: {}", e))?;
+    let meta = read_project_metadata(&conn)?;
+
+    {
+        let mut guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+        *guard = Some(conn);
+    }
+
+    // El backup principal pasa a reflejar el estado restaurado.
+    {
+        let mut project = state.project.lock().map_err(|_| "Error bloqueando estado")?;
+        if let Some(current) = project.as_mut() {
+            current.last_backed_up_changes = u64::MAX;
+        }
+    }
+    let _ = flush_pending_backup(state);
+
+    Ok(meta)
 }
 
 #[tauri::command]
@@ -88,8 +299,22 @@ pub fn create_project(
         return Err("La extensión del archivo debe ser .aer".to_string());
     }
 
+    // Si el archivo ya existia, su estado anterior se conserva en el sistema
+    // nuevo de copias de seguridad antes de sobrescribirlo.
     if file_path.exists() {
-        let _backup_path = backup_project_file(file_path)?;
+        if let Some(existing_id) = peek_project_id(file_path) {
+            let previous = ProjectContext::new(
+                existing_id,
+                title.clone(),
+                file_path.to_path_buf(),
+            );
+            let _ = backup::migrate_legacy_backups(&previous);
+            if let Ok(conn) =
+                Connection::open_with_flags(file_path, OpenFlags::SQLITE_OPEN_READ_ONLY)
+            {
+                let _ = backup::update_main_backup(&conn, &previous);
+            }
+        }
     }
 
     // Conectar/Crear base de datos
@@ -119,9 +344,28 @@ pub fn create_project(
         updated_at: Some(chrono::Utc::now().to_rfc3339()),
     };
 
-    // Almacenar conexión en el estado global
-    let mut db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
-    *db_guard = Some(conn);
+    // Almacenar conexión en el estado global.
+    //
+    // El bloque es importante: el guardia del mutex se suelta al cerrarlo, y
+    // `flush_pending_backup` vuelve a pedir ese mismo mutex. Si el guardia
+    // siguiera vivo, el hilo se quedaria esperando para siempre.
+    {
+        let mut db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+        *db_guard = Some(conn);
+    }
+
+    // El proyecto queda asociado a su carpeta de copias de seguridad y se
+    // guarda una primera copia del estado recien creado.
+    let ctx = ProjectContext::new(
+        meta.id.clone(),
+        meta.title.clone(),
+        file_path.to_path_buf(),
+    );
+    {
+        let mut project = state.project.lock().map_err(|_| "Error bloqueando estado")?;
+        *project = Some(ctx.clone());
+    }
+    let _ = flush_pending_backup(&state);
 
     Ok(meta)
 }
@@ -131,7 +375,12 @@ pub fn open_project(
     state: State<'_, AppState>,
     path: String,
 ) -> Result<ProjectMetadata, String> {
-    let file_path = Path::new(&path);
+    open_project_impl(&state, &path)
+}
+
+/// Logica de apertura de un proyecto, separada del comando para poder probarla.
+pub fn open_project_impl(state: &AppState, path: &str) -> Result<ProjectMetadata, String> {
+    let file_path = Path::new(path);
 
     if !file_path.exists() {
         return Err("El archivo del proyecto no existe".to_string());
@@ -139,10 +388,6 @@ pub fn open_project(
 
     if file_path.extension().map_or(true, |ext| ext != "aer") {
         return Err("El archivo no tiene extensión .aer válida".to_string());
-    }
-
-    if file_path.exists() {
-        let _backup_path = backup_project_file(file_path)?;
     }
 
     let conn = Connection::open(file_path)
@@ -153,33 +398,35 @@ pub fn open_project(
         .map_err(|e| format!("Error actualizando estructura de datos: {}", e))?;
 
     // Obtener metadatos
-    let meta = {
-        let mut stmt = conn
-            .prepare(
-                "SELECT id, title, author, description, genre, synopsis, created_at, updated_at
-                 FROM project_metadata
-                 LIMIT 1;",
-            )
-            .map_err(|e| e.to_string())?;
+    let meta = read_project_metadata(&conn)?;
 
-        stmt.query_row([], |row| {
-            Ok(ProjectMetadata {
-                id: row.get(0)?,
-                title: row.get(1)?,
-                author: row.get(2)?,
-                description: row.get(3)?,
-                genre: row.get(4)?,
-                synopsis: row.get(5)?,
-                created_at: row.get(6)?,
-                updated_at: row.get(7)?,
-            })
-        })
-        .map_err(|e| format!("No se encontraron metadatos de proyecto válidos: {}", e))?
-    };
+    // El proyecto queda asociado a su carpeta de copias de seguridad.
+    let ctx = ProjectContext::new(
+        meta.id.clone(),
+        meta.title.clone(),
+        file_path.to_path_buf(),
+    );
+    {
+        let mut project = state.project.lock().map_err(|_| "Error bloqueando estado")?;
+        *project = Some(ctx.clone());
+    }
 
-    // Ahora stmt ya no existe y podemos mover la conexión
-    let mut db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
-    *db_guard = Some(conn);
+    // Los backups que dejo el sistema antiguo se migran al nuevo sistema y
+    // sus archivos `.bak` se eliminan.
+    let _ = backup::migrate_legacy_backups(&ctx);
+
+    // Ahora stmt ya no existe y podemos mover la conexión.
+    //
+    // El guardia del mutex se suelta al cerrar el bloque: `flush_pending_backup`
+    // vuelve a pedir ese mismo mutex y, si siguiera vivo, la aplicacion se
+    // quedaria esperando para siempre.
+    {
+        let mut db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+        *db_guard = Some(conn);
+    }
+
+    // Primera copia del backup principal con el estado recien abierto.
+    let _ = flush_pending_backup(state);
 
     Ok(meta)
 }
@@ -343,8 +590,15 @@ pub fn update_project_metadata(
 
 #[tauri::command]
 pub fn close_project(state: State<'_, AppState>) -> Result<(), String> {
+    // Ultima copia de seguridad antes de soltar la base de datos.
+    let _ = flush_pending_backup(&state);
+
     let mut db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
     *db_guard = None; // Cierra la conexión implícitamente al hacer drop
+    drop(db_guard);
+
+    let mut project = state.project.lock().map_err(|_| "Error bloqueando estado")?;
+    *project = None;
     Ok(())
 }
 
@@ -1216,6 +1470,185 @@ pub struct RecentProject {
     pub last_opened: String,
 }
 
+/// Ajustes de la aplicacion (no de la novela).
+///
+/// Se guardan en `app_settings.json`, dentro del directorio de configuracion,
+/// para que apliquen a toda la aplicacion con independencia del proyecto
+/// abierto.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(default, rename_all = "camelCase")]
+pub struct AppSettings {
+    /// Tema de la interfaz: midnight | aurora | noir | light
+    pub theme: String,
+    /// Idioma de la interfaz: es | en
+    pub language: String,
+    /// Ancho de la ventana en pixeles logicos.
+    pub window_width: u32,
+    /// Alto de la ventana en pixeles logicos.
+    pub window_height: u32,
+    /// Si la ventana se abre maximizada.
+    pub window_maximized: bool,
+    /// Si la ventana esta en pantalla completa.
+    pub window_fullscreen: bool,
+    /// Si se restaura el tamano guardado al arrancar.
+    pub restore_window_on_start: bool,
+    /// Si se abre el ultimo proyecto al arrancar.
+    pub open_last_project_on_start: bool,
+    /// Si se pide confirmacion antes de cerrar la aplicacion.
+    pub confirm_before_close: bool,
+    /// Zoom de la interfaz (1 = 100 %).
+    pub interface_zoom: f64,
+    /// Si la ventana se mantiene siempre encima.
+    pub always_on_top: bool,
+    /// Si la ventana se puede redimensionar.
+    pub resizable: bool,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            theme: "midnight".to_string(),
+            language: "es".to_string(),
+            window_width: 1280,
+            window_height: 800,
+            window_maximized: false,
+            window_fullscreen: false,
+            restore_window_on_start: true,
+            open_last_project_on_start: false,
+            confirm_before_close: false,
+            interface_zoom: 1.0,
+            always_on_top: false,
+            resizable: true,
+        }
+    }
+}
+
+fn get_app_settings_path() -> Result<PathBuf, String> {
+    Ok(get_config_dir()?.join("app_settings.json"))
+}
+
+/// Lee los ajustes de la aplicacion del disco.
+///
+/// Un fichero ausente o corrupto no debe impedir abrir la app: en ese caso se
+/// devuelven los valores por defecto.
+///
+/// La escritura la hace el comando generico `save_app_settings` con la clave
+/// `app_settings`, que deja el fichero en esta misma ruta.
+pub fn read_app_settings() -> AppSettings {
+    let path = match get_app_settings_path() {
+        Ok(path) => path,
+        Err(_) => return AppSettings::default(),
+    };
+
+    if !path.exists() {
+        return AppSettings::default();
+    }
+
+    fs::read_to_string(&path)
+        .ok()
+        .and_then(|contents| serde_json::from_str::<AppSettings>(&contents).ok())
+        .unwrap_or_default()
+}
+
+/// Ruta de la carpeta de datos de la aplicacion.
+///
+/// La usa el dialogo de ajustes para poder abrirla en el explorador.
+#[tauri::command]
+pub fn get_app_data_dir() -> Result<String, String> {
+    Ok(get_config_dir()?.to_string_lossy().to_string())
+}
+
+/// Permite el cierre de la ventana aunque este protegido.
+///
+/// El manejador de `CloseRequested` bloquea el cierre cuando el usuario ha
+/// activado la confirmacion; esta marca lo deja pasar.
+#[tauri::command]
+pub fn close_window(window: tauri::Window) {
+    ALLOW_CLOSE.store(true, Ordering::Relaxed);
+    let _ = window.close();
+}
+
+/// Marca de cierre autorizado (ver `close_window`).
+pub static ALLOW_CLOSE: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+/// Progreso de escritura de un proyecto cerrado.
+///
+/// La biblioteca lo usa para la tarjeta "Continuar donde lo dejaste": cuantas
+/// escenas lleva escritas y en cual se estaba trabajando la ultima vez.
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct ProjectProgress {
+    /// Titulo de la ultima escena en la que se estaba trabajando.
+    pub last_scene_title: Option<String>,
+    /// Numero total de escenas del manuscrito.
+    pub scenes_total: u32,
+    /// Escenas que ya tienen contenido.
+    pub scenes_written: u32,
+}
+
+#[tauri::command]
+pub fn get_project_progress(path: String) -> Result<ProjectProgress, String> {
+    let file_path = Path::new(&path);
+    if !file_path.exists() {
+        return Err("El archivo del proyecto no existe".to_string());
+    }
+
+    // Solo lectura: la biblioteca nunca debe modificar un proyecto que esta
+    // cerrado. Si el fichero tiene un WAL pendiente, SQLite no puede abrirlo
+    // en solo lectura, asi que se reintenta con una conexion normal (que
+    // tampoco altera los datos).
+    let conn = Connection::open_with_flags(file_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+        .or_else(|_| Connection::open(file_path))
+        .map_err(|e| format!("Error abriendo el proyecto: {}", e))?;
+
+    let scenes_total: u32 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM manuscript_nodes WHERE type = 'scene';",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
+        .unwrap_or(0) as u32;
+
+    let scenes_written: u32 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM scene_contents sc
+             JOIN manuscript_nodes mn ON mn.id = sc.node_id
+             WHERE mn.type = 'scene'
+               AND sc.content IS NOT NULL
+               AND TRIM(sc.content) != '';",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
+        .unwrap_or(0) as u32;
+
+    // El estado del workspace vive dentro del propio proyecto, asi que permite
+    // recuperar la escena en la que se estaba trabajando.
+    let active_scene_id = conn
+        .query_row(
+            "SELECT data FROM workspace_state WHERE id = 'default' LIMIT 1;",
+            [],
+            |row| row.get::<_, String>(0),
+        )
+        .ok()
+        .and_then(|data| serde_json::from_str::<WorkspaceState>(&data).ok())
+        .and_then(|workspace| workspace.active_scene_id);
+
+    let last_scene_title = active_scene_id.and_then(|scene_id| {
+        conn.query_row(
+            "SELECT title FROM manuscript_nodes WHERE id = ?1;",
+            [&scene_id],
+            |row| row.get::<_, String>(0),
+        )
+        .ok()
+    });
+
+    Ok(ProjectProgress {
+        last_scene_title,
+        scenes_total,
+        scenes_written,
+    })
+}
+
 pub fn get_config_dir() -> Result<PathBuf, String> {
     let config_dir = dirs::config_dir()
         .ok_or("No se pudo encontrar el directorio de configuración")?
@@ -1712,6 +2145,94 @@ fn find_entities_in_text(text: &str, entity_names: &[(String, String)]) -> Vec<S
     }
 
     found_ids
+}
+
+/// Convert plain text entity names in HTML content to mention nodes
+/// Only replaces text that is NOT inside existing HTML tags or attributes
+fn convert_text_to_mentions(html: &str, entities: &[(String, String, String, Option<String>)]) -> String {
+    // Sort entities by name length (longest first) to avoid partial replacements
+    let mut sorted_entities = entities.to_vec();
+    sorted_entities.sort_by(|a, b| b.1.len().cmp(&a.1.len()));
+
+    let mut result = html.to_string();
+
+    for entity in &sorted_entities {
+        let (id, name, entry_type, _) = entity;
+        // Build the mention HTML span
+        let mention_html = format!(
+            r#"<span data-character-mention data-id="{}" data-name="{}" data-type="{}">@{}</span>"#,
+            id, name, entry_type, name
+        );
+
+        // Split HTML by tags to process only text nodes
+        let parts: Vec<&str> = result.split(|c| c == '<').collect();
+        let mut new_parts: Vec<String> = Vec::with_capacity(parts.len());
+
+        for (i, part) in parts.iter().enumerate() {
+            if i == 0 {
+                // First part is before any tag, process it
+                let processed = replace_text_with_mention(part, name, mention_html.as_str());
+                new_parts.push(processed);
+            } else if part.starts_with('/') || part.starts_with("span") || part.starts_with("data-character-mention") {
+                // This is a closing tag or our mention tag, keep as-is
+                new_parts.push(format!("<{}", part));
+            } else if part.find('>').is_some() {
+                // This is an opening tag, keep as-is
+                new_parts.push(format!("<{}", part));
+            } else {
+                // This might be a text node fragment
+                let processed = replace_text_with_mention(part, name, mention_html.as_str());
+                new_parts.push(processed);
+            }
+        }
+
+        result = new_parts.join("");
+    }
+
+    result
+}
+
+/// Replace plain text name with mention HTML, respecting word boundaries
+fn replace_text_with_mention(text: &str, name: &str, mention_html: &str) -> String {
+    let regex_pattern = format!(
+        r"(?i)(?<![\w@])({})(?![@>\w])",
+        regex::escape(name)
+    );
+
+    let re = match regex::Regex::new(&regex_pattern) {
+        Ok(r) => r,
+        Err(_) => return text.to_string(),
+    };
+
+    re.replace_all(text, mention_html).to_string()
+}
+
+#[tauri::command]
+pub fn auto_convert_mentions(state: State<'_, AppState>, content: String) -> Result<String, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error locking state")?;
+    let conn = db_guard.as_ref().ok_or("No project open")?;
+
+    // Get all universe entries
+    let mut entry_stmt = conn
+        .prepare(
+            "SELECT e.id, e.name, e.entry_type, e.brief_description, COALESCE(c.name, 'Other') as category_name
+             FROM universe_entries e
+             LEFT JOIN universe_categories c ON e.category_id = c.id
+             ORDER BY LENGTH(e.name) DESC;",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let entries: Vec<(String, String, String, Option<String>)> = entry_stmt
+        .query_map([], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    let result = convert_text_to_mentions(&content, &entries);
+
+    Ok(result)
 }
 
 #[tauri::command]
@@ -3723,4 +4244,193 @@ pub fn get_scenes_for_character(state: State<'_, AppState>, character_id: String
         .collect();
 
     Ok(scenes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Estado con un proyecto abierto en una carpeta temporal.
+    fn estado_de_prueba(root: &Path) -> (AppState, PathBuf) {
+        let project = root.join("proyecto.aer");
+        let conn = Connection::open(&project).unwrap();
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS project_metadata (
+                id TEXT PRIMARY KEY, title TEXT, author TEXT, description TEXT,
+                genre TEXT, synopsis TEXT, created_at TEXT, updated_at TEXT);",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO project_metadata
+                (id, title, author, description, genre, synopsis, created_at, updated_at)
+             VALUES ('proj-1', 'Proyecto de prueba', '', '', '', '', '', '');",
+            [],
+        )
+        .unwrap();
+        conn.execute("CREATE TABLE IF NOT EXISTS escenas (id TEXT);", [])
+            .unwrap();
+        conn.execute("INSERT INTO escenas VALUES ('a');", []).unwrap();
+
+        let state = AppState::new();
+        {
+            let mut db = state.db.lock().unwrap();
+            *db = Some(conn);
+        }
+        {
+            let mut project_guard = state.project.lock().unwrap();
+            *project_guard = Some(ProjectContext::with_root(
+                "proj-1".to_string(),
+                "Proyecto de prueba".to_string(),
+                project.clone(),
+                root.join("backups"),
+            ));
+        }
+
+        (state, project)
+    }
+
+    #[test]
+    fn el_backup_automatico_solo_escribe_cuando_hay_cambios() {
+        let root = std::env::temp_dir().join(format!("aetheria-flush-{}", Uuid::new_v4()));
+        fs::create_dir_all(&root).unwrap();
+        let (state, _project) = estado_de_prueba(&root);
+
+        // Al abrir el proyecto el estado actual aun no esta respaldado: el
+        // primer ciclo escribe el backup principal.
+        assert!(flush_pending_backup(&state).unwrap());
+
+        let main = {
+            let guard = state.project.lock().unwrap();
+            backup::main_backup_path(guard.as_ref().unwrap()).unwrap()
+        };
+        assert!(main.exists(), "el backup principal debe existir");
+
+        // Sin cambios nuevos no se vuelve a escribir.
+        assert!(!flush_pending_backup(&state).unwrap());
+
+        // Tras una escritura si hay backup nuevo.
+        {
+            let db = state.db.lock().unwrap();
+            db.as_ref()
+                .unwrap()
+                .execute("INSERT INTO escenas VALUES ('b');", [])
+                .unwrap();
+        }
+        assert!(flush_pending_backup(&state).unwrap());
+
+        // Y de nuevo, sin cambios, no se escribe.
+        assert!(!flush_pending_backup(&state).unwrap());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn restaurar_un_snapshot_devuelve_el_proyecto_a_su_estado_anterior() {
+        let root = std::env::temp_dir().join(format!("aetheria-restore-{}", Uuid::new_v4()));
+        fs::create_dir_all(&root).unwrap();
+        let (state, project) = estado_de_prueba(&root);
+
+        // Se crea un snapshot del estado actual.
+        let snapshot = {
+            let guard = state.db.lock().unwrap();
+            let conn = guard.as_ref().unwrap();
+            backup::create_snapshot(conn, state.project.lock().unwrap().as_ref().unwrap()).unwrap()
+        };
+
+        // Se cambia el contenido del proyecto.
+        {
+            let guard = state.db.lock().unwrap();
+            guard
+                .as_ref()
+                .unwrap()
+                .execute("UPDATE escenas SET id = 'cambiado';", [])
+                .unwrap();
+        }
+        assert_eq!(leer_escenas(&project), vec!["cambiado"]);
+
+        // Se restaura el snapshot.
+        restore_snapshot_impl(&state, &snapshot.id).unwrap();
+        assert_eq!(
+            leer_escenas(&project),
+            vec!["a"],
+            "el proyecto vuelve al estado del snapshot"
+        );
+
+        // El estado anterior tambien queda guardado, por si hay que volver atras.
+        let lista = {
+            let guard = state.project.lock().unwrap();
+            backup::list_snapshots(guard.as_ref().unwrap()).unwrap()
+        };
+        assert_eq!(lista.len(), 2, "se conserva el snapshot restaurado y el de seguridad");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    /// Lee los identificadores de la tabla `escenas`.
+    fn leer_escenas(path: &Path) -> Vec<String> {
+        let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
+        let mut stmt = conn.prepare("SELECT id FROM escenas;").unwrap();
+        let ids = stmt
+            .query_map([], |row| row.get::<_, String>(0))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
+        ids
+    }
+
+    #[test]
+    fn abrir_un_proyecto_no_se_queda_bloqueado() {
+        let root = std::env::temp_dir().join(format!("aetheria-open-{}", Uuid::new_v4()));
+        fs::create_dir_all(&root).unwrap();
+        let project = root.join("proyecto.aer");
+
+        // Base de datos de proyecto valida.
+        {
+            let conn = Connection::open(&project).unwrap();
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS project_metadata (
+                    id TEXT PRIMARY KEY, title TEXT, author TEXT, description TEXT,
+                    genre TEXT, synopsis TEXT, created_at TEXT, updated_at TEXT);",
+                [],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT INTO project_metadata
+                    (id, title, author, description, genre, synopsis, created_at, updated_at)
+                 VALUES (?1, 'Novela', '', '', '', '', '', '');",
+                [Uuid::new_v4().to_string()],
+            )
+            .unwrap();
+        }
+
+        let state = std::sync::Arc::new(AppState::new());
+        let ruta = project.to_string_lossy().to_string();
+
+        // La apertura se ejecuta en un hilo aparte con un tiempo maximo: si el
+        // mutex queda bloqueado, el test falla en lugar de colgarse.
+        let (tx, rx) = std::sync::mpsc::channel();
+        let estado_del_hilo = std::sync::Arc::clone(&state);
+        std::thread::spawn(move || {
+            let resultado = open_project_impl(&estado_del_hilo, &ruta);
+            let _ = tx.send(resultado);
+        });
+
+        let respuesta = rx.recv_timeout(std::time::Duration::from_secs(20));
+        assert!(
+            respuesta.is_ok(),
+            "abrir el proyecto se ha quedado bloqueado (deadlock)"
+        );
+
+        let meta = respuesta.unwrap().unwrap();
+        assert_eq!(meta.title, "Novela");
+
+        // El proyecto queda asociado a su carpeta de copias de seguridad.
+        let guard = state.project.lock().unwrap();
+        let ctx = guard.as_ref().unwrap();
+        assert!(backup::main_backup_path(ctx).unwrap().exists());
+        let carpeta = backup::project_backup_dir(ctx).unwrap();
+        drop(guard);
+
+        let _ = fs::remove_dir_all(&root);
+        let _ = fs::remove_dir_all(&carpeta);
+    }
 }

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
+import { useI18n } from '../../i18n';
 import {
   ArrowLeft,
   FileText,
@@ -117,6 +118,7 @@ const PreviewModal = ({
   options: ExportOptions;
   onClose: () => void;
 }) => {
+  const { t } = useI18n();
   const [preview, setPreview] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
@@ -150,7 +152,7 @@ const PreviewModal = ({
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
           <div className="flex items-center gap-3">
             <Eye className="w-5 h-5 text-amber-400" />
-            <h3 className="text-lg font-semibold text-white">Vista previa</h3>
+            <h3 className="text-lg font-semibold text-white">{t('export.preview')}</h3>
             <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-800 text-slate-400 uppercase">
               {format}
             </span>
@@ -195,6 +197,7 @@ const SceneSelector = ({
   onToggleAll: () => void;
   selectAll: boolean;
 }) => {
+  const { t } = useI18n();
   const [expandedParts, setExpandedParts] = useState<Set<string>>(new Set(tree.parts.map((p) => p.id)));
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
 
@@ -219,7 +222,7 @@ const SceneSelector = ({
     <div className="rounded-2xl border border-slate-800/60 bg-slate-900/40 overflow-hidden">
       <div className="px-5 py-4 border-b border-slate-800/60 flex items-center justify-between">
         <div>
-          <h3 className="text-white font-semibold">Contenido</h3>
+          <h3 className="text-white font-semibold">{t('export.content')}</h3>
           <p className="text-xs text-slate-500 mt-0.5">
             {selectAll ? `${totalScenes} escenas` : `${selectedSceneIds.size} de ${totalScenes} escenas`}
           </p>
@@ -311,7 +314,7 @@ const SceneSelector = ({
         {/* Orphan Chapters */}
         {tree.orphanChapters.length > 0 && (
           <div className="pt-2 border-t border-slate-800/40 space-y-1">
-            <p className="text-xs font-medium text-slate-600 px-3 py-1">Capítulos independientes</p>
+            <p className="text-xs font-medium text-slate-600 px-3 py-1">Independent chapters</p>
             {tree.orphanChapters.map((chapter) => (
               <div key={chapter.id}>
                 <div className="text-xs font-medium text-slate-500 px-3 py-1">{chapter.title}</div>
@@ -360,6 +363,7 @@ const OptionsPanel = ({
   options: ExportOptions;
   onChange: (options: ExportOptions) => void;
 }) => {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
 
   const toggle = (key: keyof ExportOptions) => {
@@ -374,7 +378,7 @@ const OptionsPanel = ({
       >
         <div className="flex items-center gap-3">
           <Settings2 className="w-4 h-4 text-slate-400" />
-          <span className="text-white font-medium">Opciones</span>
+          <span className="text-white font-medium">{t('export.options')}</span>
         </div>
         {isOpen ? (
           <ChevronDown className="w-4 h-4 text-slate-400" />
@@ -386,11 +390,11 @@ const OptionsPanel = ({
       {isOpen && (
         <div className="px-5 pb-4 border-t border-slate-800/60 space-y-3 pt-4">
           {[
-            { key: 'includePartTitles', label: 'Títulos de partes' },
-            { key: 'includeChapterTitles', label: 'Títulos de capítulos' },
-            { key: 'includeSceneTitles', label: 'Títulos de escenas' },
-            { key: 'includeSynopsis', label: 'Synopsis' },
-            { key: 'includeAuthorNotes', label: 'Notas del autor' },
+            { key: 'includePartTitles', label: t('ui.partTitles') },
+            { key: 'includeChapterTitles', label: t('ui.chapterTitles') },
+            { key: 'includeSceneTitles', label: t('ui.sceneTitles') },
+            { key: 'includeSynopsis', label: t('manuscript.synopsis') },
+            { key: 'includeAuthorNotes', label: t('manuscript.authorNotes') },
           ].map(({ key, label }) => (
             <label key={key} className="flex items-center gap-3 cursor-pointer group">
               <div
@@ -435,6 +439,7 @@ export const ExportPanel: React.FC = () => {
     includePartTitles: true,
   });
   const [previewFormat, setPreviewFormat] = useState<ExportFormat | null>(null);
+  const { t } = useI18n();
 
   const tree = useMemo(() => buildTree(manuscriptNodes), [manuscriptNodes]);
 
@@ -532,7 +537,7 @@ export const ExportPanel: React.FC = () => {
   const formats: { id: ExportFormat; name: string; desc: string; badge?: string }[] = [
     { id: 'pdf', name: 'PDF', desc: 'Para imprenta o compartir documentos', badge: 'Experimental' },
     { id: 'docx', name: 'Word', desc: 'Compatible con Microsoft Word' },
-    { id: 'html', name: 'HTML', desc: 'Publicación web o conversión' },
+    { id: 'html', name: 'HTML', desc: 'Web publication or conversion' },
     { id: 'markdown', name: 'Markdown', desc: 'Editores de texto avanzados' },
     { id: 'txt', name: 'Texto', desc: 'Archivo de texto plano' },
   ];
@@ -552,7 +557,7 @@ export const ExportPanel: React.FC = () => {
             </button>
             <div className="h-4 w-px bg-slate-700" />
             <div>
-              <h1 className="text-xl font-bold text-white">Exportar manuscrito</h1>
+              <h1 className="text-xl font-bold text-white">{t('export.title')}</h1>
               <p className="text-xs text-slate-500">
                 {selectAll ? `${totalScenes} escenas` : `${exportCount} de ${totalScenes} escenas`}
               </p>
@@ -579,7 +584,7 @@ export const ExportPanel: React.FC = () => {
           {/* Right Column - Format Selection */}
           <div className="lg:col-span-3 space-y-6">
             <div>
-              <h2 className="text-lg font-semibold text-white mb-4">Formato de exportación</h2>
+              <h2 className="text-lg font-semibold text-white mb-4">{t('export.exportFormat')}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {formats.map((fmt) => {
                   const isExporting = exporting === fmt.id;
@@ -620,7 +625,7 @@ export const ExportPanel: React.FC = () => {
                             setPreviewFormat(fmt.id);
                           }}
                           className="absolute -top-2 -right-2 p-1.5 rounded-full bg-slate-800 border border-slate-700 hover:bg-slate-700 hover:border-amber-500/50 transition-all opacity-0 group-hover:opacity-100"
-                          title="Vista previa"
+                          title={t('ui.preview')}
                         >
                           <Eye className="w-3 h-3 text-slate-400" />
                         </button>
@@ -635,8 +640,8 @@ export const ExportPanel: React.FC = () => {
             <div className="rounded-xl border border-slate-800/60 bg-slate-900/20 p-4 flex items-start gap-3">
               <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
               <p className="text-xs text-slate-500">
-                Los formatos DOCX y PDF usan configuración optimizada automáticamente. Usa las opciones para
-                personalizar qué elementos incluir en la exportación.
+                DOCX and PDF formats use optimized settings automatically. Use the options to
+                customize what elements to include in the export.
               </p>
             </div>
           </div>

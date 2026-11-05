@@ -97,7 +97,7 @@ export const RelatedLinksBlock: React.FC<RelatedLinksBlockProps> = ({ block, onU
         onClick={addLink}
         className="text-xs text-violet-400 hover:text-violet-300"
       >
-        + Añadir enlace
+        + Add link
       </button>
     </div>
   );

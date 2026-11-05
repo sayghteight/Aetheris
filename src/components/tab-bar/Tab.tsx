@@ -1,5 +1,6 @@
 import React from 'react';
 import { X } from 'lucide-react';
+import { useI18n } from '../../i18n';
 import type { TabType } from '../../store/tabStore';
 
 interface TabProps {
@@ -105,6 +106,7 @@ export const Tab: React.FC<TabProps> = ({
   onClick,
   onClose,
 }) => {
+  const { t } = useI18n();
   const Icon = tabTypeIcons[type];
 
   return (
@@ -134,7 +136,7 @@ export const Tab: React.FC<TabProps> = ({
 
       {/* Modified indicator */}
       {isModified && (
-        <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" title="Unsaved changes" />
+        <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" title={t('ui.unsavedChanges')} />
       )}
 
       {/* Close button */}
@@ -147,7 +149,7 @@ export const Tab: React.FC<TabProps> = ({
             : 'text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]'
           }
         `}
-        title="Close tab"
+        title={t('ui.closeTab')}
       >
         <X className="w-3 h-3" />
       </button>

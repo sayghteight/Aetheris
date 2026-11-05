@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
+import { useI18n } from '../../i18n';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -15,9 +16,43 @@ import {
   Undo,
   Redo,
   MessageCircle,
+  User,
+  Search,
+  X,
 } from 'lucide-react';
-import { useSettingsStore } from '../../store/settingsStore';
+import { invoke } from '@tauri-apps/api/core';
+import { useAppSettingsStore } from '../../store/appSettingsStore';
 import { useCenteredWriting } from '../../hooks/useCenteredWriting';
+import { CharacterMention } from './extensions/CharacterMention';
+import { MentionTooltip } from './extensions/MentionTooltip';
+import { useContextMenuScope } from '../../components/context-menu/ContextMenuProvider';
+import {
+  buildEditorContextMenuItems,
+  EDITOR_CONTEXT_MENU_ID,
+  runEditorContextMenuAction,
+} from './editorContextMenu';
+
+interface UniverseCategory {
+  id: string;
+  name: string;
+  entries: UniverseEntry[];
+}
+
+interface UniverseEntry {
+  id: string;
+  name: string;
+  type: 'folder' | 'entry';
+  entryType?: string;
+  briefDescription?: string | null;
+}
+
+interface MentionEntity {
+  id: string;
+  name: string;
+  characterType?: string;
+  briefDescription?: string | null;
+  categoryName?: string;
+}
 
 interface TiptapEditorProps {
   content: string;
@@ -25,6 +60,7 @@ interface TiptapEditorProps {
   placeholder?: string;
   onStatsUpdate?: (words: number, readTime: number) => void;
   onSelectionChange?: (selection: { from: number; to: number } | null) => void;
+  onOpenInWorldbuilding?: (entityId: string) => void;
 }
 
 // Toolbar Button Component
@@ -65,13 +101,86 @@ const Divider = () => (
 export const TiptapEditor: React.FC<TiptapEditorProps> = ({
   content,
   onChange,
-  placeholder = 'Comienza a escribir tu escena aquí...',
+  placeholder,
   onStatsUpdate,
   onSelectionChange,
+  onOpenInWorldbuilding,
 }) => {
-  const { settings } = useSettingsStore();
+  const { t } = useI18n();
+  const { settings: appSettings } = useAppSettingsStore();
+  const { registerScope } = useContextMenuScope();
+  const placeholderText = placeholder || t('ui.scenePlaceholder');
   const [wordCount, setWordCount] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Tooltip state for character mentions
+  const [hoveredMention, setHoveredMention] = useState<MentionEntity | null>(null);
+  const [mentionRect, setMentionRect] = useState<DOMRect | null>(null);
+  const tooltipTimeoutRef = useRef<number | null>(null);
+
+  // Mention insertion panel state
+  const [showMentionPanel, setShowMentionPanel] = useState(false);
+  const [mentionEntities, setMentionEntities] = useState<MentionEntity[]>([]);
+  const [mentionSearch, setMentionSearch] = useState('');
+  const [mentionLoading, setMentionLoading] = useState(false);
+  const mentionPanelRef = useRef<HTMLDivElement>(null);
+  const mentionInputRef = useRef<HTMLInputElement>(null);
+
+  // Load universe entities for mention panel
+  const loadMentionEntities = useCallback(async () => {
+    setMentionLoading(true);
+    try {
+      const data = await invoke<UniverseCategory[]>('get_universe_data');
+      const entities: MentionEntity[] = [];
+      data.forEach((cat: UniverseCategory) => {
+        cat.entries.forEach((entry: UniverseEntry) => {
+          if (entry.type === 'entry') {
+            entities.push({
+              id: entry.id,
+              name: entry.name,
+              characterType: entry.entryType || 'character',
+              briefDescription: entry.briefDescription,
+              categoryName: cat.name,
+            });
+          }
+        });
+      });
+      setMentionEntities(entities);
+    } catch (err) {
+      console.error('Error loading entities for mentions:', err);
+    } finally {
+      setMentionLoading(false);
+    }
+  }, []);
+
+  const handleShowMentionPanel = useCallback(() => {
+    loadMentionEntities();
+    setShowMentionPanel(true);
+    setMentionSearch('');
+    setTimeout(() => mentionInputRef.current?.focus(), 50);
+  }, [loadMentionEntities]);
+
+  const handleInsertMention = useCallback((entity: MentionEntity) => {
+    editor?.chain().focus().insertContent([
+      {
+        type: 'characterMention',
+        attrs: {
+          id: entity.id,
+          name: entity.name,
+          characterType: entity.characterType,
+          briefDescription: entity.briefDescription,
+          categoryName: entity.categoryName,
+        },
+      },
+      { type: 'text', text: ' ' },
+    ]).run();
+    setShowMentionPanel(false);
+  }, []);
+
+  // Filter entities based on search
+  const filteredEntities = mentionEntities.filter(e =>
+    e.name.toLowerCase().includes(mentionSearch.toLowerCase())
+  );
 
   // Calculate stats
   const calculateStats = useCallback((text: string) => {
@@ -96,7 +205,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
         gapcursor: false,
       }),
       Placeholder.configure({
-        placeholder,
+        placeholder: placeholderText,
         emptyEditorClass: 'is-editor-empty',
       }),
       Typography,
@@ -111,6 +220,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
         },
       }),
       CharacterCount,
+      CharacterMention,
     ],
     content,
     onUpdate: ({ editor }) => {
@@ -135,10 +245,30 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
       attributes: {
         class:
           'prose prose-lg max-w-none focus:outline-none min-h-[60vh] text-[var(--color-text-primary)] leading-relaxed',
-        style: `font-family: ${settings.fontFamily === 'serif' ? 'Georgia, serif' : settings.fontFamily === 'mono' ? 'monospace' : 'Inter, sans-serif'}; font-size: ${settings.fontSize || 18}px; line-height: ${settings.lineHeight || 1.75};`,
+        style: `font-family: ${appSettings.fontFamily === 'serif' ? 'Georgia, Iowan Old Style, Palatino Linotype, serif' : appSettings.fontFamily === 'mono' ? 'ui-monospace, monospace' : 'Inter, system-ui, sans-serif'}; font-size: ${appSettings.fontSize || 18}px; line-height: ${appSettings.lineHeight || 1.75}; text-align: ${appSettings.textAlign || 'left'};`,
+        // Desactiva el corrector ortografico nativo de WebView2: el menu
+        // contextual nativo ya esta desactivado en la capa de Rust y el
+        // corrector se controla desde Aetheris.
+        spellcheck: 'false',
       },
     },
   });
+
+  // Registra el ambito del menu contextual propio del editor. El proveedor
+  // global lo consulta en cada clic derecho dentro de la zona editable.
+  useEffect(() => {
+    if (!editor) return;
+
+    return registerScope({
+      id: EDITOR_CONTEXT_MENU_ID,
+      matches: (target) => {
+        const dom = editor.view.dom;
+        return dom === target || dom.contains(target);
+      },
+      build: () => buildEditorContextMenuItems(editor, t),
+      run: (itemId) => runEditorContextMenuAction(itemId, editor),
+    });
+  }, [editor, registerScope, t]);
 
   // Sync content from props (for loading saved content)
   useEffect(() => {
@@ -159,15 +289,59 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
   // Centered writing mode hook
   useCenteredWriting({
     editor,
-    enabled: settings.centeredWritingMode ?? false,
-    targetPosition: settings.centeredWritingPosition ?? 50,
+    enabled: appSettings.centeredWritingMode ?? false,
+    targetPosition: appSettings.centeredWritingPosition ?? 50,
     scrollContainerRef,
   });
 
+  // Handle mention hover/leave events for tooltip
+  useEffect(() => {
+    let isTooltipHovered = false;
+
+    const handleMentionHover = (e: Event) => {
+      const customEvent = e as CustomEvent<{ entity: MentionEntity; rect: DOMRect }>;
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current);
+      }
+      isTooltipHovered = false;
+      setHoveredMention(customEvent.detail.entity);
+      setMentionRect(customEvent.detail.rect);
+    };
+
+    const handleMentionLeave = () => {
+      // Delay to allow moving to tooltip
+      tooltipTimeoutRef.current = window.setTimeout(() => {
+        if (!isTooltipHovered) {
+          setHoveredMention(null);
+          setMentionRect(null);
+        }
+      }, 300);
+    };
+
+    const handleMentionClick = (e: Event) => {
+      const customEvent = e as CustomEvent<{ entity: MentionEntity }>;
+      console.log('[TiptapEditor] Mention clicked:', customEvent.detail.entity);
+      // Could trigger navigation or other actions here
+    };
+
+    window.addEventListener('mention-hover', handleMentionHover);
+    window.addEventListener('mention-leave', handleMentionLeave);
+    window.addEventListener('mention-click', handleMentionClick);
+
+    return () => {
+      window.removeEventListener('mention-hover', handleMentionHover);
+      window.removeEventListener('mention-leave', handleMentionLeave);
+      window.removeEventListener('mention-click', handleMentionClick);
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Calculate bottom padding for centered writing mode
   // This ensures the last line can reach the centered cursor position
-  const centeredWritingPadding = settings.centeredWritingMode
-    ? `calc(${100 - (settings.centeredWritingPosition ?? 50)}vh + 20vh)`
+  const centeredWritingPadding = appSettings.centeredWritingMode
+    ? `calc(${100 - (appSettings.centeredWritingPosition ?? 50)}vh + 20vh)`
     : '0';
 
   if (!editor) {
@@ -237,38 +411,49 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
           onClick={() => {
             editor.chain().focus().insertContent('»').run();
           }}
-          title="Cerrar comillas angulares"
+          title="Close angle quotes"
         >
           <span className="text-sm font-semibold">»</span>
         </ToolbarButton>
 
         <ToolbarButton
         onClick={() => editor.chain().focus().insertContent('…').run()}
-        title="Puntos suspensivos"
+        title={t('ui.ellipsis')}
         >
           <span className="text-sm font-semibold">…</span>
         </ToolbarButton>
 
         <ToolbarButton
           onClick={() => editor.chain().focus().insertContent('\n\n⁂\n\n').run()}
-          title="Separador de escena"
+          title={t('ui.sceneBreak')}
         >
           <span className="text-sm font-semibold">⁂</span>
         </ToolbarButton>
+
         <Divider />
-        
+
+        {/* Mention Insert Button */}
+        <ToolbarButton
+          onClick={handleShowMentionPanel}
+          title="Insert character mention"
+        >
+          <User className="w-4 h-4" />
+        </ToolbarButton>
+
+        <Divider />
+
         {/* Undo/Redo */}
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}
           disabled={!editor.can().undo()}
-          title="Deshacer (Ctrl+Z)"
+          title="Undo (Ctrl+Z)"
         >
           <Undo className="w-4 h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().redo().run()}
           disabled={!editor.can().redo()}
-          title="Rehacer (Ctrl+Y)"
+          title="Redo (Ctrl+Y)"
         >
           <Redo className="w-4 h-4" />
         </ToolbarButton>
@@ -287,9 +472,116 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
       </div>
 
       {/* Footer with word count */}
-      <div className="flex items-center justify-end px-4 py-2 border-t border-[var(--color-border)] bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-muted)]">
-        <span>{wordCount} palabras</span>
-      </div>
+      {appSettings.showWordCount && (
+        <div className="flex items-center justify-end px-4 py-2 border-t border-[var(--color-border)] bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-muted)]">
+          <span>{wordCount} {t('editor.words')}</span>
+        </div>
+      )}
+
+      {/* Mention Tooltip */}
+      {hoveredMention && mentionRect && (
+        <div
+          onMouseEnter={() => {
+            if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current);
+          }}
+          onMouseLeave={() => {
+            setHoveredMention(null);
+            setMentionRect(null);
+          }}
+        >
+          <MentionTooltip
+            entity={hoveredMention}
+            anchorRect={mentionRect}
+            onOpenInWorldbuilding={onOpenInWorldbuilding || (() => {})}
+          />
+        </div>
+      )}
+
+      {/* Mention Insertion Panel */}
+      {showMentionPanel && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div
+            ref={mentionPanelRef}
+            className="bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-[400px] max-h-[500px] flex flex-col overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
+              <div className="flex items-center gap-2">
+                <User className="w-5 h-5 text-violet-400" />
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Insert mention</h3>
+              </div>
+              <button
+                onClick={() => setShowMentionPanel(false)}
+                className="p-1 hover:bg-[var(--color-bg-hover)] rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="px-4 py-3 border-b border-[var(--color-border)]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
+                <input
+                  ref={mentionInputRef}
+                  type="text"
+                  value={mentionSearch}
+                  onChange={e => setMentionSearch(e.target.value)}
+                  placeholder="Search characters..."
+                  className="w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg pl-10 pr-4 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-violet-500"
+                />
+              </div>
+            </div>
+
+            {/* Entity List */}
+            <div className="flex-1 overflow-y-auto p-2">
+              {mentionLoading ? (
+                <div className="flex items-center justify-center py-8 text-[var(--color-text-muted)]">
+                  <div className="animate-spin w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full mr-2" />
+                  Cargando...
+                </div>
+              ) : filteredEntities.length === 0 ? (
+                <div className="text-center py-8 text-[var(--color-text-muted)] text-sm">
+                  No se encontraron entidades
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {filteredEntities.map(entity => (
+                    <button
+                      key={entity.id}
+                      onClick={() => handleInsertMention(entity)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--color-bg-hover)] text-left transition-colors"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
+                        {entity.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">{entity.name}</span>
+                          <span className="text-xs text-[var(--color-text-muted)] capitalize">
+                            {entity.categoryName || entity.characterType}
+                          </span>
+                        </div>
+                        {entity.briefDescription && (
+                          <p className="text-xs text-[var(--color-text-muted)] truncate mt-0.5">
+                            {entity.briefDescription}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer hint */}
+            <div className="px-4 py-2 border-t border-[var(--color-border)] text-xs text-[var(--color-text-muted)] text-center">
+              Click on a character to insert the mention
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

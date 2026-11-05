@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Keyboard, X } from 'lucide-react';
+import { useI18n } from '../i18n';
 import { useShortcutsStore, Shortcut, ModifierKey } from '../store/shortcutsStore';
 
 interface ShortcutRecorderProps {
@@ -15,6 +16,7 @@ export const ShortcutRecorder: React.FC<ShortcutRecorderProps> = ({
   onCancel,
   conflictLabel,
 }) => {
+  const { t } = useI18n();
   const [recording, setRecording] = useState(false);
   const [currentKey, setCurrentKey] = useState<string | null>(null);
   const [currentModifiers, setCurrentModifiers] = useState<ModifierKey[]>([]);
@@ -75,8 +77,8 @@ export const ShortcutRecorder: React.FC<ShortcutRecorderProps> = ({
           onClick={() => setRecording(true)}
           className={`flex items-center gap-1.5 px-2 py-1 rounded border text-xs font-mono transition-colors ${
             recording
-              ? 'border-violet-500 bg-violet-950/30 text-violet-300'
-              : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600'
+              ? 'border-[var(--color-accent)] bg-[var(--color-accent-bg)] text-[var(--color-accent)]'
+              : 'border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:border-[var(--color-text-muted)]'
           }`}
         >
           <Keyboard className="w-3 h-3" />
@@ -101,15 +103,15 @@ export const ShortcutRecorder: React.FC<ShortcutRecorderProps> = ({
       <button
         type="button"
         onClick={() => onSave({ key: '', modifiers: [] })}
-        className="p-1 text-slate-500 hover:text-slate-300 transition-colors"
-        title="Quitar atajo"
+        className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+        title={t('ui.removeShortcut')}
       >
         <X className="w-3.5 h-3.5" />
       </button>
 
       {conflictLabel && (
-        <span className="text-[10px] text-red-400">
-          Conflicto con {conflictLabel}
+        <span className="text-[10px] text-[var(--color-danger)]">
+          {t('shortcuts.conflict', { action: conflictLabel })}
         </span>
       )}
     </div>

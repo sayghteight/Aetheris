@@ -2,11 +2,12 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useManuscriptStore, ManuscriptNode } from '../../store/manuscriptStore';
 import { useNavigationStore } from '../../store/navigationStore';
 import { useWorkspaceStore, scheduleWorkspaceSave } from '../../store/workspaceStore';
-import { 
-  ChevronDown, 
-  ChevronRight, 
-  BookOpen, 
-  Folder, 
+import { useI18n } from '../../i18n';
+import {
+  ChevronDown,
+  ChevronRight,
+  BookOpen,
+  Folder,
   FileText,
   Plus,
   PlusCircle
@@ -18,6 +19,7 @@ export const ManuscriptTree: React.FC = () => {
   const { expandedNodeIds, setExpandedNodeIds, treeScrollPosition, setTreeScrollPosition, isLoaded } = useWorkspaceStore();
 
   const treeRef = useRef<HTMLDivElement>(null);
+  const { t } = useI18n();
   const [isAddingRoot, setIsAddingRoot] = useState(false);
   const [newRootTitle, setNewRootTitle] = useState('');
   const [newRootType, setNewRootType] = useState<'part' | 'chapter' | 'scene' | 'folder'>('part');
@@ -144,7 +146,7 @@ export const ManuscriptTree: React.FC = () => {
                   setNewChildType(node.type === 'part' ? 'chapter' : 'scene');
                 }}
                 className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded"
-                title="Añadir Elemento"
+                title={t('manuscript.addElement')}
               >
                 <Plus className="w-3 h-3" />
               </button>
@@ -161,7 +163,7 @@ export const ManuscriptTree: React.FC = () => {
                 autoFocus
                 value={newChildTitle}
                 onChange={(e) => setNewChildTitle(e.target.value)}
-                placeholder="Título del elemento..."
+                placeholder={t('manuscript.elementTitlePlaceholder')}
                 className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded px-2 py-1 text-xs outline-none"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleAddChild(node.id);
@@ -174,16 +176,16 @@ export const ManuscriptTree: React.FC = () => {
                   onChange={(e) => setNewChildType(e.target.value as any)}
                   className="bg-slate-900 border border-slate-850 rounded text-[10px] text-slate-350 px-1 py-0.5 outline-none"
                 >
-                  <option value="scene">Escena</option>
-                  <option value="chapter">Capítulo</option>
-                  <option value="folder">Carpeta</option>
+                  <option value="scene">{t('manuscript.scene')}</option>
+                  <option value="chapter">{t('manuscript.chapter')}</option>
+                  <option value="folder">{t('manuscript.folder')}</option>
                 </select>
                 <div className="flex gap-1.5">
                   <button onClick={() => setAddingChildTo(null)} className="text-[10px] text-slate-500 hover:text-slate-300">
-                    Cancelar
+                    {t('common.cancel')}
                   </button>
                   <button onClick={() => handleAddChild(node.id)} className="text-[10px] bg-violet-600 hover:bg-violet-500 text-white px-2 py-0.5 rounded font-semibold">
-                    Crear
+                    {t('common.create')}
                   </button>
                 </div>
               </div>
@@ -213,7 +215,7 @@ export const ManuscriptTree: React.FC = () => {
             setNewRootType('part');
           }}
           className="p-1 hover:bg-slate-900 text-slate-400 hover:text-violet-400 rounded transition-colors"
-          title="Nueva Parte / Nodo Raíz"
+          title={t('manuscript.newPartRootNode')}
         >
           <PlusCircle className="w-4 h-4" />
         </button>
@@ -228,7 +230,7 @@ export const ManuscriptTree: React.FC = () => {
 
         {rootNodes.length === 0 && !isAddingRoot && (
           <div className="text-center py-8 px-4 text-xs text-slate-600">
-            El manuscrito está vacío. Crea una nueva Parte para comenzar.
+            The manuscript is empty. Create a new Part to begin.
           </div>
         )}
 
@@ -241,7 +243,7 @@ export const ManuscriptTree: React.FC = () => {
               required
               value={newRootTitle}
               onChange={(e) => setNewRootTitle(e.target.value)}
-              placeholder="Título del nodo..."
+              placeholder={t('manuscript.nodeTitlePlaceholder')}
               className="bg-slate-950 border border-slate-800 focus:border-violet-500 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none"
             />
             <div className="flex justify-between items-center">
@@ -250,16 +252,16 @@ export const ManuscriptTree: React.FC = () => {
                 onChange={(e) => setNewRootType(e.target.value as any)}
                 className="bg-slate-950 border border-slate-850 rounded text-xs text-slate-400 px-2 py-1 outline-none"
               >
-                <option value="part">Parte</option>
-                <option value="folder">Carpeta</option>
-                <option value="scene">Escena</option>
+                <option value="part">{t('manuscript.part')}</option>
+                <option value="folder">{t('manuscript.folder')}</option>
+                <option value="scene">{t('manuscript.scene')}</option>
               </select>
               <div className="flex gap-2 text-xs">
                 <button type="button" onClick={() => setIsAddingRoot(false)} className="text-slate-500 hover:text-slate-300">
                   Cancelar
                 </button>
                 <button type="submit" className="bg-violet-600 hover:bg-violet-500 text-white font-semibold px-2.5 py-1 rounded">
-                  Añadir
+                  Add
                 </button>
               </div>
             </div>
