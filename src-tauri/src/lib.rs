@@ -4,9 +4,33 @@ mod domain;
 mod commands;
 mod export;
 mod git;
+mod backup;
 
 use state::AppState;
 use tauri::{Emitter, Manager};
+
+/// Cada cuanto se revisa si el proyecto abierto tiene cambios sin respaldar.
+const BACKUP_INTERVAL_SECS: u64 = 30;
+
+/// Hilo que mantiene actualizado el backup principal del proyecto abierto.
+///
+/// El backup principal es un unico archivo que se sobrescribe: este hilo
+/// comprueba si la base de datos ha cambiado desde la ultima copia y, si es
+/// asi, la actualiza. Nunca genera archivos adicionales.
+fn spawn_backup_worker(app: tauri::AppHandle) {
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(BACKUP_INTERVAL_SECS));
+
+            let Some(state) = app.try_state::<AppState>() else {
+                continue;
+            };
+            if let Err(err) = commands::flush_pending_backup(&state) {
+                eprintln!("[aetheria] No se pudo actualizar la copia de seguridad: {err}");
+            }
+        }
+    });
+}
 
 /// Desactiva el menu contextual nativo de WebView2 en Windows.
 ///
@@ -76,6 +100,9 @@ pub fn run() {
             #[cfg(target_os = "windows")]
             disable_native_context_menu(app.handle());
 
+            // Copia de seguridad periodica del proyecto abierto.
+            spawn_backup_worker(app.handle().clone());
+
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -89,6 +116,11 @@ pub fn run() {
                 {
                     api.prevent_close();
                     let _ = window.emit("aetheria://close-requested", ());
+                }
+
+                // Ultima copia de seguridad antes de que la app se cierre.
+                if let Some(state) = window.try_state::<AppState>() {
+                    let _ = commands::flush_pending_backup(&state);
                 }
             }
         })
@@ -124,6 +156,10 @@ pub fn run() {
             commands::get_project_progress,
             commands::get_app_data_dir,
             commands::close_window,
+            commands::create_snapshot,
+            commands::list_snapshots,
+            commands::restore_snapshot,
+            commands::get_backup_status,
             commands::get_timeline_events,
             commands::create_timeline_event,
             commands::update_timeline_event,

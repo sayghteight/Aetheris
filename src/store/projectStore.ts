@@ -20,6 +20,13 @@ export interface RecentProject {
   last_opened: string;
 }
 
+/**
+ * Clave con la ruta del proyecto que hay que reabrir tras restaurar un
+ * snapshot. La restauracion sustituye el archivo del proyecto entero, asi que
+ * la interfaz se recarga y necesita volver a abrirlo.
+ */
+export const RESTORE_REOPEN_KEY = 'aetheria:restore-reopen';
+
 interface ProjectState {
   currentProject: ProjectMetadata | null;
   activePath: string | null;

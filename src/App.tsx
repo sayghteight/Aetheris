@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
-import { useProjectStore } from './store/projectStore';
+import { useProjectStore, RESTORE_REOPEN_KEY } from './store/projectStore';
 import { useSettingsStore } from './store/settingsStore';
 import { useAppSettingsStore } from './store/appSettingsStore';
 import { useWorkspaceStore } from './store/workspaceStore';
@@ -83,6 +83,17 @@ const App: React.FC = () => {
     appSettings.alwaysOnTop,
     appSettings.resizable,
   ]);
+
+  // Tras restaurar un snapshot el proyecto se sustituye entero y la interfaz
+  // se recarga: hay que volver a abrirlo para no dejar al usuario en la
+  // biblioteca con el trabajo a medias.
+  useEffect(() => {
+    if (isOpen) return;
+    const path = sessionStorage.getItem(RESTORE_REOPEN_KEY);
+    if (!path) return;
+    sessionStorage.removeItem(RESTORE_REOPEN_KEY);
+    void openProject(path);
+  }, [isOpen, openProject]);
 
   // Abrir automaticamente el ultimo proyecto, si el usuario lo pidio.
   useEffect(() => {

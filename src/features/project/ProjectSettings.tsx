@@ -8,6 +8,7 @@ import { useShortcutsStore, SHORTCUT_DEFINITIONS, ShortcutAction } from '../../s
 import { useI18n } from '../../i18n';
 import { ShortcutRecorder } from '../../components/ShortcutRecorder';
 import { AppSettingsDialog } from '../settings/AppSettingsDialog';
+import { BackupPanel } from './BackupPanel';
 import {
   BookOpen,
   Settings2,
@@ -16,6 +17,7 @@ import {
   Check,
   Keyboard,
   SlidersHorizontal,
+  Archive,
 } from 'lucide-react';
 
 export const ProjectSettings: React.FC = () => {
@@ -87,10 +89,11 @@ export const ProjectSettings: React.FC = () => {
     </span>
   );
 
-  const [activeTab, setActiveTab] = useState<'project' | 'shortcuts'>('project');
+  const [activeTab, setActiveTab] = useState<'project' | 'backups' | 'shortcuts'>('project');
 
   const tabs = [
     { id: 'project' as const, label: t('setup.title') || 'Proyecto', icon: BookOpen },
+    { id: 'backups' as const, label: t('backup.title'), icon: Archive },
     { id: 'shortcuts' as const, label: t('settings.keyboardShortcuts'), icon: Keyboard },
   ];
 
@@ -199,6 +202,12 @@ export const ProjectSettings: React.FC = () => {
           </section>
         </>
       )}
+
+      {/* ─── Backups Tab ─── */}
+      {activeTab === 'backups' && (
+        <BackupPanel />
+      )}
+
       {/* ─── Shortcuts Tab ─── */}
       {activeTab === 'shortcuts' && (
         <>
