@@ -1,15 +1,51 @@
 import { Node, mergeAttributes } from '@tiptap/core';
-import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
+import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewProps } from '@tiptap/react';
 import React from 'react';
 
-// React component to render the character mention
-const CharacterMentionComponent: React.FC<{ node: any; selected: boolean }> = ({ node, selected }) => {
+interface CharacterMentionAttrs {
+  id: string;
+  name: string;
+  characterType: string;
+  briefDescription?: string | null;
+  categoryName?: string;
+}
+
+// React component to render the character mention with hover tooltip
+const CharacterMentionComponent: React.FC<NodeViewProps> = ({ node, selected }) => {
+  const attrs = node.attrs as CharacterMentionAttrs;
+
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    window.dispatchEvent(new CustomEvent('mention-hover', {
+      detail: {
+        entity: attrs,
+        rect,
+      },
+    }));
+  };
+
+  const handleMouseLeave = () => {
+    window.dispatchEvent(new CustomEvent('mention-leave'));
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    window.dispatchEvent(new CustomEvent('mention-click', {
+      detail: {
+        entity: attrs,
+      },
+    }));
+  };
+
   return (
     <NodeViewWrapper
       as="span"
       className={`character-mention ${selected ? 'selected' : ''}`}
-      data-id={node.attrs.id}
-      data-name={node.attrs.name}
+      data-id={attrs.id}
+      data-name={attrs.name}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -21,9 +57,10 @@ const CharacterMentionComponent: React.FC<{ node: any; selected: boolean }> = ({
         fontWeight: 500,
         cursor: 'pointer',
         border: selected ? '1px solid #8b5cf6' : '1px solid transparent',
+        transition: 'background-color 0.15s ease, border-color 0.15s ease',
       }}
     >
-      @{node.attrs.name}
+      @{attrs.name}
     </NodeViewWrapper>
   );
 };
@@ -49,6 +86,12 @@ export const CharacterMention = Node.create({
       characterType: {
         default: 'character',
       },
+      briefDescription: {
+        default: null,
+      },
+      categoryName: {
+        default: null,
+      },
     };
   },
 
@@ -61,7 +104,16 @@ export const CharacterMention = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['span', mergeAttributes(HTMLAttributes, { 'data-character-mention': '' }), `@${HTMLAttributes.name}`];
+    return [
+      'span',
+      mergeAttributes(HTMLAttributes, {
+        'data-character-mention': '',
+        'data-id': HTMLAttributes.id,
+        'data-name': HTMLAttributes.name,
+        'data-type': HTMLAttributes.characterType,
+      }),
+      `@${HTMLAttributes.name}`
+    ];
   },
 
   addNodeView() {

@@ -14,6 +14,18 @@ interface ShortcutHandlers {
   onFormatBlock?: () => void;
 }
 
+/**
+ * Los handlers se declaran con prefijo `on` (`onSave`, `onBold`...), pero las
+ * acciones del almacen no lo llevan (`save`, `bold`...). Esta tabla traduce
+ * una en otra: sin ella, ningun atajo configurable llegaba a ejecutarse.
+ */
+const HANDLER_BY_ACTION: Partial<Record<ShortcutAction, keyof ShortcutHandlers>> = {
+  save: 'onSave',
+  bold: 'onBold',
+  italic: 'onItalic',
+  underline: 'onUnderline',
+};
+
 export const useKeyboardShortcuts = (
   handlers: ShortcutHandlers,
   enabled: boolean = true
@@ -50,9 +62,10 @@ export const useKeyboardShortcuts = (
           shortcut.modifiers.every((m) => modifiers.includes(m))
         ) {
           // Found matching shortcut
-          const handler = handlersRef.current[
-            action as keyof ShortcutHandlers
-          ] as ShortcutHandler | undefined;
+          const handlerName = HANDLER_BY_ACTION[action as ShortcutAction];
+          const handler = handlerName
+            ? (handlersRef.current[handlerName] as ShortcutHandler | undefined)
+            : undefined;
 
           if (handler) {
             // Block browser's default find (Ctrl+F, Ctrl+H) by preventing default

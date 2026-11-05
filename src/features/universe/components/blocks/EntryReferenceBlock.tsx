@@ -102,7 +102,7 @@ export const EntryReferenceBlock: React.FC<EntryReferenceBlockProps> = ({ block,
       ? selectedChapter?.title || referenceId
       : selectedEntry?.name || referenceId;
     const displaySubtype = isChapter
-      ? (selectedChapter?.type === 'chapter' ? 'Capítulo' : 'Escena')
+      ? (selectedChapter?.type === 'chapter' ? 'Chapter' : 'Scene')
       : (selectedEntry ? getEntryTypeName(selectedEntry.entryType) : '');
 
     const Icon = isChapter ? BookOpen : FileText;
@@ -195,7 +195,7 @@ export const EntryReferenceBlock: React.FC<EntryReferenceBlockProps> = ({ block,
             <div>
               <span className="text-sm text-amber-200">{selectedChapter.title}</span>
               <span className="ml-2 text-xs text-slate-500">
-                ({selectedChapter.type === 'chapter' ? 'Capítulo' : 'Escena'})
+                ({selectedChapter.type === 'chapter' ? 'Chapter' : 'Scene'})
               </span>
             </div>
             <button
@@ -260,7 +260,7 @@ export const EntryReferenceBlock: React.FC<EntryReferenceBlockProps> = ({ block,
               }`}
             >
               <BookOpen className="h-3 w-3" />
-              Capítulos/Escenas
+              Chapters/Scenes
             </button>
           </div>
 
@@ -271,7 +271,7 @@ export const EntryReferenceBlock: React.FC<EntryReferenceBlockProps> = ({ block,
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={searchTab === 'entry' ? 'Buscar entrada...' : 'Buscar capítulo o escena...'}
+              placeholder={searchTab === 'entry' ? 'Search entry...' : 'Search chapter or scene...'}
               className="flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder-slate-500"
               autoFocus
             />
@@ -318,7 +318,7 @@ export const EntryReferenceBlock: React.FC<EntryReferenceBlockProps> = ({ block,
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-slate-200 truncate">{node.title}</p>
                   <p className="text-xs text-slate-500">
-                    {node.type === 'chapter' ? 'Capítulo' : 'Escena'}
+                    {node.type === 'chapter' ? 'Chapter' : 'Scene'}
                   </p>
                 </div>
               </button>
@@ -332,7 +332,7 @@ export const EntryReferenceBlock: React.FC<EntryReferenceBlockProps> = ({ block,
         type="text"
         value={content.note || ''}
         onChange={(e) => onUpdate({ ...content, note: e.target.value })}
-        placeholder="Añadir nota (opcional)"
+        placeholder="Add note (optional)"
         className="w-full rounded border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 outline-none focus:border-violet-500/50"
       />
 

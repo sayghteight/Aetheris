@@ -70,11 +70,33 @@ Multiple themes to suit your preference:
 - **Midnight** — Dark theme (default)
 - **Aurora** — Warm dark theme with amber accents
 - **Noir** — Deep dark theme
+- **Light** — Clean paper theme
 
 Focus modes:
 - **Standard** — Normal interface
 - **Focus** — Reduced distractions
 - **Distraction-Free** — Clean black background
+
+### ⚙️ Application Settings
+A dedicated settings section for the whole application, reachable from the library and from the
+header of every novel:
+
+- **Window** — fullscreen, resolution, maximize, center, always on top, resizable and restoring
+  the window size on startup
+- **Appearance** — theme, interface language and interface zoom
+- **Writing** — font family, font size, line height, text alignment, word count and centered
+  writing mode
+- **Keyboard shortcuts** — remap any shortcut and restore the defaults
+- **Behaviour** — autosave interval, open the last project on startup, confirm before closing
+
+### 💾 Backups & Snapshots
+- **One automatic backup per project**, updated silently and written atomically
+- **Manual snapshots** to keep historical restore points, listed and restorable from the app
+- Stored in `AppData/Roaming/aetheria/backups/`, one folder per project
+
+### 🖱️ Context Menu
+A native context menu of your own, with editing actions and a dedicated scope inside the editor.
+The operating system spell checker is disabled.
 
 ### 🌐 Internationalization
 Available in English and Spanish
@@ -87,23 +109,25 @@ Available in English and Spanish
 
 ## 📥 Downloads
 
-### Latest Release: v0.1.5 (August 25, 2026)
+### Latest Release: v0.1.8 (November 5, 2026)
+
+📋 [Full changelog for v0.1.8](CHANGELOG.md#018--november-5-2026)
 
 #### Windows
-- [Aetheria_0.1.5_x64-setup.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_x64-setup.exe) — Windows Installer
+- [Aetheria_0.1.8_x64-setup.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_x64-setup.exe) — Windows Installer
 
 #### macOS
-- [Aetheria_0.1.5_aarch64.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_aarch64.dmg) — Apple Silicon
-- [Aetheria_0.1.5_aarch64.app.tar.gz](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_aarch64.app.tar.gz) — Apple Silicon (tarball)
+- [Aetheria_0.1.8_aarch64.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_aarch64.dmg) — Apple Silicon
+- [Aetheria_0.1.8_aarch64.app.tar.gz](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_aarch64.app.tar.gz) — Apple Silicon (tarball)
 
 #### Linux
-- [Aetheria_0.1.5_amd64.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_amd64.AppImage) — Universal Linux executable
-- [Aetheria_0.1.5_amd64.deb](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_amd64.deb) — Debian/Ubuntu
-- [Aetheria-0.1.5-1.x86_64.rpm](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria-0.1.5-1.x86_64.rpm) — Fedora/RHEL
+- [Aetheria_0.1.8_amd64.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_amd64.AppImage) — Universal Linux executable
+- [Aetheria_0.1.8_amd64.deb](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_amd64.deb) — Debian/Ubuntu
+- [Aetheria-0.1.8-1.x86_64.rpm](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria-0.1.8-1.x86_64.rpm) — Fedora/RHEL
 
 #### Source Code
-- [Aetheria_0.1.5.tar.gz](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_aarch64.app.tar.gz) — Source archive
-- [app-v0.1.5.zip](https://github.com/sayghteight/Aetheris/archive/refs/tags/app-v0.1.5.zip) — ZIP archive
+- [app-v0.1.8.tar.gz](https://github.com/sayghteight/Aetheris/archive/refs/tags/app-v0.1.8.tar.gz) — Source archive (tar.gz)
+- [app-v0.1.8.zip](https://github.com/sayghteight/Aetheris/archive/refs/tags/app-v0.1.8.zip) — ZIP archive
 
 ---
 
@@ -111,6 +135,9 @@ Available in English and Spanish
 
 | Version | Release Date | Windows | macOS | Linux |
 |---------|--------------|---------|-------|-------|
+| [v0.1.7](https://github.com/sayghteight/Aetheris/releases/tag/app-v0.1.7) | Sep 20, 2026 | [.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.7/Aetheria_0.1.7_x64-setup.exe) | [.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.7/Aetheria_0.1.7_aarch64.dmg) | [.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.7/Aetheria_0.1.7_amd64.AppImage) |
+| [v0.1.6](https://github.com/sayghteight/Aetheris/releases/tag/app-v0.1.6) | Sep 5, 2026 | [.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.6/Aetheria_0.1.6_x64-setup.exe) | [.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.6/Aetheria_0.1.6_aarch64.dmg) | [.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.6/Aetheria_0.1.6_amd64.AppImage) |
+| [v0.1.5](https://github.com/sayghteight/Aetheris/releases/tag/app-v0.1.5) | Aug 25, 2026 | [.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_x64-setup.exe) | [.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_aarch64.dmg) | [.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_amd64.AppImage) |
 | [v0.1.4](https://github.com/sayghteight/Aetheris/releases/tag/app-v0.1.4) | Aug 8, 2026 | [.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.4/Aetheria_0.1.4_x64-setup.exe) | [.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.4/Aetheria_0.1.4_aarch64.dmg) | [.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.4/Aetheria_0.1.4_amd64.AppImage) |
 | [v0.1.3](https://github.com/sayghteight/Aetheris/releases/tag/app-v0.1.3) | Aug 3, 2026 | [.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.3/Aetheria_0.1.3_x64-setup.exe) | [.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.3/Aetheria_0.1.3_aarch64.dmg) | [.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.3/Aetheria_0.1.3_amd64.AppImage) |
 | [v0.1.2](https://github.com/sayghteight/Aetheris/releases/tag/app-v0.1.2) | Jul 28, 2026 | [.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.2/Aetheria_0.1.2_x64-setup.exe) | [.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.2/Aetheria_0.1.2_aarch64.dmg) | [.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.2/Aetheria_0.1.2_amd64.AppImage) |
@@ -177,12 +204,14 @@ culto-guieditor/
 │   └── utils/                   # Utility functions
 ├── src-tauri/                    # Rust backend
 │   ├── src/
+│   │   ├── backup.rs             # Centralized backups and snapshots
 │   │   ├── commands/            # Tauri commands (IPC)
 │   │   ├── database/             # SQLite database operations
 │   │   ├── domain/              # Domain models
 │   │   ├── export/              # Export modules (PDF, DOCX, HTML, Markdown, TXT)
 │   │   └── state.rs             # Application state
 │   └── icons/                   # Application icons
+├── CHANGELOG.md                 # Release notes
 └── package.json
 ```
 

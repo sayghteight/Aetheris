@@ -1,0 +1,59 @@
+/* Estilos especificos de la biblioteca (pantalla de inicio).
+   El resto de la app se apoya en utilidades de Tailwind; aqui vive solo lo que
+   necesita una forma propia: las cubiertas con lomo y la tipografia serif de
+   los titulos. */
+
+.lib-serif {
+  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+}
+
+/* Cubierta: proporcion 2/3, lomo a la izquierda, canto redondeado. */
+.lib-book {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border-radius: 4px 10px 10px 4px;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 18px 30px -16px rgba(0, 0, 0, 0.55);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* El lomo: primera pagina doblada hacia el interior. */
+.lib-book::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 11px;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.35),
+    rgba(255, 255, 255, 0.1) 60%,
+    rgba(0, 0, 0, 0.18)
+  );
+}
+
+.lib-group:hover .lib-book,
+.lib-group:focus-visible .lib-book {
+  transform: translateY(-6px) rotate(-1deg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 26px 40px -18px rgba(0, 0, 0, 0.65);
+}
+
+/* Anillo de foco visible para los controles de la biblioteca. */
+.lib-ring:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lib-book {
+    transition: none;
+  }
+
+  .lib-group:hover .lib-book,
+  .lib-group:focus-visible .lib-book {
+    transform: none;
+  }
+}

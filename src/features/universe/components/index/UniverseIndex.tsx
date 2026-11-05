@@ -69,7 +69,7 @@ export const UniverseIndex: React.FC<UniverseIndexProps> = ({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-950">
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto">
       <div className="mx-auto w-full max-w-6xl px-4 py-6">
         {/* Header */}
         <div className="mb-8 rounded-2xl border border-slate-800/80 bg-gradient-to-br from-violet-600/10 via-slate-900/70 to-slate-950/90 p-6 shadow-lg shadow-slate-950/10">
