@@ -129,6 +129,18 @@
     "strikethrough": "Tachado",
     "pasteUnavailable": "No se pudo leer el portapapeles. Usa Ctrl+V para pegar."
   },
+  "spellCheck": {
+    "suggestionsFor": "Sugerencias para «{{word}}»",
+    "addWord": "Añadir «{{word}}» al diccionario",
+    "noSuggestions": "Sin sugerencias",
+    "loading": "Cargando el corrector…",
+    "enabled": "Corrector ortográfico",
+    "enabledDesc": "Subraya los errores ortográficos mientras escribes.",
+    "languages": "Idiomas del corrector",
+    "languagesDesc": "Se comprueba el texto con los diccionarios indicados.",
+    "universeNames": "Usar los nombres de la novela",
+    "universeNamesDesc": "No marca como error los nombres de personajes, lugares y objetos."
+  },
   "manuscript": {
     "title": "Manuscrito",
     "newPart": "Nueva Parte",

@@ -50,6 +50,12 @@ export interface AppSettings {
   autoSaveEnabled: boolean;
   /** Retardo del autoguardado, en milisegundos. */
   autoSaveDelayMs: number;
+  /** Si el corrector ortografico esta activo. */
+  spellCheckEnabled: boolean;
+  /** Idiomas con los que se comprueba la ortografia. */
+  spellCheckLanguages: string[];
+  /** Si los nombres de la novela se consideran palabras correctas. */
+  spellCheckUseUniverseNames: boolean;
 }
 
 /** Clave dentro del almacen generico de la aplicacion (`{config}/app_settings.json`). */
@@ -77,6 +83,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   centeredWritingPosition: 50,
   autoSaveEnabled: true,
   autoSaveDelayMs: 700,
+  spellCheckEnabled: true,
+  spellCheckLanguages: ['es'],
+  spellCheckUseUniverseNames: true,
 };
 
 interface AppSettingsState {

@@ -193,6 +193,15 @@ body {
   text-decoration: none !important;
 }
 
+/* Corrector ortografico propio de Aetheris.
+   Los subrayados los dibuja la extension de TipTap como decoraciones sobre el
+   texto real, asi que no dependen del corrector nativo del navegador. */
+.spell-error {
+  text-decoration: underline wavy var(--color-danger) !important;
+  text-decoration-skip-ink: none !important;
+  text-underline-offset: 3px;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    SCROLLBARS
    Barra fina y discreta, acorde al tema: pista transparente, pulgar redondeado

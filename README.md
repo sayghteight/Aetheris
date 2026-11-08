@@ -109,25 +109,25 @@ Available in English and Spanish
 
 ## 📥 Downloads
 
-### Latest Release: v0.1.8 (November 5, 2026)
+### Latest Release: v0.1.9 (November 5, 2026)
 
-📋 [Full changelog for v0.1.8](CHANGELOG.md#018--november-5-2026)
+📋 [Full changelog for v0.1.9](CHANGELOG.md#019--november-5-2026)
 
 #### Windows
-- [Aetheria_0.1.8_x64-setup.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_x64-setup.exe) — Windows Installer
+- [Aetheria_0.1.9_x64-setup.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.9/Aetheria_0.1.9_x64-setup.exe) — Windows Installer
 
 #### macOS
-- [Aetheria_0.1.8_aarch64.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_aarch64.dmg) — Apple Silicon
-- [Aetheria_0.1.8_aarch64.app.tar.gz](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_aarch64.app.tar.gz) — Apple Silicon (tarball)
+- [Aetheria_0.1.9_aarch64.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.9/Aetheria_0.1.9_aarch64.dmg) — Apple Silicon
+- [Aetheria_0.1.9_aarch64.app.tar.gz](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.9/Aetheria_0.1.9_aarch64.app.tar.gz) — Apple Silicon (tarball)
 
 #### Linux
-- [Aetheria_0.1.8_amd64.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_amd64.AppImage) — Universal Linux executable
-- [Aetheria_0.1.8_amd64.deb](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_amd64.deb) — Debian/Ubuntu
-- [Aetheria-0.1.8-1.x86_64.rpm](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria-0.1.8-1.x86_64.rpm) — Fedora/RHEL
+- [Aetheria_0.1.9_amd64.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.9/Aetheria_0.1.9_amd64.AppImage) — Universal Linux executable
+- [Aetheria_0.1.9_amd64.deb](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.9/Aetheria_0.1.9_amd64.deb) — Debian/Ubuntu
+- [Aetheria-0.1.9-1.x86_64.rpm](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.9/Aetheria-0.1.9-1.x86_64.rpm) — Fedora/RHEL
 
 #### Source Code
-- [app-v0.1.8.tar.gz](https://github.com/sayghteight/Aetheris/archive/refs/tags/app-v0.1.8.tar.gz) — Source archive (tar.gz)
-- [app-v0.1.8.zip](https://github.com/sayghteight/Aetheris/archive/refs/tags/app-v0.1.8.zip) — ZIP archive
+- [app-v0.1.9.tar.gz](https://github.com/sayghteight/Aetheris/archive/refs/tags/app-v0.1.9.tar.gz) — Source archive (tar.gz)
+- [app-v0.1.9.zip](https://github.com/sayghteight/Aetheris/archive/refs/tags/app-v0.1.9.zip) — ZIP archive
 
 ---
 

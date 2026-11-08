@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.9] — November 5, 2026
+
+### Added
+
+- **Own spell checker for the editor.** Aetheria now checks spelling while you
+  write, with its own Hunspell engine (`typo-js`) and Spanish and English
+  dictionaries. The mistakes are underlined directly on the text —as real editor
+  decorations, not as a duplicated layer— and the context menu offers the
+  suggested corrections, plus the option of adding the word to your personal
+  dictionary.
+- The dictionaries are loaded on demand in a separate chunk (~1.4 MB), so they
+  cost nothing until the spell checker is actually used.
+
+### Changed
+
+- The version is now **0.1.9** in `package.json`, `package-lock.json`, `Cargo.toml`, `Cargo.lock`,
+  `tauri.conf.json` and `src/utils/version.ts`.
+
+### Internal
+
+- **All 28 compiler warnings are gone.** `cargo check` now finishes with zero warnings and zero
+  errors.
+- The wiki structs (`WikiCategory`, `WikiEntryType`, `WikiEntry`, `WikiBlock`, `WikiRelation` and
+  `WikiData`) now use `snake_case` field names, like the rest of the codebase. **The JSON sent to
+  the frontend does not change**: the conversion to `camelCase` is done by
+  `#[serde(rename_all = "camelCase")]`, which was already in place.
+- New regression test `el_wiki_se_sigue_serializando_en_camel_case` asserts the exact JSON keys of
+  the wiki payloads, so a future rename cannot break the contract silently.
+- The lore relations query no longer builds an unused list of SQL placeholders.
+- The legacy universe migration still parses `parentId` (now `_parent_id`), even though the old
+  folder hierarchy is flattened during the migration.
+- Removed dead code: the `SceneContent` and `CharacterAppearance` structs and the `get_current_tag`
+  git helper.
+- 12 automated tests.
+
+---
+
 ## [0.1.8] — November 5, 2026
 
 ### Added

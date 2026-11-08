@@ -48,44 +48,6 @@ pub fn get_git_tags() -> Result<TagInfo, String> {
     })
 }
 
-fn get_current_tag() -> Option<String> {
-    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf();
-
-    // Try origin/main first
-    let _ = Command::new("git")
-        .args(["fetch", "origin", "refs/heads/main:refs/remotes/origin/main", "--tags"])
-        .current_dir(&repo_root)
-        .output();
-
-    let output = Command::new("git")
-        .args(["describe", "--tags", "--abbrev=0", "origin/main"])
-        .current_dir(&repo_root)
-        .output();
-
-    if let Ok(out) = &output {
-        if out.status.success() {
-            let tag = String::from_utf8_lossy(&out.stdout).trim().to_string();
-            if !tag.is_empty() {
-                return Some(tag);
-            }
-        }
-    }
-
-    // Fallback: most recent tag by creation date from local tags
-    let output = Command::new("git")
-        .args(["describe", "--tags", "--abbrev=0"])
-        .current_dir(&repo_root)
-        .output();
-
-    match output {
-        Ok(out) if out.status.success() => {
-            let tag = String::from_utf8_lossy(&out.stdout).trim().to_string();
-            if tag.is_empty() { None } else { Some(tag) }
-        }
-        _ => None,
-    }
-}
-
 fn get_all_tags() -> Vec<GitTag> {
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf();
 

@@ -129,6 +129,18 @@
     "strikethrough": "Strikethrough",
     "pasteUnavailable": "Could not read the clipboard. Use Ctrl+V to paste."
   },
+  "spellCheck": {
+    "suggestionsFor": "Suggestions for “{{word}}”",
+    "addWord": "Add “{{word}}” to the dictionary",
+    "noSuggestions": "No suggestions",
+    "loading": "Loading the spell checker…",
+    "enabled": "Spell checker",
+    "enabledDesc": "Underlines spelling mistakes while you write.",
+    "languages": "Spell checker languages",
+    "languagesDesc": "The text is checked against the selected dictionaries.",
+    "universeNames": "Use the names from the novel",
+    "universeNamesDesc": "Does not flag character, place and object names as errors."
+  },
   "manuscript": {
     "title": "Manuscript",
     "newPart": "New Part",

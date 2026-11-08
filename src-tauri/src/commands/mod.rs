@@ -31,7 +31,6 @@ pub struct ProjectSettings {
     pub auto_save_interval_minutes: i64,
     pub language: String,
     pub writing_style: String,
-    pub spell_check_languages: Vec<String>,
     pub updated_at: Option<String>,
     pub centered_writing_mode: bool,
     pub centered_writing_position: i64,
@@ -43,6 +42,9 @@ pub struct ProjectSettings {
 /// base de datos (tema, idioma, estilo) se completan con estos valores en vez
 /// de fallar la deserializacion, de modo que el cliente puede enviar solo los
 /// campos que de verdad usa.
+///
+/// Los ajustes de aplicacion (tema, tipografia, corrector ortografico) no
+/// estan aqui: viven en el store de la aplicacion, en `app_settings.json`.
 impl Default for ProjectSettings {
     fn default() -> Self {
         Self {
@@ -52,7 +54,6 @@ impl Default for ProjectSettings {
             auto_save_interval_minutes: 5,
             language: "es".to_string(),
             writing_style: "creative".to_string(),
-            spell_check_languages: vec!["es".to_string(), "en".to_string()],
             updated_at: None,
             centered_writing_mode: false,
             centered_writing_position: 50,
@@ -438,15 +439,13 @@ pub fn get_project_settings(state: State<'_, AppState>) -> Result<ProjectSetting
 
     let mut stmt = conn
         .prepare(
-            "SELECT theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at, centered_writing_mode, centered_writing_position
+            "SELECT theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, updated_at, centered_writing_mode, centered_writing_position
              FROM project_settings WHERE id = 'default' LIMIT 1;",
         )
         .map_err(|e| e.to_string())?;
 
     let settings = stmt
         .query_row([], |row| {
-            let spell_check_languages_json: String = row.get(6)?;
-            let spell_check_languages: Vec<String> = serde_json::from_str(&spell_check_languages_json).unwrap_or_else(|_| vec!["es".to_string(), "en".to_string()]);
             Ok(ProjectSettings {
                 theme: row.get(0)?,
                 focus_mode: row.get(1)?,
@@ -454,10 +453,9 @@ pub fn get_project_settings(state: State<'_, AppState>) -> Result<ProjectSetting
                 auto_save_interval_minutes: row.get(3)?,
                 language: row.get(4)?,
                 writing_style: row.get(5)?,
-                spell_check_languages,
-                updated_at: row.get(7)?,
-                centered_writing_mode: row.get(8)?,
-                centered_writing_position: row.get(9)?,
+                updated_at: row.get(6)?,
+                centered_writing_mode: row.get(7)?,
+                centered_writing_position: row.get(8)?,
             })
         })
         .unwrap_or_else(|_| ProjectSettings::default());
@@ -473,11 +471,9 @@ pub fn update_project_settings(
     let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
     let conn = db_guard.as_ref().ok_ok_or("No hay proyecto abierto")?;
 
-    let spell_check_languages_json = serde_json::to_string(&settings.spell_check_languages).unwrap_or_else(|_| "[\"es\",\"en\"]".to_string());
-
     conn.execute(
-        "INSERT INTO project_settings (id, theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at, centered_writing_mode, centered_writing_position)
-         VALUES ('default', ?1, ?2, ?3, ?4, ?5, ?6, ?7, CURRENT_TIMESTAMP, ?8, ?9)
+        "INSERT INTO project_settings (id, theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, updated_at, centered_writing_mode, centered_writing_position)
+         VALUES ('default', ?1, ?2, ?3, ?4, ?5, ?6, CURRENT_TIMESTAMP, ?7, ?8)
          ON CONFLICT(id) DO UPDATE SET
             theme = excluded.theme,
             focus_mode = excluded.focus_mode,
@@ -485,7 +481,6 @@ pub fn update_project_settings(
             auto_save_interval_minutes = excluded.auto_save_interval_minutes,
             language = excluded.language,
             writing_style = excluded.writing_style,
-            spell_check_languages = excluded.spell_check_languages,
             updated_at = CURRENT_TIMESTAMP,
             centered_writing_mode = excluded.centered_writing_mode,
             centered_writing_position = excluded.centered_writing_position;",
@@ -496,7 +491,6 @@ pub fn update_project_settings(
             settings.auto_save_interval_minutes,
             &settings.language,
             &settings.writing_style,
-            &spell_check_languages_json,
             settings.centered_writing_mode,
             settings.centered_writing_position,
         ),
@@ -504,6 +498,103 @@ pub fn update_project_settings(
     .map_err(|e| format!("Error guardando configuración: {}", e))?;
 
     Ok(settings)
+}
+
+// ─── Personal Dictionary Commands ───────────────────────────────────────────────
+// Palabras que el corrector ortografico no debe marcar como error.
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PersonalDictionaryWord {
+    pub word: String,
+    pub language: String,
+    pub created_at: String,
+}
+
+/// Lista las palabras del diccionario personal de la novela.
+#[tauri::command]
+pub fn get_personal_dictionary(
+    state: State<'_, AppState>,
+) -> Result<Vec<PersonalDictionaryWord>, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+    get_personal_dictionary_impl(conn)
+}
+
+/// Anade una palabra al diccionario personal de la novela.
+///
+/// La palabra se guarda tal cual, pero la busqueda no distingue mayusculas:
+/// "Aelthirion" y "aelthirion" son la misma entrada.
+#[tauri::command]
+pub fn add_personal_dictionary_word(
+    state: State<'_, AppState>,
+    word: String,
+    language: Option<String>,
+) -> Result<(), String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+    let language = language.unwrap_or_else(|| "es".to_string());
+    add_personal_dictionary_word_impl(conn, &word, &language)
+}
+
+/// Elimina una palabra del diccionario personal de la novela.
+#[tauri::command]
+pub fn remove_personal_dictionary_word(
+    state: State<'_, AppState>,
+    word: String,
+) -> Result<(), String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+    remove_personal_dictionary_word_impl(conn, &word)
+}
+
+fn get_personal_dictionary_impl(
+    conn: &Connection,
+) -> Result<Vec<PersonalDictionaryWord>, String> {
+    let mut stmt = conn
+        .prepare("SELECT word, language, created_at FROM personal_dictionary ORDER BY word;")
+        .map_err(|e| e.to_string())?;
+
+    let words = stmt
+        .query_map([], |row| {
+            Ok(PersonalDictionaryWord {
+                word: row.get(0)?,
+                language: row.get(1)?,
+                created_at: row.get(2)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|row| row.ok())
+        .collect();
+
+    Ok(words)
+}
+
+fn add_personal_dictionary_word_impl(
+    conn: &Connection,
+    word: &str,
+    language: &str,
+) -> Result<(), String> {
+    let clean = word.trim();
+    if clean.is_empty() {
+        return Err("La palabra no puede estar vacia".to_string());
+    }
+
+    conn.execute(
+        "INSERT INTO personal_dictionary (word, language) VALUES (?1, ?2)
+         ON CONFLICT(word) DO UPDATE SET word = excluded.word;",
+        (clean, language),
+    )
+    .map_err(|e| format!("Error guardando la palabra: {}", e))?;
+
+    Ok(())
+}
+
+fn remove_personal_dictionary_word_impl(conn: &Connection, word: &str) -> Result<(), String> {
+    conn.execute("DELETE FROM personal_dictionary WHERE word = ?1;", [word.trim()])
+        .map_err(|e| format!("Error eliminando la palabra: {}", e))?;
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -2309,8 +2400,7 @@ pub fn get_lore_for_scene(state: State<'_, AppState>, scene_id: String) -> Resul
     // Get relations between mentioned entities
     let mut relations: Vec<LoreRelation> = Vec::new();
     if !mentioned_ids.is_empty() {
-        // Create placeholders for both IN clauses (need to pass IDs twice)
-        let placeholders: Vec<String> = mentioned_ids.iter().flat_map(|_| ["?".to_string(), "?".to_string()]).collect();
+        // One placeholder per id, repeated for the source and target IN clauses
         let query = format!(
             "SELECT r.source_entry_id, COALESCE(s.name, 'Unknown'), r.target_entry_id, COALESCE(t.name, 'Unknown'), r.relation_type
              FROM universe_relations r
@@ -3047,17 +3137,17 @@ pub struct WikiCategory {
     pub description: Option<String>,
     pub icon: Option<String>,
     pub color: Option<String>,
-    pub sortOrder: i32,
-    pub createdAt: String,
-    pub updatedAt: String,
+    pub sort_order: i32,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiEntryType {
     pub id: String,
-    pub nameEs: String,
-    pub nameEn: String,
+    pub name_es: String,
+    pub name_en: String,
     pub icon: String,
     pub color: String,
 }
@@ -3066,49 +3156,49 @@ pub struct WikiEntryType {
 #[serde(rename_all = "camelCase")]
 pub struct WikiEntry {
     pub id: String,
-    pub categoryId: String,
-    pub entryType: String,
+    pub category_id: String,
+    pub entry_type: String,
     pub name: String,
-    pub briefDescription: Option<String>,
+    pub brief_description: Option<String>,
     pub icon: Option<String>,
-    pub coverImageId: Option<String>,
+    pub cover_image_id: Option<String>,
     pub layout: String,
-    pub isFeatured: bool,
+    pub is_featured: bool,
     pub tags: Vec<String>,
     pub metadata: serde_json::Value,
-    pub createdAt: String,
-    pub updatedAt: String,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiBlock {
     pub id: String,
-    pub entryId: String,
-    pub columnIndex: i32,
-    pub blockOrder: i32,
-    pub blockType: String,
+    pub entry_id: String,
+    pub column_index: i32,
+    pub block_order: i32,
+    pub block_type: String,
     pub content: serde_json::Value,
-    pub createdAt: String,
-    pub updatedAt: String,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiRelation {
     pub id: String,
-    pub sourceEntryId: String,
-    pub targetEntryId: String,
-    pub relationType: String,
+    pub source_entry_id: String,
+    pub target_entry_id: String,
+    pub relation_type: String,
     pub description: Option<String>,
-    pub createdAt: String,
+    pub created_at: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiData {
     pub categories: Vec<WikiCategory>,
-    pub entryTypes: Vec<WikiEntryType>,
+    pub entry_types: Vec<WikiEntryType>,
     pub entries: Vec<WikiEntry>,
     pub blocks: Vec<WikiBlock>,
     pub relations: Vec<WikiRelation>,
@@ -3140,9 +3230,9 @@ pub fn get_universe(state: State<'_, AppState>) -> Result<WikiData, String> {
                 description: row.get(2)?,
                 icon: row.get(3)?,
                 color: row.get(4)?,
-                sortOrder: row.get(5)?,
-                createdAt: row.get(6)?,
-                updatedAt: row.get(7)?,
+                sort_order: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -3158,8 +3248,8 @@ pub fn get_universe(state: State<'_, AppState>) -> Result<WikiData, String> {
         .query_map([], |row| {
             Ok(WikiEntryType {
                 id: row.get(0)?,
-                nameEs: row.get(1)?,
-                nameEn: row.get(2)?,
+                name_es: row.get(1)?,
+                name_en: row.get(2)?,
                 icon: row.get(3)?,
                 color: row.get(4)?,
             })
@@ -3186,18 +3276,18 @@ pub fn get_universe(state: State<'_, AppState>) -> Result<WikiData, String> {
 
             Ok(WikiEntry {
                 id: row.get(0)?,
-                categoryId: row.get(1)?,
-                entryType: row.get(2)?,
+                category_id: row.get(1)?,
+                entry_type: row.get(2)?,
                 name: row.get(3)?,
-                briefDescription: row.get(4)?,
+                brief_description: row.get(4)?,
                 icon: row.get(5)?,
-                coverImageId: row.get(6)?,
+                cover_image_id: row.get(6)?,
                 layout: row.get(7)?,
-                isFeatured: row.get(8)?,
+                is_featured: row.get(8)?,
                 tags,
                 metadata,
-                createdAt: row.get(11)?,
-                updatedAt: row.get(12)?,
+                created_at: row.get(11)?,
+                updated_at: row.get(12)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -3217,13 +3307,13 @@ pub fn get_universe(state: State<'_, AppState>) -> Result<WikiData, String> {
 
             Ok(WikiBlock {
                 id: row.get(0)?,
-                entryId: row.get(1)?,
-                columnIndex: row.get(2)?,
-                blockOrder: row.get(3)?,
-                blockType: row.get(4)?,
+                entry_id: row.get(1)?,
+                column_index: row.get(2)?,
+                block_order: row.get(3)?,
+                block_type: row.get(4)?,
                 content,
-                createdAt: row.get(6)?,
-                updatedAt: row.get(7)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -3239,11 +3329,11 @@ pub fn get_universe(state: State<'_, AppState>) -> Result<WikiData, String> {
         .query_map([], |row| {
             Ok(WikiRelation {
                 id: row.get(0)?,
-                sourceEntryId: row.get(1)?,
-                targetEntryId: row.get(2)?,
-                relationType: row.get(3)?,
+                source_entry_id: row.get(1)?,
+                target_entry_id: row.get(2)?,
+                relation_type: row.get(3)?,
                 description: row.get(4)?,
-                createdAt: row.get(5)?,
+                created_at: row.get(5)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -3252,7 +3342,7 @@ pub fn get_universe(state: State<'_, AppState>) -> Result<WikiData, String> {
 
     Ok(WikiData {
         categories,
-        entryTypes: entry_types,
+        entry_types: entry_types,
         entries,
         blocks,
         relations,
@@ -3277,14 +3367,14 @@ pub fn create_universe_entry(
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);",
         (
             &entry.id,
-            &entry.categoryId,
-            &entry.entryType,
+            &entry.category_id,
+            &entry.entry_type,
             &entry.name,
-            &entry.briefDescription,
+            &entry.brief_description,
             &entry.icon,
-            &entry.coverImageId,
+            &entry.cover_image_id,
             &entry.layout,
-            entry.isFeatured,
+            entry.is_featured,
             &tags_json,
             &metadata_json,
             &now,
@@ -3304,9 +3394,9 @@ pub fn create_universe_entry(
             (
                 &block.id,
                 &entry.id,
-                block.columnIndex,
-                block.blockOrder,
-                &block.blockType,
+                block.column_index,
+                block.block_order,
+                &block.block_type,
                 &content_json,
                 &now,
                 &now,
@@ -3314,15 +3404,15 @@ pub fn create_universe_entry(
         )
         .map_err(|e| format!("Error creando bloque: {}", e))?;
 
-        block.createdAt = now.clone();
-        block.updatedAt = now.clone();
+        block.created_at = now.clone();
+        block.updated_at = now.clone();
         created_blocks.push(block);
     }
 
     Ok(WikiEntryWithBlocks {
         entry: WikiEntry {
-            createdAt: now.clone(),
-            updatedAt: now,
+            created_at: now.clone(),
+            updated_at: now,
             ..entry
         },
         blocks: created_blocks,
@@ -3347,14 +3437,14 @@ pub fn update_universe_entry(
         "UPDATE universe_entries SET category_id = ?2, entry_type = ?3, name = ?4, brief_description = ?5, icon = ?6, cover_image_id = ?7, layout = ?8, is_featured = ?9, tags = ?10, metadata = ?11, updated_at = ?12 WHERE id = ?1;",
         (
             &entry.id,
-            &entry.categoryId,
-            &entry.entryType,
+            &entry.category_id,
+            &entry.entry_type,
             &entry.name,
-            &entry.briefDescription,
+            &entry.brief_description,
             &entry.icon,
-            &entry.coverImageId,
+            &entry.cover_image_id,
             &entry.layout,
-            entry.isFeatured,
+            entry.is_featured,
             &tags_json,
             &metadata_json,
             &now,
@@ -3377,9 +3467,9 @@ pub fn update_universe_entry(
             (
                 &block.id,
                 &entry.id,
-                block.columnIndex,
-                block.blockOrder,
-                &block.blockType,
+                block.column_index,
+                block.block_order,
+                &block.block_type,
                 &content_json,
                 &now,
                 &now,
@@ -3387,8 +3477,8 @@ pub fn update_universe_entry(
         )
         .map_err(|e| format!("Error creando bloque: {}", e))?;
 
-        block.createdAt = now.clone();
-        block.updatedAt = now.clone();
+        block.created_at = now.clone();
+        block.updated_at = now.clone();
         created_blocks.push(block);
     }
 
@@ -3401,11 +3491,11 @@ pub fn update_universe_entry(
         .query_map([&entry.id], |row| {
             Ok(WikiRelation {
                 id: row.get(0)?,
-                sourceEntryId: row.get(1)?,
-                targetEntryId: row.get(2)?,
-                relationType: row.get(3)?,
+                source_entry_id: row.get(1)?,
+                target_entry_id: row.get(2)?,
+                relation_type: row.get(3)?,
                 description: row.get(4)?,
-                createdAt: row.get(5)?,
+                created_at: row.get(5)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -3414,7 +3504,7 @@ pub fn update_universe_entry(
 
     Ok(WikiEntryWithBlocks {
         entry: WikiEntry {
-            updatedAt: now,
+            updated_at: now,
             ..entry
         },
         blocks: created_blocks,
@@ -3465,9 +3555,9 @@ pub fn create_universe_category(
         description,
         icon,
         color,
-        sortOrder: sort_order,
-        createdAt: now.clone(),
-        updatedAt: now,
+        sort_order: sort_order,
+        created_at: now.clone(),
+        updated_at: now,
     })
 }
 
@@ -3502,9 +3592,9 @@ pub fn update_universe_category(
             description: row.get(2)?,
             icon: row.get(3)?,
             color: row.get(4)?,
-            sortOrder: row.get(5)?,
-            createdAt: row.get(6)?,
-            updatedAt: row.get(7)?,
+            sort_order: row.get(5)?,
+            created_at: row.get(6)?,
+            updated_at: row.get(7)?,
         })
     })
     .map_err(|e| format!("Categoría no encontrada: {}", e))
@@ -3545,11 +3635,11 @@ pub fn create_universe_relation(
 
     Ok(WikiRelation {
         id,
-        sourceEntryId: source_entry_id,
-        targetEntryId: target_entry_id,
-        relationType: relation_type,
+        source_entry_id: source_entry_id,
+        target_entry_id: target_entry_id,
+        relation_type: relation_type,
         description,
-        createdAt: now,
+        created_at: now,
     })
 }
 
@@ -3701,18 +3791,18 @@ pub fn search_universe(state: State<'_, AppState>, query: String) -> Result<Vec<
 
             Ok(WikiEntry {
                 id: row.get(0)?,
-                categoryId: row.get(1)?,
-                entryType: row.get(2)?,
+                category_id: row.get(1)?,
+                entry_type: row.get(2)?,
                 name: row.get(3)?,
-                briefDescription: row.get(4)?,
+                brief_description: row.get(4)?,
                 icon: row.get(5)?,
-                coverImageId: row.get(6)?,
+                cover_image_id: row.get(6)?,
                 layout: row.get(7)?,
-                isFeatured: row.get(8)?,
+                is_featured: row.get(8)?,
                 tags,
                 metadata,
-                createdAt: row.get(11)?,
-                updatedAt: row.get(12)?,
+                created_at: row.get(11)?,
+                updated_at: row.get(12)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -3781,16 +3871,6 @@ pub fn save_tab_state(data: TabState) -> Result<(), String> {
 }
 
 // ─── Character Tracking Commands ─────────────────────────────────────────────────
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct CharacterAppearance {
-    pub id: String,
-    pub character_id: String,
-    pub scene_id: String,
-    pub chapter_id: String,
-    pub part_id: Option<String>,
-    pub updated_at: String,
-}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CharacterTrackingData {
@@ -4432,5 +4512,180 @@ mod tests {
 
         let _ = fs::remove_dir_all(&root);
         let _ = fs::remove_dir_all(&carpeta);
+    }
+
+    /// El frontend consume el wiki en camelCase. Los campos de Rust son
+    /// snake_case y el nombre en JSON lo decide `rename_all = "camelCase"`,
+    /// asi que un renombrado accidental romperia el contrato en silencio.
+    #[test]
+    fn el_wiki_se_sigue_serializando_en_camel_case() {
+        let data = WikiData {
+            categories: vec![WikiCategory {
+                id: "cat-1".into(),
+                name: "Personajes".into(),
+                description: None,
+                icon: None,
+                color: None,
+                sort_order: 1,
+                created_at: "2026-01-01".into(),
+                updated_at: "2026-01-02".into(),
+            }],
+            entry_types: vec![WikiEntryType {
+                id: "type-1".into(),
+                name_es: "Personaje".into(),
+                name_en: "Character".into(),
+                icon: "user".into(),
+                color: "#fff".into(),
+            }],
+            entries: vec![WikiEntry {
+                id: "entry-1".into(),
+                category_id: "cat-1".into(),
+                entry_type: "type-1".into(),
+                name: "Ana".into(),
+                brief_description: Some("Protagonista".into()),
+                icon: None,
+                cover_image_id: None,
+                layout: "1-col".into(),
+                is_featured: true,
+                tags: vec![],
+                metadata: serde_json::Value::Null,
+                created_at: "2026-01-01".into(),
+                updated_at: "2026-01-02".into(),
+            }],
+            blocks: vec![WikiBlock {
+                id: "block-1".into(),
+                entry_id: "entry-1".into(),
+                column_index: 0,
+                block_order: 0,
+                block_type: "rich-text".into(),
+                content: serde_json::Value::Null,
+                created_at: "2026-01-01".into(),
+                updated_at: "2026-01-02".into(),
+            }],
+            relations: vec![WikiRelation {
+                id: "rel-1".into(),
+                source_entry_id: "entry-1".into(),
+                target_entry_id: "entry-2".into(),
+                relation_type: "ally".into(),
+                description: None,
+                created_at: "2026-01-01".into(),
+            }],
+        };
+
+        let json = serde_json::to_value(&data).unwrap();
+
+        // Categorias
+        let categoria = &json["categories"][0];
+        assert_eq!(categoria["sortOrder"], 1);
+        assert_eq!(categoria["createdAt"], "2026-01-01");
+        assert_eq!(categoria["updatedAt"], "2026-01-02");
+
+        // Tipos de entrada
+        assert_eq!(json["entryTypes"][0]["nameEs"], "Personaje");
+        assert_eq!(json["entryTypes"][0]["nameEn"], "Character");
+
+        // Entradas
+        let entrada = &json["entries"][0];
+        assert_eq!(entrada["categoryId"], "cat-1");
+        assert_eq!(entrada["entryType"], "type-1");
+        assert_eq!(entrada["briefDescription"], "Protagonista");
+        assert_eq!(entrada["coverImageId"], serde_json::Value::Null);
+        assert_eq!(entrada["isFeatured"], true);
+        assert_eq!(entrada["createdAt"], "2026-01-01");
+        assert_eq!(entrada["updatedAt"], "2026-01-02");
+
+        // Bloques
+        let bloque = &json["blocks"][0];
+        assert_eq!(bloque["entryId"], "entry-1");
+        assert_eq!(bloque["columnIndex"], 0);
+        assert_eq!(bloque["blockOrder"], 0);
+        assert_eq!(bloque["blockType"], "rich-text");
+        assert_eq!(bloque["createdAt"], "2026-01-01");
+        assert_eq!(bloque["updatedAt"], "2026-01-02");
+
+        // Relaciones
+        let relacion = &json["relations"][0];
+        assert_eq!(relacion["sourceEntryId"], "entry-1");
+        assert_eq!(relacion["targetEntryId"], "entry-2");
+        assert_eq!(relacion["relationType"], "ally");
+        assert_eq!(relacion["createdAt"], "2026-01-01");
+
+        // Ninguna clave en snake_case debe filtrarse al JSON.
+        let texto = json.to_string();
+        for clave_prohibida in [
+            "sort_order",
+            "created_at",
+            "updated_at",
+            "name_es",
+            "name_en",
+            "category_id",
+            "entry_type",
+            "brief_description",
+            "cover_image_id",
+            "is_featured",
+            "entry_id",
+            "column_index",
+            "block_order",
+            "block_type",
+            "source_entry_id",
+            "target_entry_id",
+            "relation_type",
+            "entry_types",
+        ] {
+            assert!(
+                !texto.contains(clave_prohibida),
+                "el JSON del wiki no debe exponer '{}'",
+                clave_prohibida
+            );
+        }
+    }
+
+    /// El diccionario personal guarda las palabras que el usuario anade para
+    /// que el corrector no las marque, y las devuelve ordenadas.
+    #[test]
+    fn el_diccionario_personal_guarda_y_lista_las_palabras() {
+        let root = std::env::temp_dir().join(format!("aetheria-dict-{}", Uuid::new_v4()));
+        fs::create_dir_all(&root).unwrap();
+        let (state, _project) = estado_de_prueba(&root);
+
+        {
+            let db = state.db.lock().unwrap();
+            let conn = db.as_ref().unwrap();
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS personal_dictionary (
+                    word TEXT PRIMARY KEY,
+                    language TEXT NOT NULL DEFAULT 'es',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+                [],
+            )
+            .unwrap();
+        }
+
+        {
+            let db = state.db.lock().unwrap();
+            let conn = db.as_ref().unwrap();
+
+            add_personal_dictionary_word_impl(conn, "Aelthirion", "es").unwrap();
+            add_personal_dictionary_word_impl(conn, "  Valquiria  ", "es").unwrap();
+
+            // Anadir dos veces la misma palabra no la duplica.
+            add_personal_dictionary_word_impl(conn, "Aelthirion", "es").unwrap();
+
+            let palabras = get_personal_dictionary_impl(conn).unwrap();
+            assert_eq!(palabras.len(), 2);
+            assert_eq!(palabras[0].word, "Aelthirion");
+            assert_eq!(palabras[1].word, "Valquiria");
+            assert_eq!(palabras[0].language, "es");
+
+            // Una palabra vacia se rechaza.
+            assert!(add_personal_dictionary_word_impl(conn, "   ", "es").is_err());
+
+            remove_personal_dictionary_word_impl(conn, "Aelthirion").unwrap();
+            let palabras = get_personal_dictionary_impl(conn).unwrap();
+            assert_eq!(palabras.len(), 1);
+            assert_eq!(palabras[0].word, "Valquiria");
+        }
+
+        let _ = fs::remove_dir_all(&root);
     }
 }
