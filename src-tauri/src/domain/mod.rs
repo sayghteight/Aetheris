@@ -16,11 +16,3 @@ pub struct ManuscriptNode {
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
 }
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct SceneContent {
-    pub node_id: String,
-    pub content: String, // Lexical JSON
-    pub plain_text: String,
-    pub updated_at: Option<String>,
-}

@@ -95,26 +95,6 @@
     "dialogue": "Diálogo",
     "scene": "Escena"
   },
-  "editorSettings": {
-    "title": "Configuración del Editor",
-    "subtitle": "Personaliza la experiencia de escritura según tus preferencias.",
-    "fontSize": "Tamaño de Fuente",
-    "lineHeight": "Interlineado",
-    "fontFamily": "Tipo de Letra",
-    "textAlign": "Alineación del Texto",
-    "options": "Opciones",
-    "spellCheck": "Corrector Ortográfico",
-    "spellCheckDesc": "Resalta errores ortográficos mientras escribes",
-    "spellCheckLanguages": "Idiomas del corrector",
-    "autoCorrect": "Corrección Automática",
-    "autoCorrectDesc": "Corrige automáticamente errores comunes de escritura",
-    "showWordCount": "Mostrar Conteo de Palabras",
-    "showWordCountDesc": "Muestra el número de palabras en tiempo real",
-    "centeredWritingMode": "Modo Centrado",
-    "centeredWritingModeDesc": "Mantiene el cursor en una posición cómoda en la pantalla mientras escribes.",
-    "cursorPosition": "Posición del Cursor",
-    "cursorPositionDesc": "Define dónde se mantiene el cursor en la pantalla mientras escribes."
-  },
   "contextMenu": {
     "label": "Menú contextual",
     "cut": "Cortar",
@@ -128,6 +108,24 @@
     "underline": "Subrayado",
     "strikethrough": "Tachado",
     "pasteUnavailable": "No se pudo leer el portapapeles. Usa Ctrl+V para pegar."
+  },
+  "changelog": {
+    "title": "Últimos cambios",
+    "fullHistory": "Historial completo",
+    "current": "Actual",
+    "empty": "No hay registro de cambios para esta versión."
+  },
+  "spellCheck": {
+    "suggestionsFor": "Sugerencias para «{{word}}»",
+    "addWord": "Añadir «{{word}}» al diccionario",
+    "noSuggestions": "Sin sugerencias",
+    "loading": "Cargando el corrector…",
+    "enabled": "Corrector ortográfico",
+    "enabledDesc": "Subraya los errores ortográficos mientras escribes.",
+    "languages": "Idiomas del corrector",
+    "languagesDesc": "Se comprueba el texto con los diccionarios indicados.",
+    "universeNames": "Usar los nombres de la novela",
+    "universeNamesDesc": "No marca como error los nombres de personajes, lugares y objetos."
   },
   "manuscript": {
     "title": "Manuscrito",
@@ -497,8 +495,6 @@
     "chapterTitles": "Títulos de capítulos",
     "sceneTitles": "Títulos de escenas",
     "preview": "Vista previa",
-    "newFeature": "Nueva característica",
-    "bugFix": "Corrección de error",
     "removeShortcut": "Quitar atajo"
   },
   "project": {
@@ -594,6 +590,12 @@
     "centeredWritingDesc": "El cursor queda fijo en una banda central mientras escribes",
     "cursorPosition": "Posición del cursor",
     "cursorPositionDesc": "Altura de la banda central, en porcentaje de la ventana",
+    "spellCheck": "Corrector ortográfico",
+    "spellCheckDesc": "Subraya los errores ortográficos mientras escribes.",
+    "spellCheckLanguages": "Idiomas del corrector",
+    "spellCheckLanguagesDesc": "El texto se comprueba con los diccionarios indicados.",
+    "spellCheckUseUniverseNames": "Usar los nombres de la novela",
+    "spellCheckUseUniverseNamesDesc": "No marca como error los nombres de personajes, lugares y objetos.",
     "behavior": "Comportamiento",
     "autoSave": "Autoguardado",
     "autoSaveDesc": "Guarda los cambios de la escena por tu cuenta",

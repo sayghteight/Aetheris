@@ -442,6 +442,18 @@ pub fn initialize_database(conn: &Connection) -> Result<()> {
         [],
     )?;
 
+    // ─── Personal Dictionary Table ─────────────────────────────────────────────────
+    // Palabras que el usuario ha anadido a su diccionario para que el corrector
+    // ortografico no las marque como error.
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS personal_dictionary (
+            word TEXT PRIMARY KEY,
+            language TEXT NOT NULL DEFAULT 'es',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+        [],
+    )?;
+
     // ─── Migration: user_version 2 → 3 ────────────────────────────────────────
     // Check current user_version and migrate if needed
     let current_version: i32 = conn
@@ -494,8 +506,10 @@ fn migrate_legacy_universe_if_needed(conn: &Connection) -> Result<(), String> {
             name: String,
             #[serde(rename = "type")]
             entry_type: String,
+            // The legacy hierarchy (folder -> entry) is flattened on migration,
+            // so the parent reference is parsed but not used.
             #[serde(rename = "parentId")]
-            parent_id: Option<String>,
+            _parent_id: Option<String>,
             content: String,
             #[serde(rename = "createdAt")]
             created_at: Option<String>,

@@ -15,8 +15,6 @@ import { invoke } from '@tauri-apps/api/core';
 export interface AppSettingsState {
   /** Modo de la interfaz: standard | focus | distraction-free. */
   focus_mode: string;
-  /** Idiomas del corrector. */
-  spell_check_languages: string[];
 }
 
 interface SettingsStore {
@@ -28,7 +26,6 @@ interface SettingsStore {
 
 const defaultSettings: AppSettingsState = {
   focus_mode: 'standard',
-  spell_check_languages: ['es', 'en'],
 };
 
 export const useSettingsStore = create<SettingsStore>((set) => ({
@@ -41,8 +38,6 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       // Cualquier campo ausente se completa con su valor por defecto.
       const mapped: AppSettingsState = {
         focus_mode: loaded.focus_mode ?? defaultSettings.focus_mode,
-        spell_check_languages:
-          loaded.spell_check_languages ?? defaultSettings.spell_check_languages,
       };
       set({
         settings: mapped,

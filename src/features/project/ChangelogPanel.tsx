@@ -1,147 +1,158 @@
-import React, { useEffect, useState } from 'react';
-import { Tag, GitBranch, ArrowUpRight, FlaskConical } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Tag, GitBranch, ArrowUpRight } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { invoke } from '@tauri-apps/api/core';
+import { marked } from 'marked';
 
 import { VERSION } from '../../utils/version';
+import { DOCUMENTED_SECTIONS, type ChangelogSection } from '../../utils/changelog';
 
-interface GitCommit {
-  hash: string;
-  message: string;
-  date: string;
-}
-
-interface GitTag {
-  name: string;
-  hash: string;
-  date: string;
-}
-
-interface TagInfo {
-  current_tag: string | null;
-  commits_since_tag: GitCommit[];
-  all_tags: GitTag[];
-}
-
-const typeColors: Record<string, string> = {
-  feat: 'text-amber-400 bg-amber-400/10',
-  fix: 'text-emerald-400 bg-emerald-400/10',
-  refactor: 'text-violet-400 bg-violet-400/10',
-  chore: 'text-slate-500 bg-slate-500/10',
-  merge: 'text-sky-400 bg-sky-400/10',
-};
-
-const detectType = (message: string): string => {
-  const lower = message.toLowerCase();
-  if (lower.startsWith('feat') || lower.includes('add') || lower.includes('nuevo')) return 'feat';
-  if (lower.startsWith('fix')) return 'fix';
-  if (lower.startsWith('refactor') || lower.includes('refactor')) return 'refactor';
-  if (lower.startsWith('merge') || lower.includes('merge')) return 'merge';
-  return 'chore';
-};
+// El historial completo son las versiones publicadas del repositorio (el
+// proyecto se versiona con tags, no con releases de GitHub). El repositorio
+// se renombro a "Aetheris": la URL antigua redirige, pero se usa la nueva.
+const HISTORY_URL = 'https://github.com/sayghteight/Aetheris/tags';
 
 export const ChangelogPanel: React.FC = () => {
   const { t } = useI18n();
-  const [tagInfo, setTagInfo] = useState<TagInfo | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Por defecto se muestra la version que lleva la aplicacion; si esa version
+  // todavia no tiene changelog, se muestra la mas reciente que si lo tiene.
+  const [selectedVersion, setSelectedVersion] = useState<string>(() => {
+    if (DOCUMENTED_SECTIONS.some((item) => item.version === VERSION)) return VERSION;
+    return DOCUMENTED_SECTIONS[0]?.version ?? VERSION;
+  });
 
-  const typeLabels: Record<string, string> = {
-    feat: t('ui.newFeature'),
-    fix: t('ui.bugFix'),
-    refactor: 'Refactorización',
-    chore: 'Tarea',
-    merge: 'Merge',
-  };
+  const section: ChangelogSection | undefined = useMemo(
+    () => DOCUMENTED_SECTIONS.find((item) => item.version === selectedVersion),
+    [selectedVersion]
+  );
 
-  useEffect(() => {
-    const loadGitInfo = async () => {
-      try {
-        const info = await invoke<TagInfo>('get_git_tags');
-        setTagInfo(info);
-      } catch (err) {
-        console.error('Failed to load git tags:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    void loadGitInfo();
-  }, []);
+  const html = useMemo(
+    () =>
+      section
+        ? // `mangle` y `headerIds` estan obsoletos en marked 5 y avisan por
+          // consola: el registro de cambios no necesita ninguna de las dos.
+          marked.parse(section.body, { mangle: false, headerIds: false })
+        : '',
+    [section]
+  );
 
-  const openGitHub = async () => {
+  const openExternal = async (url: string): Promise<void> => {
     try {
-      await openUrl('https://github.com/sayghteight/culto-guieditor');
+      await openUrl(url);
     } catch {
-      window.open('https://github.com/sayghteight/culto-guieditor', '_blank', 'noopener,noreferrer');
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
-  const displayVersion = tagInfo?.current_tag?.replace('app-v', 'v') ?? VERSION;
-  const commits = tagInfo?.commits_since_tag ?? [];
+  // Un enlace del markdown no sale al navegador del sistema por si solo: en la
+  // webview navega dentro de la aplicacion. Hay que interceptarlo y abrirlo
+  // con el plugin de Tauri.
+  const handleBodyClick = (event: React.MouseEvent<HTMLDivElement>): void => {
+    const anchor = (event.target as HTMLElement | null)?.closest?.('a');
+    if (!anchor) return;
+
+    const href = anchor.getAttribute('href');
+    if (!href || !/^https?:\/\//i.test(href)) return;
+
+    event.preventDefault();
+    void openExternal(href);
+  };
+
+  const openGitHub = async () => {
+    await openExternal(HISTORY_URL);
+  };
+
+  // Al cambiar de version el contenido se sustituye entero: la posicion de
+  // scroll se reinicia, para no aparecer a media lectura de otra version.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [selectedVersion]);
 
   return (
-    <div className="max-w-2xl w-full mx-auto pt-6">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Tag className="w-4 h-4 text-amber-500" />
-            <span className="text-xs uppercase tracking-widest text-amber-500 font-medium">
-              {displayVersion}
-            </span>
-            {tagInfo?.current_tag ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
-                <FlaskConical className="w-2.5 h-2.5" />
-                {tagInfo.all_tags.length > 1 ? 'Historical' : 'Latest'}
-              </span>
-            ) : null}
+    // El area principal de la aplicacion no tiene scroll propio (es
+    // `overflow-hidden`): cada panel gestiona el suyo. Aqui la cabecera se
+    // queda fija y solo el contenido largo se desplaza.
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="shrink-0 border-b border-[var(--color-border)] bg-[var(--color-bg-primary)]/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-start justify-between gap-3 px-6 pt-5">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Tag className="h-4 w-4 shrink-0 text-[var(--color-accent)]" />
+              <h1 className="truncate text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
+                {t('changelog.title')}
+              </h1>
+              {section && (
+                <span className="shrink-0 rounded-md bg-[var(--color-accent)]/15 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-[var(--color-accent)]">
+                  v{section.version}
+                </span>
+              )}
+              {section?.version === VERSION && (
+                <span className="shrink-0 rounded-md border border-[var(--color-border)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+                  {t('changelog.current')}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+              {section?.date || t('changelog.empty')}
+            </p>
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-white">Últimos cambios</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {loading ? 'Cargando...' : `${commits.length} cambios desde la última release`}
-          </p>
+
+          <button
+            type="button"
+            onClick={() => void openGitHub()}
+            className="lib-ring flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-text-muted)] hover:text-[var(--color-accent)]"
+          >
+            <GitBranch className="h-3.5 w-3.5" />
+            <span>{t('changelog.fullHistory')}</span>
+            <ArrowUpRight className="h-3 w-3" />
+          </button>
         </div>
-        <button
-          onClick={() => void openGitHub()}
-          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-400 transition-colors mt-1"
-        >
-          <GitBranch className="w-3.5 h-3.5" />
-          <span>Historial completo</span>
-          <ArrowUpRight className="w-3 h-3" />
-        </button>
-      </div>
 
-      {/* Changelog timeline */}
-      <div className="relative">
-        {/* Timeline line */}
-        <div className="absolute left-[7px] top-2 bottom-2 w-px bg-slate-800" />
+        {/* Selector de version */}
+        {DOCUMENTED_SECTIONS.length > 1 && (
+          <div className="mx-auto max-w-3xl px-6 pb-4 pt-4">
+            <div
+              role="tablist"
+              aria-label={t('changelog.title')}
+              className="inline-flex items-center gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-1"
+            >
+              {DOCUMENTED_SECTIONS.map((item) => {
+                const active = item.version === selectedVersion;
+                return (
+                  <button
+                    key={item.version}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setSelectedVersion(item.version)}
+                    className={`lib-ring rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                      active
+                        ? 'bg-[var(--color-brand)] text-white'
+                        : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]'
+                    }`}
+                  >
+                    v{item.version}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </header>
 
-        <div className="space-y-1">
-          {commits.map((entry) => {
-            const entryType = detectType(entry.message);
-            return (
-              <div key={entry.hash} className="relative flex gap-4 pl-6 py-2.5 group">
-                {/* Timeline dot */}
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[15px] h-[15px] rounded-full border-2 border-slate-800 bg-slate-950 flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 rounded-full bg-slate-600 group-hover:bg-amber-500 transition-colors" />
-                </div>
-
-                {/* Hash */}
-                <span className="text-[10px] font-mono text-slate-600 shrink-0 mt-0.5">{entry.hash}</span>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${typeColors[entryType]}`}>
-                      {typeLabels[entryType]}
-                    </span>
-                    <span className="text-[10px] text-slate-600">{entry.date}</span>
-                  </div>
-                  <p className="text-sm text-slate-300 leading-snug">{entry.message}</p>
-                </div>
-              </div>
-            );
-          })}
+      {/* Contenido de la version */}
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-3xl px-6 py-7">
+          {section ? (
+            <div
+              className="changelog-body"
+              onClick={handleBodyClick}
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          ) : (
+            <p className="text-sm text-[var(--color-text-muted)]">{t('changelog.empty')}</p>
+          )}
         </div>
       </div>
     </div>
