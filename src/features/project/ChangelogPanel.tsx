@@ -5,18 +5,24 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { marked } from 'marked';
 
 import { VERSION } from '../../utils/version';
-import { CHANGELOG_SECTIONS, type ChangelogSection } from '../../utils/changelog';
+import { DOCUMENTED_SECTIONS, type ChangelogSection } from '../../utils/changelog';
 
-const REPOSITORY_URL = 'https://github.com/sayghteight/culto-guieditor';
+// El historial completo son las versiones publicadas del repositorio (el
+// proyecto se versiona con tags, no con releases de GitHub). El repositorio
+// se renombro a "Aetheris": la URL antigua redirige, pero se usa la nueva.
+const HISTORY_URL = 'https://github.com/sayghteight/Aetheris/tags';
 
 export const ChangelogPanel: React.FC = () => {
   const { t } = useI18n();
-  // Por defecto se muestra la version que lleva la aplicacion; el resto se
-  // puede ir mirando con los botones de version.
-  const [selectedVersion, setSelectedVersion] = useState<string>(VERSION);
+  // Por defecto se muestra la version que lleva la aplicacion; si esa version
+  // todavia no tiene changelog, se muestra la mas reciente que si lo tiene.
+  const [selectedVersion, setSelectedVersion] = useState<string>(() => {
+    if (DOCUMENTED_SECTIONS.some((item) => item.version === VERSION)) return VERSION;
+    return DOCUMENTED_SECTIONS[0]?.version ?? VERSION;
+  });
 
   const section: ChangelogSection | undefined = useMemo(
-    () => CHANGELOG_SECTIONS.find((item) => item.version === selectedVersion),
+    () => DOCUMENTED_SECTIONS.find((item) => item.version === selectedVersion),
     [selectedVersion]
   );
 
@@ -30,12 +36,30 @@ export const ChangelogPanel: React.FC = () => {
     [section]
   );
 
-  const openGitHub = async () => {
+  const openExternal = async (url: string): Promise<void> => {
     try {
-      await openUrl(REPOSITORY_URL);
+      await openUrl(url);
     } catch {
-      window.open(REPOSITORY_URL, '_blank', 'noopener,noreferrer');
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
+  };
+
+  // Un enlace del markdown no sale al navegador del sistema por si solo: en la
+  // webview navega dentro de la aplicacion. Hay que interceptarlo y abrirlo
+  // con el plugin de Tauri.
+  const handleBodyClick = (event: React.MouseEvent<HTMLDivElement>): void => {
+    const anchor = (event.target as HTMLElement | null)?.closest?.('a');
+    if (!anchor) return;
+
+    const href = anchor.getAttribute('href');
+    if (!href || !/^https?:\/\//i.test(href)) return;
+
+    event.preventDefault();
+    void openExternal(href);
+  };
+
+  const openGitHub = async () => {
+    await openExternal(HISTORY_URL);
   };
 
   return (
@@ -67,9 +91,9 @@ export const ChangelogPanel: React.FC = () => {
       </div>
 
       {/* Selector de version */}
-      {CHANGELOG_SECTIONS.length > 1 && (
+      {DOCUMENTED_SECTIONS.length > 1 && (
         <div className="mb-6 flex flex-wrap gap-2">
-          {CHANGELOG_SECTIONS.map((item) => {
+          {DOCUMENTED_SECTIONS.map((item) => {
             const active = item.version === selectedVersion;
             return (
               <button
@@ -91,7 +115,11 @@ export const ChangelogPanel: React.FC = () => {
 
       {/* Contenido de la version */}
       {section ? (
-        <div className="changelog-body" dangerouslySetInnerHTML={{ __html: html }} />
+        <div
+          className="changelog-body"
+          onClick={handleBodyClick}
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
       ) : (
         <p className="text-sm text-[var(--color-text-muted)]">{t('changelog.empty')}</p>
       )}

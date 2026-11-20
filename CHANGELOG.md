@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which only existed on the development machine, so the panel came up empty
   for users. It now reads the bundled `CHANGELOG.md` and lets you browse the
   previous versions.
+- The version selector only lists versions that actually document changes. The
+  older releases that only pointed to GitHub are no longer shown, because
+  there was nothing to read in them.
+- Links inside the changelog open in the user's browser. Clicking one used to
+  navigate the application window instead of leaving the app.
+- The repository links now point to the renamed repository, `sayghteight/Aetheris`.
 
 ### Internal
 
@@ -148,5 +154,6 @@ the theme.
 
 ## [0.1.7] — September 20, 2026
 
-See the [GitHub releases page](https://github.com/sayghteight/Aetheris/releases) for the full
-history of previous versions.
+No changes are documented for this version. See the
+[list of published versions](https://github.com/sayghteight/Aetheris/tags)
+for the full history.
