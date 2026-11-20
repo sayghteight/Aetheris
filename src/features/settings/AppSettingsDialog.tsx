@@ -48,6 +48,12 @@ const AUTO_SAVE_DELAYS = [700, 1000, 2000, 5000, 15000, 30000, 60000];
 /** Alturas de la banda de escritura centrada, en porcentaje. */
 const CENTERED_POSITIONS = [30, 40, 50, 60];
 
+/** Idiomas con los que puede comprobarse la ortografia. */
+const SPELL_LANGUAGES = [
+  { id: 'es', label: 'Español' },
+  { id: 'en', label: 'English' },
+];
+
 /** Limites de la ventana: coinciden con `minWidth`/`minHeight` de tauri.conf.json. */
 const MIN_WIDTH = 900;
 const MIN_HEIGHT = 600;
@@ -154,6 +160,19 @@ export const AppSettingsDialog: React.FC<AppSettingsDialogProps> = ({ open, onCl
     return preset ? `${preset.width}x${preset.height}` : 'custom';
   });
   const isCustomResolution = resolutionValue === 'custom';
+
+  /**
+   * Activa o desactiva un idioma del corrector. Siempre tiene que quedar al
+   * menos uno: sin diccionarios el corrector no puede comprobar nada.
+   */
+  const toggleSpellLanguage = (language: string) => {
+    const current = settings.spellCheckLanguages;
+    const next = current.includes(language)
+      ? current.filter((item) => item !== language)
+      : [...current, language];
+    if (next.length === 0) return;
+    void updateSettings({ spellCheckLanguages: next });
+  };
 
   // Tamano del monitor, para ofrecer la resolucion maxima disponible.
   useEffect(() => {
@@ -787,6 +806,55 @@ export const AppSettingsDialog: React.FC<AppSettingsDialogProps> = ({ open, onCl
                   {t('appSettings.cursorPositionDesc')}
                 </p>
               </div>
+            )}
+          </Section>
+
+          {/* ── Corrector ortografico ── */}
+          <Section title={t('appSettings.spellCheck')}>
+            <Toggle
+              label={t('appSettings.spellCheck')}
+              description={t('appSettings.spellCheckDesc')}
+              enabled={settings.spellCheckEnabled}
+              onChange={(value) => updateSettings({ spellCheckEnabled: value })}
+            />
+
+            {settings.spellCheckEnabled && (
+              <>
+                <div className="ml-1 mt-1 max-w-xs">
+                  <label className="mb-1 block text-sm font-medium text-[var(--color-text-primary)]">
+                    {t('appSettings.spellCheckLanguages')}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {SPELL_LANGUAGES.map((language) => {
+                      const selected = settings.spellCheckLanguages.includes(language.id);
+                      return (
+                        <button
+                          key={language.id}
+                          type="button"
+                          onClick={() => toggleSpellLanguage(language.id)}
+                          className={`lib-ring rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                            selected
+                              ? 'bg-[var(--color-brand)] text-white'
+                              : 'bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                          }`}
+                        >
+                          {language.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                    {t('appSettings.spellCheckLanguagesDesc')}
+                  </p>
+                </div>
+
+                <Toggle
+                  label={t('appSettings.spellCheckUseUniverseNames')}
+                  description={t('appSettings.spellCheckUseUniverseNamesDesc')}
+                  enabled={settings.spellCheckUseUniverseNames}
+                  onChange={(value) => updateSettings({ spellCheckUseUniverseNames: value })}
+                />
+              </>
             )}
           </Section>
 

@@ -1527,8 +1527,8 @@ pub fn reset_project(state: State<'_, AppState>) -> Result<(), String> {
         [],
     ).map_err(|e| e.to_string())?;
     conn.execute(
-        "INSERT INTO project_settings (id, theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, spell_check_languages, updated_at, centered_writing_mode, centered_writing_position)
-         VALUES ('default', 'midnight', 'standard', 1, 5, 'es', 'creative', '[\"es\",\"en\"]', CURRENT_TIMESTAMP, 0, 50);",
+        "INSERT INTO project_settings (id, theme, focus_mode, auto_save_enabled, auto_save_interval_minutes, language, writing_style, updated_at, centered_writing_mode, centered_writing_position)
+         VALUES ('default', 'midnight', 'standard', 1, 5, 'es', 'creative', CURRENT_TIMESTAMP, 0, 50);",
         [],
     ).map_err(|e| e.to_string())?;
 
