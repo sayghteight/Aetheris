@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Links inside the changelog open in the user's browser. Clicking one used to
   navigate the application window instead of leaving the app.
 - The repository links now point to the renamed repository, `sayghteight/Aetheris`.
+- The changelog panel was tidied up: it now has its own scrollbar (the content was
+  being cut off), the header stays fixed while reading, the version selector is
+  a segmented control, the current version is marked as such, and the scroll
+  returns to the top when you switch versions.
 
 ### Internal
 

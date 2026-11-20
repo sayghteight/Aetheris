@@ -112,6 +112,7 @@
   "changelog": {
     "title": "Últimos cambios",
     "fullHistory": "Historial completo",
+    "current": "Actual",
     "empty": "No hay registro de cambios para esta versión."
   },
   "spellCheck": {

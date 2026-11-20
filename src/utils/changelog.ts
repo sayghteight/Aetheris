@@ -38,6 +38,14 @@ function detectChanges(body: string): boolean {
 }
 
 /**
+ * Quita el separador horizontal (`---`) que cierra cada seccion del archivo:
+ * en el panel solo se veria como una linea suelta al final del contenido.
+ */
+function stripSeparators(body: string): string {
+  return body.replace(/\n*^---+\s*$/gm, '').trim();
+}
+
+/**
  * Divide el changelog en sus secciones de version, de la mas reciente a la
  * mas antigua (el archivo esta escrito en ese orden).
  */
@@ -48,7 +56,7 @@ export function parseChangelog(markdown: string): ChangelogSection[] {
 
   const flush = (): void => {
     if (current) {
-      const body = lines.join('\n').trim();
+      const body = stripSeparators(lines.join('\n'));
       sections.push({ ...current, body, hasChanges: detectChanges(body) });
     }
     current = null;

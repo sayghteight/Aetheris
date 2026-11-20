@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Tag, GitBranch, ArrowUpRight } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { openUrl } from '@tauri-apps/plugin-opener';
@@ -62,67 +62,99 @@ export const ChangelogPanel: React.FC = () => {
     await openExternal(HISTORY_URL);
   };
 
-  return (
-    <div className="max-w-2xl w-full mx-auto pt-6">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Tag className="w-4 h-4 text-[var(--color-accent)]" />
-            <span className="text-xs uppercase tracking-widest text-[var(--color-accent)] font-medium">
-              v{section?.version ?? VERSION}
-            </span>
-          </div>
-          <h1 className="text-3xl font-black tracking-tight text-[var(--color-text-primary)]">
-            {t('changelog.title')}
-          </h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1">
-            {section?.date || t('changelog.empty')}
-          </p>
-        </div>
-        <button
-          onClick={() => void openGitHub()}
-          className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors mt-1"
-        >
-          <GitBranch className="w-3.5 h-3.5" />
-          <span>{t('changelog.fullHistory')}</span>
-          <ArrowUpRight className="w-3 h-3" />
-        </button>
-      </div>
+  // Al cambiar de version el contenido se sustituye entero: la posicion de
+  // scroll se reinicia, para no aparecer a media lectura de otra version.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [selectedVersion]);
 
-      {/* Selector de version */}
-      {DOCUMENTED_SECTIONS.length > 1 && (
-        <div className="mb-6 flex flex-wrap gap-2">
-          {DOCUMENTED_SECTIONS.map((item) => {
-            const active = item.version === selectedVersion;
-            return (
-              <button
-                key={item.version}
-                type="button"
-                onClick={() => setSelectedVersion(item.version)}
-                className={`lib-ring rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
-                  active
-                    ? 'bg-[var(--color-brand)] text-white'
-                    : 'border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
-                }`}
-              >
-                v{item.version}
-              </button>
-            );
-          })}
+  return (
+    // El area principal de la aplicacion no tiene scroll propio (es
+    // `overflow-hidden`): cada panel gestiona el suyo. Aqui la cabecera se
+    // queda fija y solo el contenido largo se desplaza.
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="shrink-0 border-b border-[var(--color-border)] bg-[var(--color-bg-primary)]/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-start justify-between gap-3 px-6 pt-5">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Tag className="h-4 w-4 shrink-0 text-[var(--color-accent)]" />
+              <h1 className="truncate text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
+                {t('changelog.title')}
+              </h1>
+              {section && (
+                <span className="shrink-0 rounded-md bg-[var(--color-accent)]/15 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-[var(--color-accent)]">
+                  v{section.version}
+                </span>
+              )}
+              {section?.version === VERSION && (
+                <span className="shrink-0 rounded-md border border-[var(--color-border)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+                  {t('changelog.current')}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+              {section?.date || t('changelog.empty')}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void openGitHub()}
+            className="lib-ring flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-text-muted)] hover:text-[var(--color-accent)]"
+          >
+            <GitBranch className="h-3.5 w-3.5" />
+            <span>{t('changelog.fullHistory')}</span>
+            <ArrowUpRight className="h-3 w-3" />
+          </button>
         </div>
-      )}
+
+        {/* Selector de version */}
+        {DOCUMENTED_SECTIONS.length > 1 && (
+          <div className="mx-auto max-w-3xl px-6 pb-4 pt-4">
+            <div
+              role="tablist"
+              aria-label={t('changelog.title')}
+              className="inline-flex items-center gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-1"
+            >
+              {DOCUMENTED_SECTIONS.map((item) => {
+                const active = item.version === selectedVersion;
+                return (
+                  <button
+                    key={item.version}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setSelectedVersion(item.version)}
+                    className={`lib-ring rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                      active
+                        ? 'bg-[var(--color-brand)] text-white'
+                        : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]'
+                    }`}
+                  >
+                    v{item.version}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </header>
 
       {/* Contenido de la version */}
-      {section ? (
-        <div
-          className="changelog-body"
-          onClick={handleBodyClick}
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      ) : (
-        <p className="text-sm text-[var(--color-text-muted)]">{t('changelog.empty')}</p>
-      )}
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-3xl px-6 py-7">
+          {section ? (
+            <div
+              className="changelog-body"
+              onClick={handleBodyClick}
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          ) : (
+            <p className="text-sm text-[var(--color-text-muted)]">{t('changelog.empty')}</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
