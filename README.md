@@ -109,9 +109,9 @@ Available in English and Spanish
 
 ## 📥 Downloads
 
-### Latest Release: v0.1.9 (November 5, 2026)
+### Latest Release: v0.1.9 (November 20, 2026)
 
-📋 [Full changelog for v0.1.9](CHANGELOG.md#019--november-5-2026)
+📋 [Full changelog for v0.1.9](CHANGELOG.md#019--november-20-2026)
 
 #### Windows
 - [Aetheria_0.1.9_x64-setup.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.9/Aetheria_0.1.9_x64-setup.exe) — Windows Installer
@@ -135,6 +135,7 @@ Available in English and Spanish
 
 | Version | Release Date | Windows | macOS | Linux |
 |---------|--------------|---------|-------|-------|
+| [v0.1.8](https://github.com/sayghteight/Aetheris/releases/tag/app-v0.1.8) | Nov 5, 2026 | [.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_x64-setup.exe) | [.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_aarch64.dmg) | [.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.8/Aetheria_0.1.8_amd64.AppImage) |
 | [v0.1.7](https://github.com/sayghteight/Aetheris/releases/tag/app-v0.1.7) | Sep 20, 2026 | [.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.7/Aetheria_0.1.7_x64-setup.exe) | [.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.7/Aetheria_0.1.7_aarch64.dmg) | [.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.7/Aetheria_0.1.7_amd64.AppImage) |
 | [v0.1.6](https://github.com/sayghteight/Aetheris/releases/tag/app-v0.1.6) | Sep 5, 2026 | [.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.6/Aetheria_0.1.6_x64-setup.exe) | [.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.6/Aetheria_0.1.6_aarch64.dmg) | [.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.6/Aetheria_0.1.6_amd64.AppImage) |
 | [v0.1.5](https://github.com/sayghteight/Aetheris/releases/tag/app-v0.1.5) | Aug 25, 2026 | [.exe](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_x64-setup.exe) | [.dmg](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_aarch64.dmg) | [.AppImage](https://github.com/sayghteight/Aetheris/releases/download/app-v0.1.5/Aetheria_0.1.5_amd64.AppImage) |
