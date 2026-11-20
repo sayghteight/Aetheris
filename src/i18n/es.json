@@ -109,6 +109,11 @@
     "strikethrough": "Tachado",
     "pasteUnavailable": "No se pudo leer el portapapeles. Usa Ctrl+V para pegar."
   },
+  "changelog": {
+    "title": "Últimos cambios",
+    "fullHistory": "Historial completo",
+    "empty": "No hay registro de cambios para esta versión."
+  },
   "spellCheck": {
     "suggestionsFor": "Sugerencias para «{{word}}»",
     "addWord": "Añadir «{{word}}» al diccionario",
@@ -489,8 +494,6 @@
     "chapterTitles": "Títulos de capítulos",
     "sceneTitles": "Títulos de escenas",
     "preview": "Vista previa",
-    "newFeature": "Nueva característica",
-    "bugFix": "Corrección de error",
     "removeShortcut": "Quitar atajo"
   },
   "project": {

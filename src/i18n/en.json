@@ -109,6 +109,11 @@
     "strikethrough": "Strikethrough",
     "pasteUnavailable": "Could not read the clipboard. Use Ctrl+V to paste."
   },
+  "changelog": {
+    "title": "Latest changes",
+    "fullHistory": "Full history",
+    "empty": "There is no changelog for this version."
+  },
   "spellCheck": {
     "suggestionsFor": "Suggestions for “{{word}}”",
     "addWord": "Add “{{word}}” to the dictionary",
@@ -489,8 +494,6 @@
     "chapterTitles": "Chapter titles",
     "sceneTitles": "Scene titles",
     "preview": "Preview",
-    "newFeature": "New feature",
-    "bugFix": "Bug fix",
     "removeShortcut": "Remove shortcut"
   },
   "project": {

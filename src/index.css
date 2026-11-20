@@ -202,6 +202,59 @@ body {
   text-underline-offset: 3px;
 }
 
+/* Registro de cambios: markdown renderizado desde el CHANGELOG.md. */
+.changelog-body {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+.changelog-body h3 {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.changelog-body h3:first-child {
+  margin-top: 0;
+}
+
+.changelog-body ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+.changelog-body li {
+  margin-bottom: 0.5rem;
+}
+
+.changelog-body strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.changelog-body code {
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+  background: var(--color-bg-tertiary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125em;
+  color: var(--color-text-primary);
+}
+
+.changelog-body p {
+  margin: 0.5rem 0;
+}
+
+.changelog-body a {
+  color: var(--color-brand);
+  text-decoration: underline;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    SCROLLBARS
    Barra fina y discreta, acorde al tema: pista transparente, pulgar redondeado

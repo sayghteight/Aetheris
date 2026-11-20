@@ -25,6 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The version is now **0.1.9** in `package.json`, `package-lock.json`, `Cargo.toml`, `Cargo.lock`,
   `tauri.conf.json` and `src/utils/version.ts`.
 
+### Fixed
+
+- The changelog next to the version number now works in the distributed app. It
+  used to run `git log` against the repository path embedded in the binary,
+  which only existed on the development machine, so the panel came up empty
+  for users. It now reads the bundled `CHANGELOG.md` and lets you browse the
+  previous versions.
+
 ### Internal
 
 - **All 28 compiler warnings are gone.** `cargo check` now finishes with zero warnings and zero

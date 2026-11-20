@@ -3,7 +3,6 @@ mod database;
 mod domain;
 mod commands;
 mod export;
-mod git;
 mod backup;
 
 use state::AppState;
@@ -182,7 +181,6 @@ pub fn run() {
             commands::split_scene_at_cursor,
             commands::split_scene_by_selection,
             commands::search_all,
-            git::get_git_tags,
             commands::upload_asset,
             commands::get_asset,
             commands::get_all_assets,
