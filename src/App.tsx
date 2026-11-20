@@ -15,6 +15,7 @@ import { TabContent } from './components/tab-bar/TabContent';
 import { UpdateDialog } from './components/UpdateDialog';
 import { CloseGuard } from './features/settings/CloseGuard';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useSpellCheckSettings } from './features/editor/spell/useSpellCheckSettings';
 import { saveActiveScene } from './utils/sceneSaver';
 
 const App: React.FC = () => {
@@ -83,6 +84,9 @@ const App: React.FC = () => {
     appSettings.alwaysOnTop,
     appSettings.resizable,
   ]);
+
+  // Corrector ortografico: los ajustes son de la aplicacion, no de la novela.
+  useSpellCheckSettings();
 
   // Tras restaurar un snapshot el proyecto se sustituye entero y la interfaz
   // se recarga: hay que volver a abrirlo para no dejar al usuario en la

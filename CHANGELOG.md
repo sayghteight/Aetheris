@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.9] — November 5, 2026
+
+### Added
+
+- **Own spell checker for the editor.** Aetheria now checks spelling while you
+  write, with its own Hunspell engine (`typo-js`) and Spanish and English
+  dictionaries. The mistakes are underlined directly on the text —as real editor
+  decorations, not as a duplicated layer— and the context menu offers the
+  suggested corrections, plus the option of adding the word to your personal
+  dictionary.
+- The dictionaries are loaded on demand in a separate chunk (~1.4 MB), so they
+  cost nothing until the spell checker is actually used.
+
+### Changed
+
+- The version is now **0.1.9** in `package.json`, `package-lock.json`, `Cargo.toml`, `Cargo.lock`,
+  `tauri.conf.json` and `src/utils/version.ts`.
+
+### Fixed
+
+- The changelog next to the version number now works in the distributed app. It
+  used to run `git log` against the repository path embedded in the binary,
+  which only existed on the development machine, so the panel came up empty
+  for users. It now reads the bundled `CHANGELOG.md` and lets you browse the
+  previous versions.
+- The version selector only lists versions that actually document changes. The
+  older releases that only pointed to GitHub are no longer shown, because
+  there was nothing to read in them.
+- Links inside the changelog open in the user's browser. Clicking one used to
+  navigate the application window instead of leaving the app.
+- The repository links now point to the renamed repository, `sayghteight/Aetheris`.
+- The changelog panel was tidied up: it now has its own scrollbar (the content was
+  being cut off), the header stays fixed while reading, the version selector is
+  a segmented control, the current version is marked as such, and the scroll
+  returns to the top when you switch versions.
+
+### Internal
+
+- **All 28 compiler warnings are gone.** `cargo check` now finishes with zero warnings and zero
+  errors.
+- The wiki structs (`WikiCategory`, `WikiEntryType`, `WikiEntry`, `WikiBlock`, `WikiRelation` and
+  `WikiData`) now use `snake_case` field names, like the rest of the codebase. **The JSON sent to
+  the frontend does not change**: the conversion to `camelCase` is done by
+  `#[serde(rename_all = "camelCase")]`, which was already in place.
+- New regression test `el_wiki_se_sigue_serializando_en_camel_case` asserts the exact JSON keys of
+  the wiki payloads, so a future rename cannot break the contract silently.
+- The lore relations query no longer builds an unused list of SQL placeholders.
+- The legacy universe migration still parses `parentId` (now `_parent_id`), even though the old
+  folder hierarchy is flattened during the migration.
+- Removed dead code: the `SceneContent` and `CharacterAppearance` structs and the `get_current_tag`
+  git helper.
+- 12 automated tests.
+
+---
+
 ## [0.1.8] — November 5, 2026
 
 ### Added
@@ -103,5 +158,6 @@ the theme.
 
 ## [0.1.7] — September 20, 2026
 
-See the [GitHub releases page](https://github.com/sayghteight/Aetheris/releases) for the full
-history of previous versions.
+No changes are documented for this version. See the
+[list of published versions](https://github.com/sayghteight/Aetheris/tags)
+for the full history.

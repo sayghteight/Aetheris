@@ -32,9 +32,9 @@ export const UpdatePanel: React.FC = () => {
   const { t } = useI18n();
   const openGitHub = async () => {
     try {
-      await openUrl('https://github.com/sayghteight/culto-guieditor');
+      await openUrl('https://github.com/sayghteight/Aetheris');
     } catch {
-      window.open('https://github.com/sayghteight/culto-guieditor', '_blank', 'noopener,noreferrer');
+      window.open('https://github.com/sayghteight/Aetheris', '_blank', 'noopener,noreferrer');
     }
   };
 

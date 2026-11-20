@@ -25,6 +25,7 @@ import { useAppSettingsStore } from '../../store/appSettingsStore';
 import { useCenteredWriting } from '../../hooks/useCenteredWriting';
 import { CharacterMention } from './extensions/CharacterMention';
 import { MentionTooltip } from './extensions/MentionTooltip';
+import { SpellCheck } from './spell/SpellCheckExtension';
 import { useContextMenuScope } from '../../components/context-menu/ContextMenuProvider';
 import {
   buildEditorContextMenuItems,
@@ -221,6 +222,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
       }),
       CharacterCount,
       CharacterMention,
+      SpellCheck,
     ],
     content,
     onUpdate: ({ editor }) => {
@@ -248,7 +250,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
         style: `font-family: ${appSettings.fontFamily === 'serif' ? 'Georgia, Iowan Old Style, Palatino Linotype, serif' : appSettings.fontFamily === 'mono' ? 'ui-monospace, monospace' : 'Inter, system-ui, sans-serif'}; font-size: ${appSettings.fontSize || 18}px; line-height: ${appSettings.lineHeight || 1.75}; text-align: ${appSettings.textAlign || 'left'};`,
         // Desactiva el corrector ortografico nativo de WebView2: el menu
         // contextual nativo ya esta desactivado en la capa de Rust y el
-        // corrector se controla desde Aetheris.
+        // corrector lo controla Aetheris con su propio motor.
         spellcheck: 'false',
       },
     },
