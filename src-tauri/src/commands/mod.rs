@@ -921,9 +921,23 @@ pub fn update_scene_content(
     let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
     let conn = db_guard.as_ref().ok_ok_or("No hay proyecto abierto")?;
 
-    let normalized_text = normalize_scene_text(&content, &plain_text);
+    save_scene_content(conn, &node_id, &content, &plain_text)
+}
 
-    // Store raw Lexical content in `content` and normalized plain text in `plain_text`.
+/// Guarda el contenido vivo de una escena y actualiza lo que depende de el
+/// (indice de busqueda y seguimiento de personajes).
+///
+/// Lo comparten el guardado normal y la restauracion de una revision, para
+/// que ambos caminos deje el proyecto en el mismo estado.
+fn save_scene_content(
+    conn: &Connection,
+    node_id: &str,
+    content: &str,
+    plain_text: &str,
+) -> Result<(), String> {
+    let normalized_text = normalize_scene_text(content, plain_text);
+
+    // Store raw editor content in `content` and normalized plain text in `plain_text`.
     conn.execute(
         "INSERT INTO scene_contents (node_id, content, plain_text, updated_at)
          VALUES (?1, ?2, ?3, CURRENT_TIMESTAMP)
@@ -931,23 +945,280 @@ pub fn update_scene_content(
             content = excluded.content,
             plain_text = excluded.plain_text,
             updated_at = CURRENT_TIMESTAMP;",
-        (&node_id, &content, &normalized_text),
+        (node_id, content, &normalized_text),
     )
     .map_err(|e| format!("Error actualizando contenido de escena: {}", e))?;
 
     // Update FTS5 index using normalized plain text for search.
-    let _ = conn.execute("DELETE FROM fts_index WHERE id = ?1;", [&node_id]);
+    let _ = conn.execute("DELETE FROM fts_index WHERE id = ?1;", [node_id]);
 
     if let Err(err) = conn.execute(
         "INSERT INTO fts_index (id, title, content, type)
          VALUES (?1, (SELECT title FROM manuscript_nodes WHERE id = ?1), ?2, 'scene');",
-        (&node_id, &normalized_text),
+        (node_id, &normalized_text),
     ) {
         eprintln!("No se pudo actualizar el índice de búsqueda: {}", err);
     }
 
     // Update character tracking for this scene
-    update_character_tracking_for_scene(conn, &node_id, &content)?;
+    update_character_tracking_for_scene(conn, node_id, content)?;
+
+    Ok(())
+}
+
+// ─── Scene revisions ────────────────────────────────────────────────────────
+//
+// Una revision es una copia inmutable del contenido de una escena en el
+// momento en que se guardo. El contenido vivo sigue viviendo en
+// `scene_contents`; las revisiones son historial y nunca se sobrescriben.
+//
+// La numeracion es correlativa POR ESCENA: empieza en 1 y no se renumera al
+// borrar, de modo que el numero identifica siempre a la misma revision.
+
+/// Revision completa, con su contenido.
+#[derive(Serialize, Deserialize, Clone)]
+pub struct SceneRevision {
+    pub id: String,
+    pub node_id: String,
+    pub revision_number: i64,
+    pub label: Option<String>,
+    pub content: String,
+    pub plain_text: Option<String>,
+    pub word_count: i64,
+    pub created_at: Option<String>,
+}
+
+/// Revision sin contenido: es lo que se usa para pintar el historial sin
+/// arrastrar el HTML completo de cada revision.
+#[derive(Serialize, Deserialize, Clone)]
+pub struct SceneRevisionMeta {
+    pub id: String,
+    pub node_id: String,
+    pub revision_number: i64,
+    pub label: Option<String>,
+    pub word_count: i64,
+    pub created_at: Option<String>,
+    /// True cuando el contenido de la revision es exactamente el texto que hay
+    /// ahora mismo en la escena: es la "version actual de trabajo".
+    pub is_current: bool,
+}
+
+/// Cuenta palabras de un texto normalizado.
+fn count_words(text: &str) -> i64 {
+    text.split_whitespace().count() as i64
+}
+
+/// Crea una revision a partir del contenido guardado de la escena.
+///
+/// El frontend se encarga de forzar el guardado pendiente antes de llamar a
+/// este comando, de forma que la revision refleje exactamente lo que el
+/// escritor tiene en pantalla.
+#[tauri::command]
+pub fn create_scene_revision(
+    state: State<'_, AppState>,
+    node_id: String,
+    label: Option<String>,
+) -> Result<SceneRevision, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    // El contenido se copia tal cual esta guardado: mismo formato (HTML) que
+    // `scene_contents`, para que la revision se pueda abrir sin conversiones.
+    let (content, plain_text): (String, Option<String>) = conn
+        .query_row(
+            "SELECT COALESCE(content, ''), plain_text FROM scene_contents WHERE node_id = ?1 LIMIT 1;",
+            [&node_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap_or_else(|_| (String::new(), None));
+
+    let plain_text = plain_text.unwrap_or_default();
+    let word_count = count_words(&plain_text);
+
+    let id = Uuid::new_v4().to_string();
+    let created_at = chrono::Utc::now().to_rfc3339();
+    let label = label
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
+    // La transaccion asegura que el numero correlativo no se repita.
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|e| format!("Error iniciando la transaccion: {}", e))?;
+
+    let next_number: i64 = tx
+        .query_row(
+            "SELECT COALESCE(MAX(revision_number), 0) + 1 FROM scene_revisions WHERE node_id = ?1;",
+            [&node_id],
+            |row| row.get(0),
+        )
+        .map_err(|e| format!("Error calculando el numero de revision: {}", e))?;
+
+    tx.execute(
+        "INSERT INTO scene_revisions (id, node_id, revision_number, label, content, plain_text, word_count, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8);",
+        (&id, &node_id, next_number, &label, &content, &plain_text, word_count, &created_at),
+    )
+    .map_err(|e| format!("Error creando la revision: {}", e))?;
+
+    tx.commit()
+        .map_err(|e| format!("Error guardando la revision: {}", e))?;
+
+    Ok(SceneRevision {
+        id,
+        node_id,
+        revision_number: next_number,
+        label,
+        content,
+        plain_text: Some(plain_text),
+        word_count,
+        created_at: Some(created_at),
+    })
+}
+
+/// Lista las revisiones de una escena, de la mas reciente a la mas antigua.
+#[tauri::command]
+pub fn list_scene_revisions(
+    state: State<'_, AppState>,
+    node_id: String,
+) -> Result<Vec<SceneRevisionMeta>, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT r.id, r.node_id, r.revision_number, r.label, r.word_count, r.created_at,
+                    (r.content = COALESCE((SELECT content FROM scene_contents WHERE node_id = r.node_id), '')) AS is_current
+             FROM scene_revisions r WHERE r.node_id = ?1 ORDER BY r.revision_number DESC;",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let revisions = stmt
+        .query_map([&node_id], |row| {
+            Ok(SceneRevisionMeta {
+                id: row.get(0)?,
+                node_id: row.get(1)?,
+                revision_number: row.get(2)?,
+                label: row.get(3)?,
+                word_count: row.get(4)?,
+                created_at: row.get(5)?,
+                is_current: row.get(6)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut result = Vec::new();
+    for revision in revisions {
+        result.push(revision.map_err(|e| e.to_string())?);
+    }
+
+    Ok(result)
+}
+
+/// Devuelve una revision completa, con su contenido.
+#[tauri::command]
+pub fn get_scene_revision(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<SceneRevision, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    conn.query_row(
+        "SELECT id, node_id, revision_number, label, content, plain_text, word_count, created_at
+         FROM scene_revisions WHERE id = ?1 LIMIT 1;",
+        [&id],
+        |row| {
+            Ok(SceneRevision {
+                id: row.get(0)?,
+                node_id: row.get(1)?,
+                revision_number: row.get(2)?,
+                label: row.get(3)?,
+                content: row.get(4)?,
+                plain_text: row.get(5)?,
+                word_count: row.get(6)?,
+                created_at: row.get(7)?,
+            })
+        },
+    )
+    .map_err(|e| format!("Revision no encontrada: {}", e))
+}
+
+/// Devuelve el contenido de una revision concreta.
+///
+/// Esta es la funcion que usa el exportador. Hoy el exportador siempre pide
+/// el contenido vivo, pero el punto de entrada ya permite elegir una revision
+/// concreta para un capitulo, de modo que activar la seleccion de revisiones
+/// durante la exportacion no obliga a reescribir la exportacion.
+fn resolve_scene_content(
+    conn: &Connection,
+    node_id: &str,
+    revision_id: Option<&str>,
+) -> Result<String, String> {
+    if let Some(revision_id) = revision_id {
+        let content: Option<String> = conn
+            .query_row(
+                "SELECT content FROM scene_revisions WHERE id = ?1 AND node_id = ?2 LIMIT 1;",
+                rusqlite::params![revision_id, node_id],
+                |row| row.get(0),
+            )
+            .ok();
+
+        if let Some(content) = content {
+            return Ok(content);
+        }
+    }
+
+    let content: Option<String> = conn
+        .query_row(
+            "SELECT content FROM scene_contents WHERE node_id = ?1 LIMIT 1;",
+            [node_id],
+            |row| row.get(0),
+        )
+        .ok();
+
+    Ok(content.unwrap_or_default())
+}
+
+/// Restaura una revision: su contenido pasa a ser el contenido vivo de la
+/// escena. Las revisiones no se tocan, de modo que la revision restaurada
+/// sigue disponible en el historial.
+///
+/// La restauracion no esta expuesta todavia en la interfaz (el alcance actual
+/// es consultar el historial), pero el comando queda disponible para activar
+/// la restauracion sin tocar la estructura de datos.
+#[tauri::command]
+pub fn restore_scene_revision(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<String, String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    let (node_id, content, plain_text): (String, String, Option<String>) = conn
+        .query_row(
+            "SELECT node_id, content, plain_text FROM scene_revisions WHERE id = ?1 LIMIT 1;",
+            [&id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .map_err(|e| format!("Revision no encontrada: {}", e))?;
+
+    save_scene_content(conn, &node_id, &content, &plain_text.unwrap_or_default())?;
+
+    Ok(node_id)
+}
+
+/// Elimina una revision del historial.
+///
+/// Borrar una revision no renumera las demas: el numero correlativo identifica
+/// siempre a la misma revision, aunque se haya eliminado alguna intermedia.
+#[tauri::command]
+pub fn delete_scene_revision(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
+    let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
+
+    conn.execute("DELETE FROM scene_revisions WHERE id = ?1;", [&id])
+        .map_err(|e| format!("Error eliminando la revision: {}", e))?;
 
     Ok(())
 }
@@ -2899,7 +3170,11 @@ pub fn search_all(state: State<'_, AppState>, query: String) -> Result<Vec<Searc
 
 use crate::export::{ExportManuscript, ExportPart, ExportChapter, ExportScene, ExportOptions, export_as_html, export_as_markdown, export_as_docx, export_as_pdf, export_as_txt, export_preview_as_html, export_preview_as_markdown, export_preview_as_txt};
 
-fn build_export_manuscript(conn: &Connection, scene_ids: Option<Vec<String>>) -> Result<ExportManuscript, String> {
+fn build_export_manuscript(
+    conn: &Connection,
+    scene_ids: Option<Vec<String>>,
+    revisions: Option<&std::collections::HashMap<String, String>>,
+) -> Result<ExportManuscript, String> {
     use crate::domain::ManuscriptNode;
 
     // Get project metadata
@@ -2942,7 +3217,13 @@ fn build_export_manuscript(conn: &Connection, scene_ids: Option<Vec<String>>) ->
     let mut parts: Vec<ExportPart> = Vec::new();
 
     // Helper: recursively collect parts from a node (which could be a folder, part, or chapter)
-    fn collect_parts(node: &ManuscriptNode, all_nodes: &[ManuscriptNode], conn: &Connection, scene_ids: &Option<Vec<String>>) -> Result<Vec<ExportPart>, String> {
+    fn collect_parts(
+        node: &ManuscriptNode,
+        all_nodes: &[ManuscriptNode],
+        conn: &Connection,
+        scene_ids: &Option<Vec<String>>,
+        revisions: Option<&std::collections::HashMap<String, String>>,
+    ) -> Result<Vec<ExportPart>, String> {
         let mut parts = Vec::new();
 
         // Helper to check if a scene should be included
@@ -2961,7 +3242,7 @@ fn build_export_manuscript(conn: &Connection, scene_ids: Option<Vec<String>>) ->
                 let scenes = all_nodes
                     .iter()
                     .filter(|s| s.parent_id.as_ref() == Some(&chapter.id) && s.r#type == "scene" && include_scene(&s.id))
-                    .map(|scene| build_scene(scene, conn))
+                    .map(|scene| build_scene(scene, conn, revisions))
                     .filter_map(|r| r.ok())
                     .collect();
                 ExportChapter {
@@ -2976,7 +3257,7 @@ fn build_export_manuscript(conn: &Connection, scene_ids: Option<Vec<String>>) ->
             all_nodes
                 .iter()
                 .filter(|n| n.parent_id.as_ref() == Some(&node.id) && n.r#type == "folder")
-                .flat_map(|child_folder| collect_parts(child_folder, all_nodes, conn, scene_ids).unwrap_or_default())
+                .flat_map(|child_folder| collect_parts(child_folder, all_nodes, conn, scene_ids, revisions).unwrap_or_default())
                 .collect()
         } else {
             Vec::new()
@@ -3007,7 +3288,7 @@ fn build_export_manuscript(conn: &Connection, scene_ids: Option<Vec<String>>) ->
         match node.r#type.as_str() {
             "part" | "folder" => {
                 // part and folder both create export parts
-                if let Ok(mut p) = collect_parts(&node, &nodes, conn, &scene_ids) {
+                if let Ok(mut p) = collect_parts(&node, &nodes, conn, &scene_ids, revisions) {
                     parts.append(&mut p);
                 }
             }
@@ -3021,7 +3302,7 @@ fn build_export_manuscript(conn: &Connection, scene_ids: Option<Vec<String>>) ->
                 if !parent_is_part_or_folder {
                     let part = ExportPart {
                         title: "Sin parte".to_string(),
-                        chapters: vec![build_chapter(&node, &nodes, conn, &scene_ids)?],
+                        chapters: vec![build_chapter(&node, &nodes, conn, &scene_ids, revisions)?],
                     };
                     parts.push(part);
                 }
@@ -3029,7 +3310,7 @@ fn build_export_manuscript(conn: &Connection, scene_ids: Option<Vec<String>>) ->
             "scene" => {
                 // Scene without a valid parent - this is unusual but handle it
                 if node.parent_id.is_none() && include_scene(&node.id) {
-                    let scene = build_scene(&node, conn)?;
+                    let scene = build_scene(&node, conn, revisions)?;
                     let chapter = ExportChapter {
                         title: "Sin capítulo".to_string(),
                         scenes: vec![scene],
@@ -3048,7 +3329,13 @@ fn build_export_manuscript(conn: &Connection, scene_ids: Option<Vec<String>>) ->
     Ok(ExportManuscript { title, author, parts })
 }
 
-fn build_chapter(chapter_node: &ManuscriptNode, all_nodes: &[ManuscriptNode], conn: &Connection, scene_ids: &Option<Vec<String>>) -> Result<ExportChapter, String> {
+fn build_chapter(
+    chapter_node: &ManuscriptNode,
+    all_nodes: &[ManuscriptNode],
+    conn: &Connection,
+    scene_ids: &Option<Vec<String>>,
+    revisions: Option<&std::collections::HashMap<String, String>>,
+) -> Result<ExportChapter, String> {
     let include_scene = |scene_id: &str| -> bool {
         match scene_ids {
             Some(ids) => ids.is_empty() || ids.contains(&scene_id.to_string()),
@@ -3060,7 +3347,7 @@ fn build_chapter(chapter_node: &ManuscriptNode, all_nodes: &[ManuscriptNode], co
 
     for node in all_nodes {
         if node.parent_id.as_ref() == Some(&chapter_node.id) && node.r#type == "scene" && include_scene(&node.id) {
-            scenes.push(build_scene(node, conn)?);
+            scenes.push(build_scene(node, conn, revisions)?);
         }
     }
 
@@ -3070,14 +3357,20 @@ fn build_chapter(chapter_node: &ManuscriptNode, all_nodes: &[ManuscriptNode], co
     })
 }
 
-fn build_scene(scene_node: &ManuscriptNode, conn: &Connection) -> Result<ExportScene, String> {
-    let mut stmt = conn
-        .prepare("SELECT content FROM scene_contents WHERE node_id = ?1;")
-        .map_err(|e| e.to_string())?;
+/// Construye la escena que se va a exportar.
+///
+/// `revisions` permite elegir, para cada escena, una revision concreta en
+/// lugar del contenido vivo. Todavia no se usa desde la interfaz: la
+/// seleccion de revisiones durante la exportacion es una fase posterior, pero
+/// el punto de entrada ya esta preparado para ella.
+fn build_scene(
+    scene_node: &ManuscriptNode,
+    conn: &Connection,
+    revisions: Option<&std::collections::HashMap<String, String>>,
+) -> Result<ExportScene, String> {
+    let revision_id = revisions.and_then(|map| map.get(&scene_node.id));
 
-    let content: String = stmt
-        .query_row([&scene_node.id], |row| row.get(0))
-        .unwrap_or_default();
+    let content = resolve_scene_content(conn, &scene_node.id, revision_id.map(|value| value.as_str()))?;
 
     Ok(ExportScene {
         id: scene_node.id.clone(),
@@ -3093,7 +3386,10 @@ pub fn export_manuscript(state: State<'_, AppState>, format: String, scene_ids: 
     let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
     let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
 
-    let manuscript = build_export_manuscript(conn, scene_ids)?;
+    // `revisions` es None: hoy se exporta siempre el contenido vivo. En la
+    // fase de seleccion de revisions se enviara aqui el mapa escena -> revision
+    // elegida por el escritor.
+    let manuscript = build_export_manuscript(conn, scene_ids, None)?;
 
     match format.as_str() {
         "html" => Ok(export_as_html(&manuscript).into_bytes()),
@@ -3110,7 +3406,7 @@ pub fn export_preview(state: State<'_, AppState>, format: String, scene_ids: Opt
     let db_guard = state.db.lock().map_err(|_| "Error bloqueando estado")?;
     let conn = db_guard.as_ref().ok_or("No hay proyecto abierto")?;
 
-    let manuscript = build_export_manuscript(conn, scene_ids)?;
+    let manuscript = build_export_manuscript(conn, scene_ids, None)?;
 
     match format.as_str() {
         "html" => Ok(export_preview_as_html(&manuscript, &options).into_bytes()),

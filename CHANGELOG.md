@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Text revisions in Manuscripts.** A scene can now save as many revisions as the writer needs.
+  Each revision is an independent copy of the text at the moment it was saved, so creating a new
+  one never overwrites the previous ones. Revisions are numbered per scene, can be given an
+  optional name to tell them apart, and are kept in the project database, so they survive
+  closing and reopening the application.
+- The revision history is available from the editor itself: **Save revision** stores the current
+  text (the pending changes are saved first, so the copy is exactly what is on screen) and
+  **History** lists the saved revisions, which can be opened in read-only mode.
+- Revisions can also be **restored** and **deleted** from the history. Restoring a revision brings
+  its text back as the working text, so the writer can continue from that approach; the text that
+  is being replaced can optionally be saved as a new revision first, so nothing is lost. Deleting a
+  revision removes it from the history without renumbering the remaining ones, and the revision
+  whose content matches the text currently in the scene is marked as the current text.
+- The export pipeline already resolves the content of a scene through a single entry point, so
+  choosing which revision of each chapter is used when exporting will not require rewriting the
+  exporter.
+
+---
+
 ## [0.2.0] — November 21, 2026
 
 ### Changed

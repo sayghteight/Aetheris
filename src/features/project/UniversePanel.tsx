@@ -25,6 +25,7 @@ import { useAppSettingsStore } from '../../store/appSettingsStore';
 import { registerSceneSaver } from '../../utils/sceneSaver';
 import { useNavigationStore } from '../../store/navigationStore';
 import { TiptapEditor } from '../editor/TiptapEditor';
+import { RevisionsControl } from '../manuscript/revisions/RevisionsControl';
 import { EmptyState } from '../../components/EmptyState';
 
 interface UniverseEntry {
@@ -730,6 +731,36 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
   // Guardado manual (atajo Ctrl+S): este editor es el que esta activo.
   useEffect(() => registerSceneSaver(() => persist(contentRef.current)), [persist]);
 
+  // Cancela el autoguardado pendiente. Si no, el temporizador que ya estaba
+  // en marcha podria guardar despues un texto antiguo y pisar el contenido
+  // restaurado desde una revision.
+  const cancelPendingSave = useCallback(() => {
+    if (saveTimeout.current) {
+      window.clearTimeout(saveTimeout.current);
+      saveTimeout.current = null;
+    }
+  }, []);
+
+  // Fuerza el guardado de lo que hay en pantalla. Lo usa el control de
+  // revisiones para que la copia sea exacta antes de crearla.
+  const flushPending = useCallback(async () => {
+    cancelPendingSave();
+    await persist(contentRef.current);
+  }, [persist, cancelPendingSave]);
+
+  // Recarga el texto de la escena desde la base de datos. Se usa tras
+  // restaurar una revision, para que el editor muestre el contenido restaurado.
+  const reloadContent = useCallback(async () => {
+    cancelPendingSave();
+    try {
+      const loaded = await invoke<string | null>('get_scene_content', { nodeId: sceneId });
+      setContent(loaded ?? '');
+      contentRef.current = loaded ?? '';
+    } catch (err) {
+      console.error('Error al recargar la escena:', err);
+    }
+  }, [sceneId, cancelPendingSave]);
+
   // Handle content change with autosave
   const handleChange = (newContent: string) => {
     setContent(newContent);
@@ -752,14 +783,18 @@ export const SceneEditor: React.FC<SceneEditorProps> = ({ sceneId, onStatsUpdate
           {t('appSettings.autoSaveOffNotice')}
         </div>
       )}
-      <TiptapEditor
-        content={content}
-        onChange={handleChange}
-        placeholder="Comienza a escribir tu escena aquí..."
-        onStatsUpdate={onStatsUpdate}
-        onSelectionChange={onSelectionChange}
-        onOpenInWorldbuilding={onOpenInWorldbuilding}
-      />
+      {/* Historial de revisiones: solo disponible en Manuscritos. */}
+      <RevisionsControl sceneId={sceneId} flush={flushPending} onRestored={reloadContent} />
+      <div className="flex-1 min-h-0">
+        <TiptapEditor
+          content={content}
+          onChange={handleChange}
+          placeholder="Comienza a escribir tu escena aquí..."
+          onStatsUpdate={onStatsUpdate}
+          onSelectionChange={onSelectionChange}
+          onOpenInWorldbuilding={onOpenInWorldbuilding}
+        />
+      </div>
     </>
   );
 };

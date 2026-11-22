@@ -56,6 +56,31 @@ pub fn initialize_database(conn: &Connection) -> Result<()> {
         [],
     )?;
 
+    // ─── Scene Revisions Table ─────────────────────────────────────────────────
+    // Cada fila es una copia inmutable del contenido de una escena en el momento
+    // en que se guardo la revision. El contenido vivo de la escena sigue
+    // en `scene_contents`: las revisiones son historico, no un punto de control.
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS scene_revisions (
+            id TEXT PRIMARY KEY,
+            node_id TEXT NOT NULL,
+            revision_number INTEGER NOT NULL,
+            label TEXT,
+            content TEXT NOT NULL,
+            plain_text TEXT,
+            word_count INTEGER NOT NULL DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(node_id, revision_number),
+            FOREIGN KEY(node_id) REFERENCES manuscript_nodes(id) ON DELETE CASCADE
+        );",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_scene_revisions_node ON scene_revisions(node_id, revision_number);",
+        [],
+    )?;
+
     conn.execute(
         "CREATE TABLE IF NOT EXISTS universe_entities (
             id TEXT PRIMARY KEY,

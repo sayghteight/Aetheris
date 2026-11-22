@@ -62,6 +62,8 @@ interface TiptapEditorProps {
   onStatsUpdate?: (words: number, readTime: number) => void;
   onSelectionChange?: (selection: { from: number; to: number } | null) => void;
   onOpenInWorldbuilding?: (entityId: string) => void;
+  /** Cuando es false el editor es de solo lectura y no muestra la barra de herramientas. */
+  editable?: boolean;
 }
 
 // Toolbar Button Component
@@ -106,6 +108,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
   onStatsUpdate,
   onSelectionChange,
   onOpenInWorldbuilding,
+  editable = true,
 }) => {
   const { t } = useI18n();
   const { settings: appSettings } = useAppSettingsStore();
@@ -192,6 +195,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
   }, []);
 
   const editor = useEditor({
+    editable,
     extensions: [
       StarterKit.configure({
         heading: {
@@ -357,6 +361,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
   return (
     <div className="flex flex-col h-full bg-[var(--color-bg-secondary)] rounded-3xl border border-[var(--color-border)] overflow-hidden">
       {/* Toolbar */}
+      {editable && (
       <div className="flex flex-wrap items-center gap-1 p-3 border-b border-[var(--color-border)] bg-[var(--color-bg-primary)]">
         {/* Text Formatting */}
         <ToolbarButton
@@ -460,6 +465,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
           <Redo className="w-4 h-4" />
         </ToolbarButton>
       </div>
+      )}
 
       {/* Editor Content */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-8 py-6">
