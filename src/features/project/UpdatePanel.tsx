@@ -1,7 +1,19 @@
 import React from 'react';
-import { Sparkles, GitBranch, Heart, BookOpen, Compass, Calendar, Globe } from 'lucide-react';
+import {
+  Sparkles,
+  GitBranch,
+  Heart,
+  BookOpen,
+  Compass,
+  Calendar,
+  Globe,
+  Users,
+  ExternalLink,
+  Scale,
+} from 'lucide-react';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useI18n } from '../../i18n';
+import { useEulaStore } from '../../store/eulaStore';
 
 import { VERSION } from '../../utils/version';
 
@@ -28,14 +40,82 @@ const features = [
   },
 ];
 
+/**
+ * Personas a las que se dedica el proyecto: sus ideas se han convertido en
+ * funciones de Aetheria. Cada una tiene su propia dedicacion. Las dos
+ * primeras llevan anotacion porque su vinculo con CultoDePapel.com es
+ * conocido.
+ */
+const dedication: { name: string; noteKey?: string; textKey: string }[] = [
+  {
+    name: 'MANA',
+    noteKey: 'project.aboutDedicationCulto',
+    textKey: 'project.dedicationMANA',
+  },
+  {
+    name: 'Sylph',
+    noteKey: 'project.aboutDedicationCulto',
+    textKey: 'project.dedicationSylph',
+  },
+  { 
+    name: 'Cr0w', 
+    noteKey: 'project.aboutDedicationCulto',
+    textKey: 'project.dedicationCr0w' 
+  },
+  { 
+    name: 'Bullet', 
+    noteKey: 'project.aboutDedicationCulto',
+    textKey: 'project.dedicationBullet' 
+  },
+  { 
+    name: 'Ce-Elyra', 
+    noteKey: 'project.aboutDedicationCulto',
+    textKey: 'project.dedicationCeElyra' 
+  },
+  { 
+    name: 'Teleomega', 
+    noteKey: 'project.aboutDedicationCulto',
+    textKey: 'project.dedicationTeleomega' 
+  },
+  { 
+    name: 'Ahru', 
+    noteKey: 'project.aboutDedicationCulto',
+    textKey: 'project.dedicationAhru' 
+  },
+  { 
+    name: 'ProfeRyo', 
+    noteKey: 'project.aboutDedicationCulto',
+    textKey: 'project.dedicationProfeRyo' 
+  },
+  { 
+    name: 'EranMineri', 
+    noteKey: 'project.aboutDedicationCulto',
+    textKey: 'project.dedicationEranMineri' 
+  },
+  { 
+    name: 'LeaMarian', 
+    noteKey: 'project.aboutDedicationCulto',
+    textKey: 'project.dedicationLeaMarian' 
+  },
+];
+
+/** Comunidad donde nacieron muchas de esas ideas. */
+const COMMUNITY_URL = 'https://cultodepapel.com';
+
 export const UpdatePanel: React.FC = () => {
   const { t } = useI18n();
-  const openGitHub = async () => {
+  const openEula = useEulaStore((state) => state.open);
+
+  const openExternal = async (url: string): Promise<void> => {
     try {
-      await openUrl('https://github.com/sayghteight/Aetheris');
+      await openUrl(url);
     } catch {
-      window.open('https://github.com/sayghteight/Aetheris', '_blank', 'noopener,noreferrer');
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
+  };
+
+  const openGitHub = async () => {
+    await openExternal('https://github.com/sayghteight/Aetheris');
   };
 
   return (
@@ -107,6 +187,66 @@ export const UpdatePanel: React.FC = () => {
           })}
         </div>
 
+        {/* Dedicatoria */}
+        <div className="relative mb-8">
+          <div className="absolute inset-0 bg-gradient-to-b from-fuchsia-500/10 via-amber-500/5 to-transparent rounded-3xl blur-xl" />
+          <div className="relative rounded-2xl border border-fuchsia-500/20 bg-[var(--color-bg-secondary)]/60 backdrop-blur-sm p-7">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-fuchsia-500/20 to-amber-500/20 flex items-center justify-center">
+                <Users className="w-4 h-4 text-fuchsia-400" />
+              </div>
+              <h3 className="font-semibold text-[var(--color-text-primary)] text-lg">
+                {t('project.aboutDedication')}
+              </h3>
+            </div>
+
+            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+              {t('project.aboutDedicationDesc')}
+            </p>
+
+            {/* Una tarjeta por persona, con su dedicatoria */}
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {dedication.map((person) => (
+                <div
+                  key={person.name}
+                  className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)]/50 p-4 transition-colors hover:border-amber-500/30"
+                >
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <p className="text-sm font-bold tracking-wide text-amber-500">
+                      {person.name}
+                    </p>
+                    {person.noteKey && (
+                      <p className="text-[11px] text-[var(--color-text-muted)]">
+                        {t(person.noteKey)}
+                      </p>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-[var(--color-text-secondary)]">
+                    {t(person.textKey)}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Comunidad */}
+            <div className="mt-5 border-t border-[var(--color-border)] pt-4">
+              {/* `whitespace-pre-line` para que los saltos de linea del texto
+                  (la cita final) se respeten. */}
+              <p className="whitespace-pre-line text-sm text-[var(--color-text-muted)] leading-relaxed">
+                {t('project.aboutDedicationCommunity')}
+              </p>
+              <button
+                type="button"
+                onClick={() => void openExternal(COMMUNITY_URL)}
+                className="lib-ring mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:border-amber-500/50 hover:text-amber-500"
+              >
+                {t('project.aboutCommunityLink')}
+                <ExternalLink className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Credits y enlaces */}
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50 backdrop-blur-sm p-6 mb-8">
           <div className="flex items-center gap-3 mb-4">
@@ -119,15 +259,25 @@ export const UpdatePanel: React.FC = () => {
           </div>
           <p
             className="text-sm text-[var(--color-text-muted)] leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: t('project.aboutCreditsDesc', { author: 'sayghteight' }) }}
+            dangerouslySetInnerHTML={{ __html: t('project.aboutCreditsDesc', { author: 'Darthar' }) }}
           />
-          <button
-            onClick={() => void openGitHub()}
-            className="inline-flex items-center gap-2 mt-5 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-text-secondary)] transition-all duration-200 hover:border-amber-500/50 hover:text-amber-500 hover:shadow-lg hover:shadow-amber-900/20"
-          >
-            <GitBranch className="w-4 h-4" />
-            {t('project.aboutViewOnGitHub')}
-          </button>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => void openGitHub()}
+              className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-text-secondary)] transition-all duration-200 hover:border-amber-500/50 hover:text-amber-500 hover:shadow-lg hover:shadow-amber-900/20"
+            >
+              <GitBranch className="w-4 h-4" />
+              {t('project.aboutViewOnGitHub')}
+            </button>
+            <button
+              type="button"
+              onClick={() => openEula()}
+              className="lib-ring inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-text-secondary)] transition-colors hover:border-amber-500/50 hover:text-amber-500"
+            >
+              <Scale className="w-4 h-4" />
+              {t('project.aboutViewEula')}
+            </button>
+          </div>
         </div>
 
         {/* Footer */}

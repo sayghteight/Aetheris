@@ -7,10 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.2.0] — November 22, 2026
 
 ### Added
 
+- **End User Licence (EULA).** The application now asks for acceptance of the terms of use the
+  first time it is opened, in Spanish or English, and it cannot be used until they are accepted.
+  The acceptance is stored with the application settings, together with the version of the
+  document, so a new version of the licence is accepted again. The text can be read at any
+  time from the application settings, in the new **Legal** section.
+- The licence lives in `src/content/eula.es.md` and `src/content/eula.en.md` and is packaged with
+  the application, exactly like the changelog: what the user reads is the same document that
+  is published in the repository.
+
+### Changed
+
+- The version is now **0.2.0** in `package.json`, `package-lock.json`, `Cargo.toml`, `Cargo.lock`,
+  `tauri.conf.json` and `src/utils/version.ts`.
+- The **About** panel has a new **Dedication** section for the people whose ideas became features
+  of Aetheria, and for the whole community of CultoDePapel.com, with a link to the site. Each
+  person has their own card with a personal dedication. The credits now link to the end user
+  licence as well, and they mention TipTap instead of the editor the application no longer uses.
 - **Text revisions in Manuscripts.** A scene can now save as many revisions as the writer needs.
   Each revision is an independent copy of the text at the moment it was saved, so creating a new
   one never overwrites the previous ones. Revisions are numbered per scene, can be given an
@@ -24,29 +41,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is being replaced can optionally be saved as a new revision first, so nothing is lost. Deleting a
   revision removes it from the history without renumbering the remaining ones, and the revision
   whose content matches the text currently in the scene is marked as the current text.
-- The export pipeline already resolves the content of a scene through a single entry point, so
-  choosing which revision of each chapter is used when exporting will not require rewriting the
-  exporter.
 
----
+### Internal
 
-## [0.2.0] — November 21, 2026
-
-### Changed
-
-- The version is now **0.2.0** in `package.json`, `package-lock.json`, `Cargo.toml`, `Cargo.lock`,
-  `tauri.conf.json` and `src/utils/version.ts`.
-
-### Added
-
-- **End User Licence (EULA).** The application now asks for acceptance of the terms of use the
-  first time it is opened, in Spanish or English, and it cannot be used until they are accepted.
-  The acceptance is stored with the application settings, together with the version of the
-  document, so a new version of the licence is accepted again. The text can be read at any
-  time from the application settings, in the new **Legal** section.
-- The licence lives in `src/content/eula.es.md` and `src/content/eula.en.md` and is packaged with
-  the application, exactly like the changelog: what the user reads is the same document that
-  is published in the repository.
+- New `scene_revisions` table in the project database: each row is an immutable copy of the
+  content of a scene, with its own numbering per scene, an optional label, the word count and
+  the plain-text version of the text. The live text of the scene stays in `scene_contents`:
+  the revisions are history, not a checkpoint.
+- New commands: `create_scene_revision`, `list_scene_revisions`, `get_scene_revision`,
+  `restore_scene_revision` and `delete_scene_revision`.
+- New `revisionStore` (Zustand) for the state of the history, and the `RevisionsControl` component
+  in the editor of Manuscripts, with its translations in English and Spanish.
+- The export pipeline resolves the content of a scene through a single entry point
+  (`resolve_scene_content`) that already accepts a revision, so choosing which revision of each
+  chapter is used when exporting will not require rewriting the exporter.
 
 ---
 
