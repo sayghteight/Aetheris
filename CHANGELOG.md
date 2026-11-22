@@ -36,6 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The revision history is available from the editor itself: **Save revision** stores the current
   text (the pending changes are saved first, so the copy is exactly what is on screen) and
   **History** lists the saved revisions, which can be opened in read-only mode.
+- **Differences between revisions, like in git.** A revision can now be viewed as a diff: what was
+  removed is shown in red and struck through, what was added or changed in blue, word by word. The
+  diff can be taken against the current text of the scene —what has changed since that revision—
+  or against the previous revision —what that revision changed—. A summary shows how many words
+  were added and removed.
 - Revisions can also be **restored** and **deleted** from the history. Restoring a revision brings
   its text back as the working text, so the writer can continue from that approach; the text that
   is being replaced can optionally be saved as a new revision first, so nothing is lost. Deleting a

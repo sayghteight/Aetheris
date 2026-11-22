@@ -361,6 +361,65 @@ body {
   border-bottom: 0;
 }
 
+/* ── Diferencias entre revisiones (estilo git) ────────────────────────────
+   Lo que se elimino va en rojo y tachado; lo que se anadio, en azul. */
+.revision-diff-added {
+  padding: 0 2px;
+  border-radius: 3px;
+  background-color: rgba(59, 130, 246, 0.18);
+  color: #1d4ed8;
+}
+
+.dark .revision-diff-added {
+  color: #93c5fd;
+}
+
+.revision-diff-removed {
+  padding: 0 2px;
+  border-radius: 3px;
+  background-color: rgba(239, 68, 68, 0.18);
+  color: #b91c1c;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.dark .revision-diff-removed {
+  color: #fca5a5;
+}
+
+.revision-diff-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.875rem;
+  line-height: 1.85;
+  color: var(--color-text-secondary);
+}
+
+.revision-diff-stat {
+  padding: 0.1rem 0.45rem;
+  border-radius: 0.3rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.revision-diff-stat-added {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #1d4ed8;
+}
+
+.dark .revision-diff-stat-added {
+  color: #93c5fd;
+}
+
+.revision-diff-stat-removed {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #b91c1c;
+}
+
+.dark .revision-diff-stat-removed {
+  color: #fca5a5;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    SCROLLBARS
    Barra fina y discreta, acorde al tema: pista transparente, pulgar redondeado

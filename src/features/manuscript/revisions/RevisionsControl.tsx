@@ -1,8 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { History, Plus, Eye, X, ArrowLeft, FileClock, RotateCcw, Trash2 } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { History, Plus, Eye, X, ArrowLeft, FileClock, RotateCcw, Trash2, GitCompare } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
 import { useI18n } from '../../../i18n';
 import { useRevisionStore, SceneRevision, SceneRevisionMeta } from '../../../store/revisionStore';
 import { TiptapEditor } from '../../editor/TiptapEditor';
+import { RevisionDiffView } from './RevisionDiffView';
+import { htmlToPlainText } from './diff';
 
 interface RevisionsControlProps {
   /** Escena a la que pertenecen las revisiones. */
@@ -157,6 +160,14 @@ const RevisionsHistoryDialog: React.FC<{
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Vista del contenido de la revision: el texto tal cual, o las diferencias.
+  const [viewMode, setViewMode] = useState<'content' | 'diff'>('content');
+  // Con que se compara la revision: el texto actual o la revision anterior.
+  const [diffBase, setDiffBase] = useState<'current' | 'previous'>('current');
+  const [diffTexts, setDiffTexts] = useState<{ base: string; target: string } | null>(null);
+  const [diffLoading, setDiffLoading] = useState(false);
+  const [diffError, setDiffError] = useState<string | null>(null);
+
   useEffect(() => {
     fetchRevisions(sceneId);
   }, [sceneId, fetchRevisions]);
@@ -167,6 +178,70 @@ const RevisionsHistoryDialog: React.FC<{
     if (Number.isNaN(date.getTime())) return value;
     return date.toLocaleString(language === 'en' ? 'en-US' : 'es-ES');
   };
+
+  // `flush` se guarda en una ref para que el efecto de las diferencias no se
+  // repita cada vez que el padre crea una funcion nueva.
+  const flushRef = useRef(flush);
+  useEffect(() => {
+    flushRef.current = flush;
+  }, [flush]);
+
+  /**
+   * Calcula las diferencias de la revision que se esta viendo.
+   *
+   * - Contra el texto actual: lo que ha cambiado desde la revision.
+   * - Contra la revision anterior: lo que cambio en la revision.
+   */
+  useEffect(() => {
+    if (viewMode !== 'diff' || !viewing) return;
+
+    let cancelled = false;
+
+    const load = async () => {
+      setDiffLoading(true);
+      setDiffError(null);
+      setDiffTexts(null);
+      try {
+        const revisionText = htmlToPlainText(viewing.content);
+
+        if (diffBase === 'current') {
+          // Se guarda lo pendiente: la comparacion es contra lo que hay en pantalla.
+          await flushRef.current();
+          const currentHtml = await invoke<string | null>('get_scene_content', {
+            nodeId: viewing.node_id,
+          });
+          if (cancelled) return;
+          setDiffTexts({ base: revisionText, target: htmlToPlainText(currentHtml ?? '') });
+          return;
+        }
+
+        const previous = revisions.find(
+          (item) => item.revision_number === viewing.revision_number - 1
+        );
+        if (!previous) {
+          if (!cancelled) setDiffError(t('manuscript.revisions.noPrevious'));
+          return;
+        }
+        const previousRevision = await useRevisionStore.getState().getRevision(previous.id);
+        if (cancelled) return;
+        setDiffTexts({
+          base: htmlToPlainText(previousRevision.content),
+          target: revisionText,
+        });
+      } catch (err: any) {
+        if (!cancelled) {
+          setDiffError(err?.message || t('manuscript.revisions.diffError'));
+        }
+      } finally {
+        if (!cancelled) setDiffLoading(false);
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [viewMode, diffBase, viewing, revisions, t]);
 
   const handleView = async (id: string) => {
     setActionError(null);
@@ -236,10 +311,85 @@ const RevisionsHistoryDialog: React.FC<{
           <span>{formatDate(viewing.created_at)}</span>
           <span>{viewing.word_count} {t('manuscript.revisions.words')}</span>
         </div>
-        <div className="flex-1 overflow-hidden bg-[var(--color-bg-primary)] p-3">
-          <div className="h-full overflow-y-auto">
-            <TiptapEditor content={viewing.content} onChange={() => {}} editable={false} />
+
+        {/* Pestañas: contenido o diferencias */}
+        <div className="flex items-center gap-1 border-b border-[var(--color-border)] px-3 py-2">
+          <button
+            onClick={() => setViewMode('content')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              viewMode === 'content'
+                ? 'bg-[var(--color-brand)] text-white'
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]'
+            }`}
+          >
+            <Eye className="h-3.5 w-3.5" />
+            {t('manuscript.revisions.viewContent')}
+          </button>
+          <button
+            onClick={() => setViewMode('diff')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              viewMode === 'diff'
+                ? 'bg-[var(--color-brand)] text-white'
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]'
+            }`}
+          >
+            <GitCompare className="h-3.5 w-3.5" />
+            {t('manuscript.revisions.viewDiff')}
+          </button>
+        </div>
+
+        {/* Con que se compara la revision */}
+        {viewMode === 'diff' && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-4 py-2 text-xs">
+            <span className="text-[var(--color-text-muted)]">{t('manuscript.revisions.compareWith')}</span>
+            <div className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-0.5">
+              <button
+                onClick={() => setDiffBase('current')}
+                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+                  diffBase === 'current'
+                    ? 'bg-[var(--color-brand)] text-white'
+                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                }`}
+              >
+                {t('manuscript.revisions.compareCurrent')}
+              </button>
+              <button
+                onClick={() => setDiffBase('previous')}
+                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+                  diffBase === 'previous'
+                    ? 'bg-[var(--color-brand)] text-white'
+                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                }`}
+              >
+                {t('manuscript.revisions.comparePrevious')}
+              </button>
+            </div>
+            <span className="text-[var(--color-text-muted)]">
+              {diffBase === 'current'
+                ? t('manuscript.revisions.compareCurrentHint')
+                : t('manuscript.revisions.comparePreviousHint')}
+            </span>
           </div>
+        )}
+
+        <div className="flex-1 overflow-hidden bg-[var(--color-bg-primary)] p-3">
+          {viewMode === 'diff' ? (
+            <div className="h-full overflow-y-auto">
+              {diffLoading ? (
+                <div className="flex items-center justify-center py-8 text-xs text-[var(--color-text-muted)]">
+                  {t('common.loading')}
+                </div>
+              ) : diffError ? (
+                <p className="text-xs text-[var(--color-danger)]">{diffError}</p>
+              ) : diffTexts ? (
+                <RevisionDiffView baseText={diffTexts.base} targetText={diffTexts.target} />
+              ) : null}
+            </div>
+          ) : (
+            <div className="h-full overflow-y-auto">
+              <TiptapEditor content={viewing.content} onChange={() => {}} editable={false} />
+            </div>
+          )}
         </div>
         <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-[var(--color-border)]">
           <button
