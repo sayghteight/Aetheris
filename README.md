@@ -220,6 +220,12 @@ culto-guieditor/
 
 This project is licensed under the MIT License.
 
+The application is also distributed with an **End User Licence** that users accept on first
+launch. It covers the conditions of use of the distributed application — it is free of charge,
+it keeps your manuscripts on your own computer and it comes without warranty — and it does not
+replace or limit the MIT License. The full text is available in
+[Spanish](src/content/eula.es.md) and [English](src/content/eula.en.md).
+
 ## 🙏 Acknowledgments
 
 Built with:

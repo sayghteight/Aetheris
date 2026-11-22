@@ -14,6 +14,7 @@ import { TabBar } from './components/tab-bar';
 import { TabContent } from './components/tab-bar/TabContent';
 import { UpdateDialog } from './components/UpdateDialog';
 import { CloseGuard } from './features/settings/CloseGuard';
+import { EulaDialog } from './features/eula/EulaDialog';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useSpellCheckSettings } from './features/editor/spell/useSpellCheckSettings';
 import { saveActiveScene } from './utils/sceneSaver';
@@ -145,6 +146,8 @@ const App: React.FC = () => {
       <>
         <ProjectSetup />
         <CloseGuard />
+        {/* Mientras no se acepte la licencia, este dialogo bloquea la aplicacion. */}
+        <EulaDialog />
       </>
     );
   }
@@ -181,6 +184,9 @@ const App: React.FC = () => {
       </div>
 
       <CloseGuard />
+
+      {/* Mientras no se acepte la licencia, este dialogo bloquea la aplicacion. */}
+      <EulaDialog />
     </div>
   );
 };

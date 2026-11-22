@@ -56,6 +56,10 @@ export interface AppSettings {
   spellCheckLanguages: string[];
   /** Si los nombres de la novela se consideran palabras correctas. */
   spellCheckUseUniverseNames: boolean;
+  /** Si el usuario ha aceptado la licencia de uso. */
+  eulaAccepted: boolean;
+  /** Version de la licencia de uso que se ha aceptado. */
+  eulaAcceptedVersion: string;
 }
 
 /** Clave dentro del almacen generico de la aplicacion (`{config}/app_settings.json`). */
@@ -86,6 +90,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   spellCheckEnabled: true,
   spellCheckLanguages: ['es'],
   spellCheckUseUniverseNames: true,
+  eulaAccepted: false,
+  eulaAcceptedVersion: '',
 };
 
 interface AppSettingsState {
@@ -93,6 +99,8 @@ interface AppSettingsState {
   isLoaded: boolean;
   loadSettings: () => Promise<void>;
   updateSettings: (patch: Partial<AppSettings>) => Promise<void>;
+  /** Registra la aceptacion de la licencia de uso. */
+  acceptEula: (version: string) => Promise<void>;
 }
 
 export const useAppSettingsStore = create<AppSettingsState>((set, get) => ({
@@ -126,5 +134,9 @@ export const useAppSettingsStore = create<AppSettingsState>((set, get) => ({
     } catch (error) {
       console.error(error);
     }
+  },
+
+  acceptEula: async (version: string) => {
+    await get().updateSettings({ eulaAccepted: true, eulaAcceptedVersion: version });
   },
 }));

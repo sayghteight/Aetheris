@@ -115,6 +115,16 @@
     "current": "Actual",
     "empty": "No hay registro de cambios para esta versión."
   },
+  "eula": {
+    "title": "Licencia de uso",
+    "version": "Versión",
+    "subtitle": "Condiciones de uso de Aetheria",
+    "language": "Idioma",
+    "acceptLabel": "He leído y acepto las condiciones de la licencia de uso.",
+    "accept": "Aceptar y continuar",
+    "decline": "Rechazar y salir",
+    "declineHint": "Si no aceptas las condiciones, Aetheria se cerrará y no podrás volver a usarlo sin aceptarlas."
+  },
   "spellCheck": {
     "suggestionsFor": "Sugerencias para «{{word}}»",
     "addWord": "Añadir «{{word}}» al diccionario",
@@ -614,6 +624,9 @@
     "openDataFolderDesc": "Donde se guardan los ajustes y la lista de novelas recientes",
     "resetApp": "Restablecer los ajustes",
     "resetAppDesc": "Vuelve todo a los valores por defecto",
+    "legal": "Legal",
+    "viewEula": "Licencia de uso",
+    "viewEulaDesc": "Volver a leer las condiciones que aceptaste al instalar la aplicación",
     "open": "Abrir ajustes",
     "projectScopeHint": "El tema, la tipografía, la ventana y el autoguardado se configuran para toda la aplicación.",
     "confirmCloseTitle": "Cerrar Aetheria",

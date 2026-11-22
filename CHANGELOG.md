@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.0] — November 21, 2026
+
+### Changed
+
+- The version is now **0.2.0** in `package.json`, `package-lock.json`, `Cargo.toml`, `Cargo.lock`,
+  `tauri.conf.json` and `src/utils/version.ts`.
+
+### Added
+
+- **End User Licence (EULA).** The application now asks for acceptance of the terms of use the
+  first time it is opened, in Spanish or English, and it cannot be used until they are accepted.
+  The acceptance is stored with the application settings, together with the version of the
+  document, so a new version of the licence is accepted again. The text can be read at any
+  time from the application settings, in the new **Legal** section.
+- The licence lives in `src/content/eula.es.md` and `src/content/eula.en.md` and is packaged with
+  the application, exactly like the changelog: what the user reads is the same document that
+  is published in the repository.
+
+---
+
 ## [0.1.9] — November 5, 2026
 
 ### Added

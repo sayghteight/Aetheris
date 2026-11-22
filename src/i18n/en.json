@@ -115,6 +115,16 @@
     "current": "Current",
     "empty": "There is no changelog for this version."
   },
+  "eula": {
+    "title": "End User Licence",
+    "version": "Version",
+    "subtitle": "Terms of use for Aetheria",
+    "language": "Language",
+    "acceptLabel": "I have read and accept the terms of the licence.",
+    "accept": "Accept and continue",
+    "decline": "Decline and quit",
+    "declineHint": "If you do not accept the terms, Aetheria will close and cannot be used again without accepting them."
+  },
   "spellCheck": {
     "suggestionsFor": "Suggestions for “{{word}}”",
     "addWord": "Add “{{word}}” to the dictionary",
@@ -614,6 +624,9 @@
     "openDataFolderDesc": "Where settings and the recent novels list are stored",
     "resetApp": "Reset settings",
     "resetAppDesc": "Restores every option to its default value",
+    "legal": "Legal",
+    "viewEula": "End User Licence",
+    "viewEulaDesc": "Read again the terms you accepted when installing the application",
     "open": "Open settings",
     "projectScopeHint": "Theme, typography, window and autosave are configured for the whole application.",
     "confirmCloseTitle": "Close Aetheria",

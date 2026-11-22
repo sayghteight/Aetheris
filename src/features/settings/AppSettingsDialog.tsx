@@ -14,6 +14,7 @@ import {
   useAppSettingsStore,
 } from '../../store/appSettingsStore';
 import { SHORTCUT_DEFINITIONS, useShortcutsStore } from '../../store/shortcutsStore';
+import { useEulaStore } from '../../store/eulaStore';
 import { ShortcutRecorder } from '../../components/ShortcutRecorder';
 import {
   X,
@@ -28,6 +29,7 @@ import {
   RotateCcw,
   Minus,
   Plus,
+  Scale,
 } from 'lucide-react';
 
 /** Resoluciones ofrecidas ademas del tamano del monitor. */
@@ -142,6 +144,7 @@ export const AppSettingsDialog: React.FC<AppSettingsDialogProps> = ({ open, onCl
   const { t } = useI18n();
   const { settings, updateSettings } = useAppSettingsStore();
   const { shortcuts, loadShortcuts, setShortcut, resetToDefaults } = useShortcutsStore();
+  const openEula = useEulaStore((state) => state.open);
   const [monitorSize, setMonitorSize] = useState<{ width: number; height: number } | null>(null);
   const [customWidth, setCustomWidth] = useState(String(settings.windowWidth));
   const [customHeight, setCustomHeight] = useState(String(settings.windowHeight));
@@ -410,7 +413,14 @@ export const AppSettingsDialog: React.FC<AppSettingsDialogProps> = ({ open, onCl
 
   const resetAppSettings = async () => {
     try {
-      await updateSettings(DEFAULT_APP_SETTINGS);
+      // La aceptacion de la licencia se conserva: no es una preferencia, es una
+      // decision que ya tomaste. Lo que vuelve a pedir la aceptacion es que se
+      // publique una version nueva del documento.
+      await updateSettings({
+        ...DEFAULT_APP_SETTINGS,
+        eulaAccepted: settings.eulaAccepted,
+        eulaAcceptedVersion: settings.eulaAcceptedVersion,
+      });
       await getCurrentWebview().setZoom(DEFAULT_APP_SETTINGS.interfaceZoom);
       await getCurrentWindow().setResizable(DEFAULT_APP_SETTINGS.resizable);
       await getCurrentWindow().setAlwaysOnTop(DEFAULT_APP_SETTINGS.alwaysOnTop);
@@ -974,6 +984,25 @@ export const AppSettingsDialog: React.FC<AppSettingsDialogProps> = ({ open, onCl
                 </span>
                 <span className="block text-xs text-[var(--color-text-muted)]">
                   {t('appSettings.resetAppDesc')}
+                </span>
+              </span>
+            </button>
+          </Section>
+
+          {/* ── Legal ── */}
+          <Section title={t('appSettings.legal')}>
+            <button
+              type="button"
+              onClick={() => openEula()}
+              className="lib-ring flex w-full items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 text-left transition-colors hover:bg-[var(--color-bg-hover)]"
+            >
+              <Scale className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-[var(--color-text-primary)]">
+                  {t('appSettings.viewEula')}
+                </span>
+                <span className="block text-xs text-[var(--color-text-muted)]">
+                  {t('appSettings.viewEulaDesc')}
                 </span>
               </span>
             </button>
